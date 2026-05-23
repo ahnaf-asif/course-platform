@@ -38,7 +38,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const payload = JSON.parse(atob(base64));
       return payload.email || '';
-    } catch (e) {
+    } catch {
       return '';
     }
   };

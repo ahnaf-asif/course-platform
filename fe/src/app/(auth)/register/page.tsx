@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import axios from 'axios';
 
 export default function RegisterPage() {
   const registerMutation = usePostAuthRegister();
@@ -48,10 +49,14 @@ export default function RegisterPage() {
         color: 'green',
       });
       router.push('/login');
-    } catch (error: any) {
+    } catch (error) {
+      let message = 'Failed to create account';
+      if (axios.isAxiosError(error)) {
+        message = error.response?.data?.message || message;
+      }
       notifications.show({
         title: 'Registration Failed',
-        message: error.response?.data?.message || 'Failed to create account',
+        message,
         color: 'red',
       });
     } finally {

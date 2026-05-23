@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import Link from 'next/link';
+import axios from 'axios';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -36,10 +37,14 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(values.email, values.password);
-    } catch (error: any) {
+    } catch (error) {
+      let message = 'Invalid email or password';
+      if (axios.isAxiosError(error)) {
+        message = error.response?.data?.message || message;
+      }
       notifications.show({
         title: 'Authentication Failed',
-        message: error.response?.data?.message || 'Invalid email or password',
+        message,
         color: 'red',
       });
     } finally {

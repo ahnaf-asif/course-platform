@@ -55,7 +55,7 @@ describe('Axios Interceptor Refresh Logic', () => {
 
     try {
       await axiosInstance({ url: '/protected-resource', method: 'GET' });
-    } catch (e) {
+    } catch {
       // Expected to fail
     }
 

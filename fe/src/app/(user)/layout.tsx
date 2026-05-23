@@ -1,6 +1,6 @@
 'use client';
 
-import { AppShell, Group, Title, Menu, Button, UnstyledButton, Text, Avatar } from '@mantine/core';
+import { AppShell, Group, Title, Menu, UnstyledButton, Text, Avatar } from '@mantine/core';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthGuard } from '@/components/guards/AuthGuard';
 import { IconLogout, IconChevronDown } from '@tabler/icons-react';
@@ -16,7 +16,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const payload = JSON.parse(atob(base64));
       return payload.email || '';
-    } catch (e) {
+    } catch {
       return '';
     }
   };

@@ -25,11 +25,10 @@ const decodeJWT = (token: string) => {
         .join('')
     );
     return JSON.parse(jsonPayload);
-  } catch (e) {
+  } catch {
     return null;
   }
-};
-
+  };
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [accessToken, setAccessTokenState] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);

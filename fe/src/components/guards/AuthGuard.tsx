@@ -11,7 +11,7 @@ interface AuthGuardProps {
 }
 
 export const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
-  const { isAuthenticated, role, accessToken } = useAuthContext();
+  const { isAuthenticated, role } = useAuthContext();
   const router = useRouter();
 
   useEffect(() => {
