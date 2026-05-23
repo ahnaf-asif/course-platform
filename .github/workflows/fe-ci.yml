@@ -23,6 +23,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: fe/package-lock.json
       - run: npm ci
+      - run: npm run generate:api
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
