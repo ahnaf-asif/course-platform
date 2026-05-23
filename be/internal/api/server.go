@@ -44,6 +44,18 @@ func NewServer(store db.Store, tokenService *services.TokenService, cacheService
 }
 
 func (s *Server) setupMiddleware() {
+	// CORS configuration should be near the top to handle preflight requests
+	allowedOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
+	if allowedOrigins == "" {
+		allowedOrigins = "http://localhost:3000,http://127.0.0.1:3000"
+	}
+	s.echo.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: strings.Split(allowedOrigins, ","),
+		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodOptions},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, "X-Requested-With"},
+		AllowCredentials: true,
+	}))
+
 	// OpenTelemetry Tracing
 	s.echo.Use(otelecho.Middleware("course-platform-api"))
 
@@ -81,17 +93,6 @@ func (s *Server) setupMiddleware() {
 	})
 
 	s.echo.Use(middleware.Recover())
-
-	// CORS configuration
-	allowedOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
-	if allowedOrigins == "" {
-		allowedOrigins = "http://localhost:3000"
-	}
-	s.echo.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: strings.Split(allowedOrigins, ","),
-		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodOptions},
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
-	}))
 
 	// Request Body Limit
 	s.echo.Use(middleware.BodyLimit("1M"))
