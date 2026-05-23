@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -80,7 +81,20 @@ func (s *Server) setupMiddleware() {
 	})
 
 	s.echo.Use(middleware.Recover())
-	s.echo.Use(middleware.CORS())
+	
+	// CORS configuration
+	allowedOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
+	if allowedOrigins == "" {
+		allowedOrigins = "http://localhost:3000"
+	}
+	s.echo.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: strings.Split(allowedOrigins, ","),
+		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodOptions},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+	}))
+
+	// Request Body Limit
+	s.echo.Use(middleware.BodyLimit("1M"))
 }
 
 func (s *Server) registerRoutes() {
@@ -145,8 +159,35 @@ func (s *Server) registerRoutes() {
 
 	// Public Auth routes
 	auth := v1.Group("/auth")
-	auth.POST("/register", authHandler.Register)
-	auth.POST("/login", authHandler.Login)
+
+	// Rate Limiting for Auth
+	denyHandler := func(c echo.Context, identifier string, err error) error {
+		c.Response().Header().Set("Retry-After", "60")
+		return echo.NewHTTPError(http.StatusTooManyRequests, "Too many requests, please try again later")
+	}
+
+	defaultRateLimit := middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
+		Store: middleware.NewRateLimiterMemoryStoreWithConfig(
+			middleware.RateLimiterMemoryStoreConfig{Rate: 20, Burst: 20, ExpiresIn: 1 * time.Minute},
+		),
+		DenyHandler: denyHandler,
+	})
+	loginRateLimit := middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
+		Store: middleware.NewRateLimiterMemoryStoreWithConfig(
+			middleware.RateLimiterMemoryStoreConfig{Rate: 5, Burst: 5, ExpiresIn: 1 * time.Minute},
+		),
+		DenyHandler: denyHandler,
+	})
+	registerRateLimit := middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
+		Store: middleware.NewRateLimiterMemoryStoreWithConfig(
+			middleware.RateLimiterMemoryStoreConfig{Rate: 3, Burst: 3, ExpiresIn: 1 * time.Minute},
+		),
+		DenyHandler: denyHandler,
+	})
+
+	auth.Use(defaultRateLimit)
+	auth.POST("/register", authHandler.Register, registerRateLimit)
+	auth.POST("/login", authHandler.Login, loginRateLimit)
 	auth.POST("/refresh", authHandler.Refresh)
 
 	// Protected routes

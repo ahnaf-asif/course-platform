@@ -1,7 +1,13 @@
 openapi: 3.0.3
 info:
   title: Course Platform API
-  description: Backend API for the Course Platform project.
+  description: |
+    Backend API for the Course Platform project.
+    
+    ### Security
+    - **Authentication:** JWT-based access tokens with refresh tokens.
+    - **CORS:** Supported. Allowed origins are configurable.
+    - **Rate Limiting:** Applied to sensitive endpoints (Login, Register).
   version: 1.0.0
 servers:
   - url: http://localhost:8080/api/v1

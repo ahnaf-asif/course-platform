@@ -37,3 +37,23 @@ test:
 .PHONY: test-integration
 test-integration:
 	go test -v ./tests/...
+
+.PHONY: lint
+lint:
+	golangci-lint run
+
+.PHONY: db-reset
+db-reset:
+	@echo "WARNING: This will destroy all data in the local database."
+	@read -p "Are you sure? [y/N] " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		docker compose down -v; \
+		docker compose up -d; \
+		echo "Waiting for database to be ready..."; \
+		sleep 5; \
+		make migrate-up; \
+		make sqlc-generate; \
+		echo "Database reset complete."; \
+	else \
+		echo "Reset cancelled."; \
+	fi

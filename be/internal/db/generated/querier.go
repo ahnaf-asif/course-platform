@@ -96,6 +96,7 @@ type Querier interface {
 	ListUnreadNotifications(ctx context.Context, userID uuid.UUID) ([]Notification, error)
 	MarkNotificationRead(ctx context.Context, id uuid.UUID) error
 	Ping(ctx context.Context) (int32, error)
+	RevokeAllTokensByFamily(ctx context.Context, familyID uuid.UUID) error
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
 	UpdateChapter(ctx context.Context, arg UpdateChapterParams) (Chapter, error)
 	UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Course, error)
