@@ -1,8 +1,5 @@
 # 🎓 Course Platform Backend
 
-[![CI](https://github.com/shafins-course/backend/actions/workflows/ci.yml/badge.svg)](https://github.com/shafins-course/backend/actions/workflows/ci.yml)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/shafins-course/backend)](https://go.dev/)
-
 A high-performance, enterprise-grade learning management system (LMS) backend. Built with Go for speed, SQLC for type-safe database access, and orchestrated with Kubernetes for massive scale.
 
 ---
