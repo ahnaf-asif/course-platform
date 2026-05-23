@@ -26,10 +26,10 @@ func PrometheusMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			start := time.Now()
-			
+
 			// Process request
 			err := next(c)
-			
+
 			status := c.Response().Status
 			if err != nil {
 				if echoErr, ok := err.(*echo.HTTPError); ok {
@@ -38,7 +38,7 @@ func PrometheusMiddleware() echo.MiddlewareFunc {
 			}
 
 			elapsed := time.Since(start).Seconds()
-			
+
 			// Use Path() to group by route pattern (e.g. /users/:id) rather than concrete URI
 			path := c.Path()
 			if path == "" {

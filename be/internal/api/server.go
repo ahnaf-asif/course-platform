@@ -81,7 +81,7 @@ func (s *Server) setupMiddleware() {
 	})
 
 	s.echo.Use(middleware.Recover())
-	
+
 	// CORS configuration
 	allowedOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
 	if allowedOrigins == "" {
@@ -161,7 +161,7 @@ func (s *Server) registerRoutes() {
 	auth := v1.Group("/auth")
 
 	// Rate Limiting for Auth
-	denyHandler := func(c echo.Context, identifier string, err error) error {
+	denyHandler := func(c echo.Context, _ string, _ error) error {
 		c.Response().Header().Set("Retry-After", "60")
 		return echo.NewHTTPError(http.StatusTooManyRequests, "Too many requests, please try again later")
 	}
@@ -193,7 +193,7 @@ func (s *Server) registerRoutes() {
 	// Protected routes
 	protected := v1.Group("")
 	protected.Use(internalMiddleware.JWTMiddleware(jwtSecret))
-	
+
 	protected.POST("/auth/logout", authHandler.Logout)
 
 	// Admin routes

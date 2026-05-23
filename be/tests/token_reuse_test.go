@@ -86,7 +86,7 @@ func TestTokenReuseDetection(t *testing.T) {
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
-	
+
 	err = authHandler.Refresh(c)
 	require.Error(t, err)
 	httpErr, ok := err.(*echo.HTTPError)
