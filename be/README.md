@@ -151,6 +151,16 @@ In production, we use **Horizontal Pod Autoscaler (HPA)** located in `k8s/base/h
 
 Authentication is handled via **JWT** (Access Token) and **Refresh Tokens** (stored in DB).
 
+### Security Hardening
+- **Rate Limiting:** Auth endpoints are rate-limited to prevent brute-force attacks.
+  - `POST /auth/login`: 5 requests / minute per IP.
+  - `POST /auth/register`: 3 requests / minute per IP.
+- **CORS:** Allowed origins are configurable via `CORS_ALLOWED_ORIGINS` environment variable (comma-separated). Defaults to `http://localhost:3000`.
+- **Token Reuse Detection:** We use a **Token Family** strategy. If a revoked refresh token is presented (indicating a potential replay attack), the entire family of tokens associated with that session is immediately revoked, and the user is forced to log in again.
+- **Input Sanitization:** 
+  - Maximum request body size is limited to **1MB**.
+  - Strict input length validation is enforced at the handler level (e.g., Email max 255, Password max 72, Full Name max 100).
+
 ### Role-Based Access Control (RBAC)
 Protect routes using the `RequireRole` middleware:
 ```go
@@ -176,7 +186,48 @@ Uses **Testcontainers** to spin up a real PostgreSQL instance for testing.
 ```bash
 make test-integration
 ```
-Check `tests/auth_integration_test.go` for examples on testing the full API flow.
+Check `tests/auth_integration_test.go` and `tests/token_reuse_test.go` for examples.
+
+### Code Quality (Linting)
+We use `golangci-lint` to ensure code quality and consistency.
+- **Run locally:** `make lint`
+- **Configuration:** `.golangci.yml`
+- **CI/CD:** Linting runs automatically on every PR. PRs will fail if linting does not pass.
+
+---
+
+## 📖 API Documentation
+
+The API is documented using OpenAPI 3.0.
+- **Swagger UI:** `http://localhost:8080/api/v1/docs` (when server is running)
+- **Raw Spec:** `docs/openapi.yaml`
+
+---
+
+## 🛠 Troubleshooting & Migration Hygiene
+
+### Local Database Reset
+If your local environment gets into a dirty state (partial migrations, schema drift), you can perform a full reset:
+```bash
+make db-reset
+```
+> [!WARNING]
+> This command will destroy all data in your local database. Never run this against a production or shared environment.
+
+### Manual Hygiene Scenarios
+- **Rollback and re-apply a single migration:**
+  ```bash
+  make migrate-down             # roll back the last migration
+  # edit the .up.sql file
+  make migrate-up               # reapply
+  make sqlc-generate            # regenerate Go code
+  ```
+- **Generated code out of sync:**
+  Always run `make sqlc-generate` after any schema changes or migrations.
+- **Checking migration state:**
+  ```bash
+  docker exec -it <db_container> psql -U postgres -d courseplatform -c "SELECT * FROM schema_migrations;"
+  ```
 
 ---
 

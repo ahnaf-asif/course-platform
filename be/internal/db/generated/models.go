@@ -471,6 +471,7 @@ type RefreshToken struct {
 	ExpiresAt time.Time `json:"expires_at"`
 	IsRevoked bool      `json:"is_revoked"`
 	CreatedAt time.Time `json:"created_at"`
+	FamilyID  uuid.UUID `json:"family_id"`
 }
 
 type Review struct {

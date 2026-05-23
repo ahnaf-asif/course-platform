@@ -17,21 +17,28 @@ const createRefreshToken = `-- name: CreateRefreshToken :one
 INSERT INTO refresh_tokens (
     user_id,
     token_hash,
-    expires_at
+    expires_at,
+    family_id
 ) VALUES (
-    $1, $2, $3
+    $1, $2, $3, COALESCE($4, uuid_generate_v4())
 )
-RETURNING id, user_id, token_hash, expires_at, is_revoked, created_at
+RETURNING id, user_id, token_hash, expires_at, is_revoked, created_at, family_id
 `
 
 type CreateRefreshTokenParams struct {
-	UserID    uuid.UUID `json:"user_id"`
-	TokenHash string    `json:"token_hash"`
-	ExpiresAt time.Time `json:"expires_at"`
+	UserID    uuid.UUID   `json:"user_id"`
+	TokenHash string      `json:"token_hash"`
+	ExpiresAt time.Time   `json:"expires_at"`
+	FamilyID  interface{} `json:"family_id"`
 }
 
 func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error) {
-	row := q.db.QueryRowContext(ctx, createRefreshToken, arg.UserID, arg.TokenHash, arg.ExpiresAt)
+	row := q.db.QueryRowContext(ctx, createRefreshToken,
+		arg.UserID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+		arg.FamilyID,
+	)
 	var i RefreshToken
 	err := row.Scan(
 		&i.ID,
@@ -40,6 +47,7 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 		&i.ExpiresAt,
 		&i.IsRevoked,
 		&i.CreatedAt,
+		&i.FamilyID,
 	)
 	return i, err
 }
@@ -122,7 +130,7 @@ func (q *Queries) DeleteExpiredRefreshTokens(ctx context.Context) error {
 }
 
 const getRefreshToken = `-- name: GetRefreshToken :one
-SELECT id, user_id, token_hash, expires_at, is_revoked, created_at FROM refresh_tokens
+SELECT id, user_id, token_hash, expires_at, is_revoked, created_at, family_id FROM refresh_tokens
 WHERE token_hash = $1 LIMIT 1
 `
 
@@ -136,6 +144,7 @@ func (q *Queries) GetRefreshToken(ctx context.Context, tokenHash string) (Refres
 		&i.ExpiresAt,
 		&i.IsRevoked,
 		&i.CreatedAt,
+		&i.FamilyID,
 	)
 	return i, err
 }
@@ -192,6 +201,17 @@ func (q *Queries) GetUserProfile(ctx context.Context, userID uuid.UUID) (UserPro
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const revokeAllTokensByFamily = `-- name: RevokeAllTokensByFamily :exec
+UPDATE refresh_tokens
+SET is_revoked = TRUE
+WHERE family_id = $1
+`
+
+func (q *Queries) RevokeAllTokensByFamily(ctx context.Context, familyID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, revokeAllTokensByFamily, familyID)
+	return err
 }
 
 const revokeRefreshToken = `-- name: RevokeRefreshToken :exec

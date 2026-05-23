@@ -17,3 +17,10 @@ post:
             $ref: '../components/schemas/auth.yaml#/LoginResponse'
     '401':
       description: Invalid credentials
+    '429':
+      description: Too many requests
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Number of seconds to wait before retrying

@@ -46,8 +46,8 @@ func NewAuthHandler(store db.Store, tokenService *services.TokenService, logger 
 }
 
 type LoginRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required"`
+	Email    string `json:"email" validate:"required,email,max=255"`
+	Password string `json:"password" validate:"required,max=72"`
 }
 
 type LoginResponse struct {
@@ -124,7 +124,16 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired refresh token")
 	}
 
-	if tokenRow.IsRevoked || tokenRow.ExpiresAt.Before(time.Now()) {
+	if tokenRow.IsRevoked {
+		// Token reuse detected! Revoke all tokens in the family.
+		err = h.store.RevokeAllTokensByFamily(c.Request().Context(), tokenRow.FamilyID)
+		if err != nil {
+			h.logger.Error("Failed to revoke token family", "error", err, "family_id", tokenRow.FamilyID)
+		}
+		return echo.NewHTTPError(http.StatusUnauthorized, "session compromised, please log in again")
+	}
+
+	if tokenRow.ExpiresAt.Before(time.Now()) {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired refresh token")
 	}
 
@@ -154,11 +163,12 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 			return err
 		}
 
-		// Store new refresh token
+		// Store new refresh token in the same family
 		_, err = q.CreateRefreshToken(c.Request().Context(), generated.CreateRefreshTokenParams{
 			UserID:    user.ID,
 			TokenHash: newRefreshHash,
 			ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+			FamilyID:  tokenRow.FamilyID,
 		})
 		return err
 	})
@@ -215,6 +225,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		UserID:    user.ID,
 		TokenHash: refreshHash,
 		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		FamilyID:  nil,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to store refresh token")
@@ -228,9 +239,9 @@ func (h *AuthHandler) Login(c echo.Context) error {
 }
 
 type RegisterRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8"`
-	FullName string `json:"full_name" validate:"required"`
+	Email    string `json:"email" validate:"required,email,max=255"`
+	Password string `json:"password" validate:"required,min=8,max=72"`
+	FullName string `json:"full_name" validate:"required,max=100"`
 }
 
 type UserResponse struct {

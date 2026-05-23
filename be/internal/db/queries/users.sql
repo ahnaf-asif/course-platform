@@ -45,9 +45,10 @@ RETURNING *;
 INSERT INTO refresh_tokens (
     user_id,
     token_hash,
-    expires_at
+    expires_at,
+    family_id
 ) VALUES (
-    $1, $2, $3
+    $1, $2, $3, COALESCE(sqlc.narg('family_id'), uuid_generate_v4())
 )
 RETURNING *;
 
@@ -59,6 +60,11 @@ WHERE token_hash = $1 LIMIT 1;
 UPDATE refresh_tokens
 SET is_revoked = TRUE
 WHERE id = $1;
+
+-- name: RevokeAllTokensByFamily :exec
+UPDATE refresh_tokens
+SET is_revoked = TRUE
+WHERE family_id = $1;
 
 -- name: DeleteExpiredRefreshTokens :exec
 DELETE FROM refresh_tokens

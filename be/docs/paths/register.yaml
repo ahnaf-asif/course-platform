@@ -23,3 +23,10 @@ post:
         application/json:
           schema:
             $ref: '../components/schemas/errors.yaml#/ValidationError'
+    '429':
+      description: Too many requests
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Number of seconds to wait before retrying
