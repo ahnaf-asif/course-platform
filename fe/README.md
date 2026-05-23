@@ -1,6 +1,5 @@
 # 🎓 Course Platform Frontend
 
-[![Frontend CI](https://github.com/ahnaf-asif/course-platform/actions/workflows/fe-ci.yml/badge.svg)](https://github.com/ahnaf-asif/course-platform/actions/workflows/fe-ci.yml)
 [![Next.js Version](https://img.shields.io/badge/Next.js-16.2.6-black?logo=next.js)](https://nextjs.org/)
 [![Mantine Version](https://img.shields.io/badge/Mantine-9.2.1-blue?logo=mantine)](https://mantine.dev/)
 
