@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/labstack/echo/v4"
 	"github.com/shafins-course/backend/internal/db"
@@ -213,11 +214,13 @@ func (h *AuthHandler) Login(c echo.Context) error {
 
 	accessToken, err := h.tokenService.GenerateAccessToken(user)
 	if err != nil {
+		h.logger.Error("Failed to generate access token", "error", err, "user_id", user.ID)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to generate access token")
 	}
 
 	refreshToken, refreshHash, err := h.tokenService.GenerateRefreshToken()
 	if err != nil {
+		h.logger.Error("Failed to generate refresh token", "error", err, "user_id", user.ID)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to generate refresh token")
 	}
 
@@ -225,9 +228,10 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		UserID:    user.ID,
 		TokenHash: refreshHash,
 		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
-		FamilyID:  nil,
+		FamilyID:  uuid.NullUUID{},
 	})
 	if err != nil {
+		h.logger.Error("Failed to store refresh token", "error", err, "user_id", user.ID)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to store refresh token")
 	}
 
