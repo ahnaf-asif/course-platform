@@ -35,8 +35,11 @@ jobs:
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
-        version: latest
+        version: v1.64.6
         working-directory: be
+        # Force installation via 'go install' to ensure it's built with Go 1.25.10
+        # This avoids the "exit code 3" version mismatch error.
+        install-mode: goinstall
 
     - name: Build
       run: go build -v ./...
