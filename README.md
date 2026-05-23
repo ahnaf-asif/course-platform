@@ -1,8 +1,5 @@
 # 🎓 Course Platform
 
-[![Backend CI](https://github.com/shafins-course/backend/actions/workflows/ci.yml/badge.svg)](https://github.com/shafins-course/backend/actions/workflows/ci.yml)
-[![Frontend CI](https://github.com/ahnaf-asif/course-platform/actions/workflows/fe-ci.yml/badge.svg)](https://github.com/ahnaf-asif/course-platform/actions/workflows/fe-ci.yml)
-
 A modern, high-performance, and scalable Learning Management System (LMS). This platform is built with a decoupled architecture featuring a Go-powered backend and a Next.js frontend, all orchestrated with Docker and Kubernetes.
 
 ---
