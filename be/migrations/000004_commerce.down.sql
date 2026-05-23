@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS coupons;
+DROP TABLE IF EXISTS payment_gates;
+DROP TYPE IF EXISTS discount_type;
+DROP TYPE IF EXISTS order_status;

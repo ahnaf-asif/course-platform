@@ -1,0 +1,38 @@
+openapi: 3.0.3
+info:
+  title: Course Platform API
+  description: Backend API for the Course Platform project.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server v1
+paths:
+  /auth/register:
+    $ref: './paths/register.yaml'
+  /auth/login:
+    $ref: './paths/login.yaml'
+  /auth/refresh:
+    $ref: './paths/refresh.yaml'
+  /auth/logout:
+    $ref: './paths/logout.yaml'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    RegisterRequest:
+      $ref: './components/schemas/auth.yaml#/RegisterRequest'
+    LoginRequest:
+      $ref: './components/schemas/auth.yaml#/LoginRequest'
+    RefreshRequest:
+      $ref: './components/schemas/auth.yaml#/RefreshRequest'
+    LogoutRequest:
+      $ref: './components/schemas/auth.yaml#/LogoutRequest'
+    UserResponse:
+      $ref: './components/schemas/auth.yaml#/UserResponse'
+    LoginResponse:
+      $ref: './components/schemas/auth.yaml#/LoginResponse'
+    ValidationError:
+      $ref: './components/schemas/errors.yaml#/ValidationError'

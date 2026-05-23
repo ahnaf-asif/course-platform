@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS node_tags;
+DROP TABLE IF EXISTS tags;

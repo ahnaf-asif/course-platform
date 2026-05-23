@@ -1,0 +1,7 @@
+DROP TABLE IF EXISTS node_prerequisites;
+DROP TABLE IF EXISTS lessons;
+DROP TABLE IF EXISTS chapters;
+DROP TABLE IF EXISTS subjects;
+DROP TABLE IF EXISTS courses;
+DROP TABLE IF EXISTS nodes;
+DROP TYPE IF EXISTS node_type;

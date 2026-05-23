@@ -1,0 +1,19 @@
+post:
+  summary: Logout user
+  tags:
+    - Authentication
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../components/schemas/auth.yaml#/LogoutRequest'
+  responses:
+    '204':
+      description: Logout successful
+    '401':
+      description: Unauthorized or invalid token
+    '404':
+      description: Refresh token not found or not owned by user

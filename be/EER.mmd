@@ -1,0 +1,206 @@
+erDiagram
+    USER {
+        uuid id PK
+        string email
+        string password_hash
+        string role "ENUM: ADMIN, USER"
+        datetime created_at
+    }
+    USER_PROFILE {
+        uuid user_id PK, FK
+        string full_name
+        string avatar_url "Nullable"
+        string bio "Nullable"
+        datetime updated_at
+    }
+    REFRESH_TOKEN {
+        uuid id PK
+        uuid user_id FK
+        string token_hash
+        datetime expires_at
+        boolean is_revoked
+        datetime created_at
+    }
+    NODE {
+        uuid id PK
+        uuid parent_id FK "Self-referencing for hierarchy"
+        string node_type "ENUM: COURSE, SUBJECT, CHAPTER, LESSON"
+        datetime created_at
+    }
+    COURSE {
+        uuid node_id PK, FK
+        string title
+        string description
+        string thumbnail_url "Nullable"
+        boolean is_published
+    }
+    SUBJECT {
+        uuid node_id PK, FK
+        string title
+        int sequence_order
+    }
+    CHAPTER {
+        uuid node_id PK, FK
+        string title
+        int sequence_order
+    }
+    LESSON {
+        uuid node_id PK, FK
+        string title
+        text text_content "Nullable"
+        string video_url "Nullable"
+        int sequence_order
+    }
+    PAYMENT_GATE {
+        uuid node_id PK, FK
+        decimal price
+        string currency
+    }
+    ORDER {
+        uuid id PK
+        uuid user_id FK
+        uuid node_id FK
+        uuid coupon_id FK "Nullable"
+        decimal amount_paid
+        string currency
+        string status "ENUM: PENDING, COMPLETED, REFUNDED"
+        string payment_provider
+        string provider_reference
+        datetime created_at
+    }
+    COUPON {
+        uuid id PK
+        string code
+        string discount_type "ENUM: PERCENTAGE, FIXED"
+        decimal discount_value
+        int max_uses "Nullable"
+        int used_count
+        datetime expires_at "Nullable"
+        datetime created_at
+    }
+    TAG {
+        uuid id PK
+        string name
+        string slug
+    }
+    NODE_TAG {
+        uuid node_id PK, FK
+        uuid tag_id PK, FK
+    }
+    QUIZ {
+        uuid id PK
+        string title
+        int passing_score
+        datetime created_at
+    }
+    NODE_QUIZ {
+        uuid node_id PK, FK
+        uuid quiz_id PK, FK
+    }
+    QUESTION {
+        uuid id PK
+        uuid quiz_id FK
+        text content
+        string question_type "ENUM: SINGLE, MULTIPLE"
+        int sequence_order
+    }
+    ANSWER {
+        uuid id PK
+        uuid question_id FK
+        text content
+        boolean is_correct
+    }
+    NODE_PREREQUISITE {
+        uuid node_id PK, FK
+        uuid prerequisite_node_id PK, FK
+    }
+    ENROLLMENT {
+        uuid user_id PK, FK
+        uuid node_id PK, FK
+        datetime enrolled_at
+    }
+    PROGRESS {
+        uuid user_id PK, FK
+        uuid node_id PK, FK
+        string status "ENUM: STARTED, COMPLETED"
+        datetime updated_at
+    }
+    QUIZ_ATTEMPT {
+        uuid id PK
+        uuid user_id FK
+        uuid quiz_id FK
+        int score
+        boolean is_passed
+        datetime completed_at
+    }
+    QUIZ_ATTEMPT_ANSWER {
+        uuid id PK
+        uuid attempt_id FK
+        uuid question_id FK
+        uuid answer_id FK "Nullable — unanswered"
+    }
+    CERTIFICATE {
+        uuid id PK
+        uuid user_id FK
+        uuid node_id FK "COURSE node only"
+        string certificate_url
+        datetime issued_at
+    }
+    REVIEW {
+        uuid id PK
+        uuid user_id FK
+        uuid node_id FK "COURSE node only"
+        int rating "1-5"
+        text comment "Nullable"
+        datetime created_at
+    }
+    ANNOUNCEMENT {
+        uuid id PK
+        uuid node_id FK "COURSE node only"
+        string title
+        text body
+        datetime created_at
+    }
+    NOTIFICATION {
+        uuid id PK
+        uuid user_id FK
+        string type "ENUM: ENROLLMENT, QUIZ_RESULT, CERTIFICATE, ANNOUNCEMENT"
+        text message
+        boolean is_read
+        datetime created_at
+    }
+
+    USER ||--o| USER_PROFILE : "has"
+    USER ||--o{ REFRESH_TOKEN : "has"
+    NODE ||--o{ NODE : "parent_id (Hierarchy)"
+    NODE ||--o| COURSE : "extends"
+    NODE ||--o| SUBJECT : "extends"
+    NODE ||--o| CHAPTER : "extends"
+    NODE ||--o| LESSON : "extends"
+    NODE ||--o| PAYMENT_GATE : "has payment rules"
+    USER ||--o{ ORDER : "places"
+    NODE ||--o{ ORDER : "ordered via"
+    COUPON ||--o{ ORDER : "applied to"
+    NODE ||--o{ NODE_TAG : "tagged with"
+    TAG ||--o{ NODE_TAG : "applied to"
+    NODE ||--o{ NODE_QUIZ : "has attached"
+    QUIZ ||--o{ NODE_QUIZ : "attached to"
+    QUIZ ||--o{ QUESTION : "contains"
+    QUESTION ||--o{ ANSWER : "has options"
+    NODE ||--o{ NODE_PREREQUISITE : "requires"
+    NODE ||--o{ NODE_PREREQUISITE : "is required by"
+    USER ||--o{ ENROLLMENT : "has"
+    NODE ||--o{ ENROLLMENT : "receives"
+    USER ||--o{ PROGRESS : "tracks completion of"
+    NODE ||--o{ PROGRESS : "is tracked by"
+    USER ||--o{ QUIZ_ATTEMPT : "takes"
+    QUIZ ||--o{ QUIZ_ATTEMPT : "is taken by"
+    QUIZ_ATTEMPT ||--o{ QUIZ_ATTEMPT_ANSWER : "records"
+    QUESTION ||--o{ QUIZ_ATTEMPT_ANSWER : "answered in"
+    ANSWER ||--o{ QUIZ_ATTEMPT_ANSWER : "selected in"
+    USER ||--o{ CERTIFICATE : "earns"
+    NODE ||--o{ CERTIFICATE : "awards"
+    USER ||--o{ REVIEW : "writes"
+    NODE ||--o{ REVIEW : "receives"
+    NODE ||--o{ ANNOUNCEMENT : "has"
+    USER ||--o{ NOTIFICATION : "receives"

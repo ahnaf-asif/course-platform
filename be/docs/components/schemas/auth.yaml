@@ -1,0 +1,71 @@
+RegisterRequest:
+  type: object
+  required:
+    - email
+    - password
+    - full_name
+  properties:
+    email:
+      type: string
+      format: email
+    password:
+      type: string
+      minLength: 8
+    full_name:
+      type: string
+      minLength: 1
+
+UserResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    email:
+      type: string
+    full_name:
+      type: string
+    role:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+
+LoginRequest:
+  type: object
+  required:
+    - email
+    - password
+  properties:
+    email:
+      type: string
+      format: email
+    password:
+      type: string
+
+LoginResponse:
+  type: object
+  properties:
+    access_token:
+      type: string
+    refresh_token:
+      type: string
+    expires_in:
+      type: integer
+      description: Access token expiry in seconds
+
+RefreshRequest:
+  type: object
+  required:
+    - refresh_token
+  properties:
+    refresh_token:
+      type: string
+
+LogoutRequest:
+  type: object
+  required:
+    - refresh_token
+  properties:
+    refresh_token:
+      type: string

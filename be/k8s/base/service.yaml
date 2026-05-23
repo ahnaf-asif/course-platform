@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: course-platform-api
+spec:
+  selector:
+    app: course-platform-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: LoadBalancer

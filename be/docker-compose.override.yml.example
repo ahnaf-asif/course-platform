@@ -1,0 +1,7 @@
+services:
+  api:
+    environment:
+      - ENV=development
+    # Add local overrides here, such as mounting source for hot-reload if using a tool like air
+    # volumes:
+    #   - .:/app
