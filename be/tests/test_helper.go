@@ -10,8 +10,8 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/golang-migrate/migrate/v4/source/file" // Required for migrations
+	_ "github.com/jackc/pgx/v5/stdlib"                   // Required for pgx driver
 	"github.com/testcontainers/testcontainers-go"
 	pgmodule "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -69,7 +69,7 @@ func SetupTestDB(ctx context.Context) (*sql.DB, func(), error) {
 
 	cleanup := func() {
 		db.Close()
-		postgresContainer.Terminate(ctx)
+		_ = postgresContainer.Terminate(ctx)
 	}
 
 	return db, cleanup, nil
