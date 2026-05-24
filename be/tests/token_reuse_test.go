@@ -61,29 +61,37 @@ func TestTokenReuseDetection(t *testing.T) {
 	c = e.NewContext(req, rec)
 	require.NoError(t, authHandler.Login(c))
 
-	var loginResp handlers.LoginResponse
-	json.Unmarshal(rec.Body.Bytes(), &loginResp)
-	originalRefreshToken := loginResp.RefreshToken
+	// Get refresh token from cookie
+	cookies := rec.Result().Cookies()
+	var originalRefreshToken string
+	for _, cookie := range cookies {
+		if cookie.Name == "refresh_token" {
+			originalRefreshToken = cookie.Value
+		}
+	}
+	require.NotEmpty(t, originalRefreshToken)
 
 	// 3. Refresh once
-	refreshReq := handlers.RefreshRequest{
-		RefreshToken: originalRefreshToken,
-	}
-	refreshBody, _ := json.Marshal(refreshReq)
-	req = httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBuffer(refreshBody))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req = httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: originalRefreshToken})
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	require.NoError(t, authHandler.Refresh(c))
 
-	var refreshResp handlers.LoginResponse
-	json.Unmarshal(rec.Body.Bytes(), &refreshResp)
-	newRefreshToken := refreshResp.RefreshToken
+	// Get new refresh token from cookie
+	cookies = rec.Result().Cookies()
+	var newRefreshToken string
+	for _, cookie := range cookies {
+		if cookie.Name == "refresh_token" {
+			newRefreshToken = cookie.Value
+		}
+	}
+	require.NotEmpty(t, newRefreshToken)
 	assert.NotEqual(t, originalRefreshToken, newRefreshToken)
 
 	// 4. Refresh again with the SAME original token (REUSE)
-	req = httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBuffer(refreshBody))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req = httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: originalRefreshToken})
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 
@@ -95,12 +103,8 @@ func TestTokenReuseDetection(t *testing.T) {
 	assert.Equal(t, "session compromised, please log in again", httpErr.Message)
 
 	// 5. Verify that the NEW refresh token is also revoked
-	refreshReq2 := handlers.RefreshRequest{
-		RefreshToken: newRefreshToken,
-	}
-	refreshBody2, _ := json.Marshal(refreshReq2)
-	req = httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBuffer(refreshBody2))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req = httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: newRefreshToken})
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 

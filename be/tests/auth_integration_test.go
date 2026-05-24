@@ -72,10 +72,26 @@ func TestAuthIntegration(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
 
+		// Verify cookies
+		cookies := rec.Result().Cookies()
+		var accessToken, refreshToken string
+		for _, cookie := range cookies {
+			if cookie.Name == "access_token" {
+				accessToken = cookie.Value
+				assert.True(t, cookie.HttpOnly)
+			}
+			if cookie.Name == "refresh_token" {
+				refreshToken = cookie.Value
+				assert.True(t, cookie.HttpOnly)
+			}
+		}
+		assert.NotEmpty(t, accessToken)
+		assert.NotEmpty(t, refreshToken)
+
 		var loginResp handlers.LoginResponse
 		json.Unmarshal(rec.Body.Bytes(), &loginResp)
-		assert.NotEmpty(t, loginResp.AccessToken)
-		assert.NotEmpty(t, loginResp.RefreshToken)
+		assert.Equal(t, accessToken, loginResp.AccessToken)
+		assert.Equal(t, refreshToken, loginResp.RefreshToken)
 	})
 
 	t.Run("Login with wrong password", func(t *testing.T) {

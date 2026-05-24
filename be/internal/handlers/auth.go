@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -24,10 +25,12 @@ type AuthHandler struct {
 	tokenService *services.TokenService
 	validate     *validator.Validate
 	logger       *slog.Logger
+	isProduction bool
 }
 
 func NewAuthHandler(store db.Store, tokenService *services.TokenService, logger *slog.Logger) *AuthHandler {
 	v := validator.New()
+	env := os.Getenv("ENV")
 
 	// Register function to use JSON tag name in validation errors
 	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
@@ -43,6 +46,7 @@ func NewAuthHandler(store db.Store, tokenService *services.TokenService, logger 
 		tokenService: tokenService,
 		validate:     v,
 		logger:       logger,
+		isProduction: env == "production",
 	}
 }
 
@@ -65,25 +69,60 @@ type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token" validate:"required"`
 }
 
+func (h *AuthHandler) setTokenCookies(c echo.Context, accessToken, refreshToken string) {
+	// Set access token cookie
+	c.SetCookie(&http.Cookie{
+		Name:     "access_token",
+		Value:    accessToken,
+		Expires:  time.Now().Add(h.tokenService.GetAccessTokenDuration()),
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	// Set refresh token cookie
+	c.SetCookie(&http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Expires:  time.Now().Add(h.tokenService.GetRefreshTokenDuration()),
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func (h *AuthHandler) clearTokenCookies(c echo.Context) {
+	c.SetCookie(&http.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Expires:  time.Now().Add(-1 * time.Hour),
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+	c.SetCookie(&http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Expires:  time.Now().Add(-1 * time.Hour),
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
 func (h *AuthHandler) Logout(c echo.Context) error {
-	var req LogoutRequest
-	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	cookie, err := c.Cookie("refresh_token")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Refresh token cookie missing")
 	}
 
-	if err := h.validate.Struct(req); err != nil {
-		errors := make([]map[string]string, 0)
-		for _, err := range err.(validator.ValidationErrors) {
-			errors = append(errors, map[string]string{
-				"field":   err.Field(),
-				"message": err.Tag(),
-			})
-		}
-		return c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{"errors": errors})
-	}
-
+	refreshToken := cookie.Value
 	authUser := internalMiddleware.GetAuthUser(c)
-	hash := h.tokenService.HashToken(req.RefreshToken)
+	hash := h.tokenService.HashToken(refreshToken)
 
 	tokenRow, err := h.store.GetRefreshToken(c.Request().Context(), hash)
 	if err != nil {
@@ -99,27 +138,18 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to revoke token")
 	}
 
+	h.clearTokenCookies(c)
 	return c.NoContent(http.StatusNoContent)
 }
 
 func (h *AuthHandler) Refresh(c echo.Context) error {
-	var req RefreshRequest
-	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	cookie, err := c.Cookie("refresh_token")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Refresh token cookie missing")
 	}
 
-	if err := h.validate.Struct(req); err != nil {
-		errors := make([]map[string]string, 0)
-		for _, err := range err.(validator.ValidationErrors) {
-			errors = append(errors, map[string]string{
-				"field":   err.Field(),
-				"message": err.Tag(),
-			})
-		}
-		return c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{"errors": errors})
-	}
-
-	hash := h.tokenService.HashToken(req.RefreshToken)
+	refreshToken := cookie.Value
+	hash := h.tokenService.HashToken(refreshToken)
 	tokenRow, err := h.store.GetRefreshToken(c.Request().Context(), hash)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired refresh token")
@@ -131,10 +161,12 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		if err != nil {
 			h.logger.Error("Failed to revoke token family", "error", err, "family_id", tokenRow.FamilyID)
 		}
+		h.clearTokenCookies(c)
 		return echo.NewHTTPError(http.StatusUnauthorized, "session compromised, please log in again")
 	}
 
 	if tokenRow.ExpiresAt.Before(time.Now()) {
+		h.clearTokenCookies(c)
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired refresh token")
 	}
 
@@ -179,6 +211,7 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to refresh token")
 	}
 
+	h.setTokenCookies(c, accessToken, newRefreshToken)
 	return c.JSON(http.StatusOK, LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: newRefreshToken,
@@ -235,12 +268,14 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to store refresh token")
 	}
 
+	h.setTokenCookies(c, accessToken, refreshToken)
 	return c.JSON(http.StatusOK, LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    h.tokenService.GetAccessTokenDurationSeconds(),
 	})
 }
+
 
 type RegisterRequest struct {
 	Email    string `json:"email" validate:"required,email,max=255"`
