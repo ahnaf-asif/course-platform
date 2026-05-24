@@ -7,9 +7,11 @@ import { updateAccessToken, setAuthHandlers } from '@/lib/axios';
 interface AuthContextType {
   accessToken: string | null;
   role: string | null;
+  userEmail: string | null;
   setAccessToken: (token: string | null) => void;
   clearAuth: () => void;
   isAuthenticated: boolean;
+  isHydrated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,16 +30,19 @@ const decodeJWT = (token: string) => {
   } catch {
     return null;
   }
-  };
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [accessToken, setAccessTokenState] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const clearAuth = useCallback(() => {
     setAccessTokenState(null);
     setRole(null);
+    setUserEmail(null);
     updateAccessToken(null, false);
-    localStorage.removeItem('refresh_token');
   }, []);
 
   const setAccessToken = useCallback((token: string | null) => {
@@ -46,8 +51,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (token) {
       const payload = decodeJWT(token);
       setRole(payload?.role || null);
+      setUserEmail(payload?.email || null);
     } else {
       setRole(null);
+      setUserEmail(null);
     }
   }, []);
 
@@ -58,27 +65,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAuthenticated = !!accessToken;
 
   useEffect(() => {
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (refreshToken) {
-      const hydrate = async () => {
-        try {
-          const response = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/refresh`, {
-            refresh_token: refreshToken,
-          });
-          setAccessToken(response.data.access_token);
-          localStorage.setItem('refresh_token', response.data.refresh_token);
-        } catch (error) {
-          console.error('Failed to hydrate auth state:', error);
-          localStorage.removeItem('refresh_token');
-          updateAccessToken(null, false);
-        }
-      };
-      hydrate();
-    }
+    const hydrate = async () => {
+      try {
+        const response = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
+        setAccessToken(response.data.access_token);
+      } catch (error) {
+        // Silent fail during hydration is fine, user is just not logged in
+      } finally {
+        setIsHydrated(true);
+      }
+    };
+    hydrate();
   }, [setAccessToken]);
 
   return (
-    <AuthContext.Provider value={{ accessToken, role, setAccessToken, clearAuth, isAuthenticated }}>
+    <AuthContext.Provider
+      value={{
+        accessToken,
+        role,
+        userEmail,
+        setAccessToken,
+        clearAuth,
+        isAuthenticated,
+        isHydrated,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

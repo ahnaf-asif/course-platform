@@ -2,6 +2,7 @@
 
 import { AppShell, Group, Title, NavLink, Text, Avatar, Stack } from '@mantine/core';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/context/AuthContext';
 import { AuthGuard } from '@/components/guards/AuthGuard';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -27,23 +28,9 @@ const adminLinks = [
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { logout, accessToken } = useAuth();
+  const { logout } = useAuth();
+  const { userEmail } = useAuthContext();
   const pathname = usePathname();
-
-  // Decoding email from JWT for display
-  const decodeEmail = (token: string | null) => {
-    if (!token) return '';
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const payload = JSON.parse(atob(base64));
-      return payload.email || '';
-    } catch {
-      return '';
-    }
-  };
-
-  const userEmail = decodeEmail(accessToken);
 
   return (
     <AuthGuard requiredRole="ADMIN">

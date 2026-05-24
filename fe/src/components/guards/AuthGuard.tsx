@@ -11,40 +11,38 @@ interface AuthGuardProps {
 }
 
 export const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
-  const { isAuthenticated, role } = useAuthContext();
+  const { isAuthenticated, role, isHydrated } = useAuthContext();
   const router = useRouter();
 
   useEffect(() => {
-    // If we have a refresh token in localStorage but no access token in state,
-    // we might be in the middle of hydration. We should wait.
-    const hasRefreshToken = typeof window !== 'undefined' && !!localStorage.getItem('refresh_token');
-    
-    if (!hasRefreshToken && !isAuthenticated) {
+    // If hydrated and not authenticated, we expect middleware to have redirected,
+    // but as a fallback or for client-side navigation:
+    if (isHydrated && !isAuthenticated) {
       router.push('/login');
       return;
     }
 
-    if (isAuthenticated && requiredRole === 'ADMIN' && role !== 'ADMIN') {
+    // Role-based authorization
+    if (isHydrated && isAuthenticated && requiredRole === 'ADMIN' && role !== 'ADMIN') {
       router.push('/dashboard');
     }
-  }, [isAuthenticated, role, requiredRole, router]);
+  }, [isAuthenticated, role, requiredRole, router, isHydrated]);
 
-  // If authenticated and role matches, or if just authenticated and no specific role required
-  if (isAuthenticated) {
-    if (requiredRole === 'ADMIN' && role !== 'ADMIN') {
-      return null; // Will redirect in useEffect
-    }
-    return <>{children}</>;
-  }
-
-  // Show loader while hydrating if refresh token exists
-  const hasRefreshToken = typeof window !== 'undefined' && !!localStorage.getItem('refresh_token');
-  if (hasRefreshToken && !isAuthenticated) {
+  // Show loader while hydrating
+  if (!isHydrated) {
     return (
       <Center style={{ height: '100vh' }}>
         <Loader size="xl" />
       </Center>
     );
+  }
+
+  // If authenticated and role matches
+  if (isAuthenticated) {
+    if (requiredRole === 'ADMIN' && role !== 'ADMIN') {
+      return null; // Will redirect in useEffect
+    }
+    return <>{children}</>;
   }
 
   return null;
