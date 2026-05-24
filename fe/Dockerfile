@@ -10,9 +10,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY fe .
 
-# Copy backend OpenAPI spec for Orval
+# Copy backend OpenAPI spec and all its referenced components/paths
 RUN mkdir -p be-spec
-COPY be/docs/openapi.yaml ./be-spec/openapi.yaml
+COPY be/docs ./be-spec/
 
 # Update orval.config.ts to point to the local spec copy
 RUN sed -i 's|\.\.\/be\/docs\/openapi\.yaml|\.\/be-spec\/openapi\.yaml|g' orval.config.ts
