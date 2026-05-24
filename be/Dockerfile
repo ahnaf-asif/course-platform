@@ -25,6 +25,7 @@ WORKDIR /app
 COPY --from=builder /app/bin/api .
 # Copy .env file if it exists (though usually handled by docker-compose)
 # COPY .env .
+COPY --from=builder /app/docs ./docs
 
 EXPOSE 8080
 

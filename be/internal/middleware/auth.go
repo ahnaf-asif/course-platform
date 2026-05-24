@@ -29,19 +29,30 @@ func GetAuthUser(c echo.Context) AuthUser {
 func JWTMiddleware(secret string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			var tokenString string
+
+			// 1. Try to get token from Authorization header
 			authHeader := c.Request().Header.Get("Authorization")
-			if authHeader == "" {
+			if authHeader != "" {
+				parts := strings.Split(authHeader, " ")
+				if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+					tokenString = parts[1]
+				}
+			}
+
+			// 2. If not in header, try to get from cookie
+			if tokenString == "" {
+				cookie, err := c.Cookie("access_token")
+				if err == nil {
+					tokenString = cookie.Value
+				}
+			}
+
+			if tokenString == "" {
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 			}
 
-			parts := strings.Split(authHeader, " ")
-			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
-			}
-
-			tokenString := parts[1]
 			claims := &services.AuthClaims{}
-
 			token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

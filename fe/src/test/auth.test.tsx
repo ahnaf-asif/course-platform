@@ -28,28 +28,25 @@ const AuthTestComponent = () => {
 
 describe('Authentication Flow', () => {
   beforeEach(() => {
-    localStorage.clear();
     vi.clearAllMocks();
   });
 
-  it('should hydrate auth state from refresh token in localStorage', async () => {
-    localStorage.setItem('refresh_token', 'valid-refresh-token');
-
+  it('should hydrate auth state from refresh call', async () => {
+    // In our test setup, MSW should be configured to return a success for /auth/refresh
     render(<AuthTestComponent />);
 
     // Initially not authenticated
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
 
-    // Wait for hydration
+    // Wait for hydration (AuthContext calls /auth/refresh on mount)
     await waitFor(() => {
       expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
     });
 
     expect(screen.getByTestId('access-token')).toHaveTextContent('new-access-token');
-    expect(localStorage.getItem('refresh_token')).toBe('new-refresh-token');
   });
 
-  it('should login correctly and store tokens', async () => {
+  it('should login correctly', async () => {
     render(<AuthTestComponent />);
 
     const loginButton = screen.getByText('Login');
@@ -63,14 +60,12 @@ describe('Authentication Flow', () => {
     });
 
     expect(screen.getByTestId('access-token')).toHaveTextContent('fake-access-token');
-    expect(localStorage.getItem('refresh_token')).toBe('fake-refresh-token');
   });
 
-  it('should logout correctly and clear tokens', async () => {
-    // Start authenticated
-    localStorage.setItem('refresh_token', 'valid-refresh-token');
+  it('should logout correctly', async () => {
     render(<AuthTestComponent />);
 
+    // Wait for hydration to finish so we are authenticated
     await waitFor(() => {
       expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
     });
@@ -86,6 +81,5 @@ describe('Authentication Flow', () => {
     });
 
     expect(screen.getByTestId('access-token')).toHaveTextContent('');
-    expect(localStorage.getItem('refresh_token')).toBeNull();
   });
 });

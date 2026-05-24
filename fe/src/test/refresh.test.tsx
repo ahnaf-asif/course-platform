@@ -5,14 +5,11 @@ import { http, HttpResponse } from 'msw';
 
 describe('Axios Interceptor Refresh Logic', () => {
   beforeEach(() => {
-    localStorage.clear();
     updateAccessToken(null, false);
     vi.clearAllMocks();
   });
 
   it('should refresh token on 401 and retry request', async () => {
-    localStorage.setItem('refresh_token', 'valid-refresh-token');
-    
     let callCount = 0;
 
     // Mock a protected endpoint that fails once with 401 then succeeds
@@ -30,12 +27,9 @@ describe('Axios Interceptor Refresh Logic', () => {
 
     expect(result).toEqual({ data: 'success' });
     expect(callCount).toBe(2);
-    expect(localStorage.getItem('refresh_token')).toBe('new-refresh-token');
   });
 
   it('should redirect to login if refresh fails', async () => {
-    localStorage.setItem('refresh_token', 'invalid-refresh-token');
-    
     // Mock refresh endpoint to fail
     server.use(
       http.post('*/auth/refresh', () => {
@@ -60,7 +54,6 @@ describe('Axios Interceptor Refresh Logic', () => {
     }
 
     expect(mockLocation.href).toBe('/login');
-    expect(localStorage.getItem('refresh_token')).toBeNull();
     
     vi.unstubAllGlobals();
   });

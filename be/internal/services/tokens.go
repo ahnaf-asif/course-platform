@@ -62,6 +62,14 @@ func (s *TokenService) HashToken(token string) string {
 	return hex.EncodeToString(hash[:])
 }
 
+func (s *TokenService) GetAccessTokenDuration() time.Duration {
+	return s.accessTokenDuration
+}
+
+func (s *TokenService) GetRefreshTokenDuration() time.Duration {
+	return s.refreshTokenDuration
+}
+
 func (s *TokenService) GetAccessTokenDurationSeconds() int {
 	return int(s.accessTokenDuration.Seconds())
 }

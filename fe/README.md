@@ -128,19 +128,47 @@ const { mutateAsync: login } = usePostAuthLogin();
 
 ---
 
-## 🔐 Authentication & Security
+## 🔐 Authentication & Authorization
 
-### Token Strategy
-We use a **Double Token Strategy** (Access + Refresh):
-- **Access Token**: Stored only in React state (`AuthContext`). Never persisted to `localStorage`.
-- **Refresh Token**: Stored in `localStorage`. Used to silently hydrate the access token on page reload and to perform automatic refreshes.
+This frontend uses a secure, server-centric authentication model that relies on **HttpOnly Cookies** and **Next.js Middleware**. This architecture is designed to be robust against common web vulnerabilities like Cross-Site Scripting (XSS).
 
-### Automatic Token Refresh
-Our Axios interceptor (`src/lib/axios.ts`) handles 401 Unauthorized errors:
-1. Catches a 401 response.
-2. Attempts to call `POST /auth/refresh` with the stored refresh token.
-3. On success, updates the state and retries the original request.
-4. On failure, clears local data and redirects to `/login`.
+### Core Concepts
+
+1.  **Backend (Go):** The backend is the source of truth. It issues two `HttpOnly` cookies upon a successful login:
+    *   `access_token`: A short-lived JSON Web Token (JWT) containing the user's ID, email, and role (`USER` or `ADMIN`).
+    *   `refresh_token`: A long-lived token used to generate new access tokens.
+    > Because these cookies are `HttpOnly`, they **cannot be accessed by client-side JavaScript**, which is the primary defense against token theft.
+
+2.  **Middleware (`src/middleware.ts`):** This file acts as the primary security gatekeeper. It runs on the server before any page is rendered.
+    *   It intercepts requests for specific paths (defined in its `matcher` config).
+    *   It checks for the presence and validity of the `access_token` cookie.
+    *   For `/admin` routes, it decodes the JWT and verifies the user's role is `ADMIN`.
+    *   If any check fails, it immediately redirects the user to the appropriate page (`/login` or `/dashboard`) before any sensitive UI code is sent to the browser.
+
+3.  **File-System Based Authorization:** You control who can access a page simply by **where you put the file**. You do not need to add any special logic inside your page components.
+
+### How to Create Pages
+
+#### 1. Public Pages (Everyone can access)
+To create a page that is accessible to everyone (logged in or not), place it in any directory **not** covered by the middleware's `matcher`.
+
+**Example:**
+- Create `src/app/courses/[courseId]/page.tsx`.
+- Since `/courses` is not in the middleware's `matcher`, it remains public.
+
+#### 2. User Pages (Any logged-in user)
+To create a page that requires a user to be logged in (can be `USER` or `ADMIN`), place it in a directory that is protected by a general middleware rule.
+
+**Example:**
+- Create `src/app/(user)/dashboard/my-courses/page.tsx`.
+- The middleware is configured to protect all routes starting with `/dashboard`, so it will automatically require login for this page.
+
+#### 3. Admin-Only Pages
+To create a page that can only be accessed by an `ADMIN`, place it within the `src/app/(admin)/` directory.
+
+**Example:**
+- Create `src/app/(admin)/admin/users/page.tsx`.
+- The middleware is configured to protect all routes starting with `/admin` and will enforce the `ADMIN` role check.
 
 ---
 

@@ -15,13 +15,13 @@ export const useAuth = () => {
         data: { email, password },
       });
 
-      if (response.refresh_token) {
-        localStorage.setItem('refresh_token', response.refresh_token);
-      }
       if (response.access_token) {
         setAccessToken(response.access_token);
       }
-      router.push('/dashboard');
+      
+      const searchParams = new URLSearchParams(window.location.search);
+      const callbackUrl = searchParams.get('callbackUrl');
+      router.push(callbackUrl || '/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -29,15 +29,14 @@ export const useAuth = () => {
   };
 
   const logout = async () => {
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (refreshToken) {
-      try {
-        await logoutMutation.mutateAsync({
-          data: { refresh_token: refreshToken },
-        });
-      } catch (error) {
-        console.error('Logout request failed:', error);
-      }
+    try {
+      // Pass empty object or correct type as required by generated code,
+      // but backend will ignore it and use cookies.
+      await logoutMutation.mutateAsync({
+        data: { refresh_token: '' }, 
+      });
+    } catch (error) {
+      console.error('Logout request failed:', error);
     }
     clearAuth();
     router.push('/login');

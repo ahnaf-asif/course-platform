@@ -2,26 +2,13 @@
 
 import { AppShell, Group, Title, Menu, UnstyledButton, Text, Avatar } from '@mantine/core';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/context/AuthContext';
 import { AuthGuard } from '@/components/guards/AuthGuard';
 import { IconLogout, IconChevronDown } from '@tabler/icons-react';
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
-  const { logout, accessToken } = useAuth();
-  
-  // Decoding email from JWT for display (crude but works for placeholder)
-  const decodeEmail = (token: string | null) => {
-    if (!token) return '';
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const payload = JSON.parse(atob(base64));
-      return payload.email || '';
-    } catch {
-      return '';
-    }
-  };
-
-  const userEmail = decodeEmail(accessToken);
+  const { logout } = useAuth();
+  const { userEmail } = useAuthContext();
 
   return (
     <AuthGuard>
@@ -37,7 +24,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
               <Menu.Target>
                 <UnstyledButton>
                   <Group gap={7}>
-                    <Avatar src={null} alt={userEmail} radius="xl" size={24} />
+                    <Avatar src={null} alt={userEmail || ''} radius="xl" size={24} />
                     <Text size="sm" fw={500} visibleFrom="xs">
                       {userEmail}
                     </Text>

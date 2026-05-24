@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosR
 
 const instance: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  withCredentials: true,
 });
 
 export const axiosInstance = <T>(config: AxiosRequestConfig): Promise<T> => {
@@ -87,32 +88,20 @@ instance.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const refreshToken = localStorage.getItem('refresh_token');
-
-      if (!refreshToken) {
-        isRefreshing = false;
-        if (clearAuthCallback) clearAuthCallback();
-        redirectToLogin();
-        return Promise.reject(error);
-      }
-
       try {
-        const response = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/refresh`, {
-          refresh_token: refreshToken,
+        const response = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/refresh`, {}, {
+          withCredentials: true,
         });
 
-        const { access_token: newAccessToken, refresh_token: newRefreshToken } = response.data;
+        const { access_token: newAccessToken } = response.data;
 
         updateAccessToken(newAccessToken);
-        localStorage.setItem('refresh_token', newRefreshToken);
-
         processQueue(null, newAccessToken);
 
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return instance(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        localStorage.removeItem('refresh_token');
         if (clearAuthCallback) clearAuthCallback();
         redirectToLogin();
         return Promise.reject(refreshError);
