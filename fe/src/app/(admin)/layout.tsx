@@ -33,7 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
 
   return (
-    <AuthGuard requiredRole="ADMIN">
+    <AuthGuard>
       <AppShell
         header={{ height: 60 }}
         navbar={{ width: 260, breakpoint: 'sm' }}
