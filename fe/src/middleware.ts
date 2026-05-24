@@ -13,12 +13,14 @@ const getJwtSecretKey = () => {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  console.log(`\n[Middleware] Path: ${pathname}`);
 
   // 1. Handle already authenticated users on auth pages
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
   if (isAuthRoute) {
     const refreshToken = request.cookies.get('refresh_token');
     if (refreshToken) {
+      console.log('[Middleware] User is authenticated, redirecting from auth page to /dashboard');
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
     return NextResponse.next();
@@ -28,6 +30,7 @@ export async function middleware(request: NextRequest) {
   const accessToken = request.cookies.get('access_token')?.value;
 
   if (!accessToken) {
+    console.log('[Middleware] No access token found. Redirecting to /login.');
     const url = new URL('/login', request.url);
     url.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(url);
@@ -35,18 +38,21 @@ export async function middleware(request: NextRequest) {
 
   // 3. Verify token and check roles for admin routes
   if (pathname.startsWith('/admin')) {
+    console.log('[Middleware] Admin route detected. Verifying token...');
     try {
       const { payload } = await jose.jwtVerify(accessToken, getJwtSecretKey());
+      console.log('[Middleware] Token verified. Decoded Role:', payload.role);
+
       if (payload.role !== 'ADMIN') {
-        // Redirect non-admins from admin routes
+        console.log(`[Middleware] Role mismatch. Expected ADMIN, got ${payload.role}. Redirecting to /dashboard.`);
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
+      
+      console.log('[Middleware] Admin access GRANTED.');
     } catch (err) {
-      // This will catch expired tokens or invalid signatures
-      console.error('JWT Verification Error:', err);
+      console.error('[Middleware] JWT Verification Error:', err);
       const url = new URL('/login', request.url);
       url.searchParams.set('callbackUrl', pathname);
-      // We could also attempt a refresh here, but redirecting is simpler and safer
       return NextResponse.redirect(url);
     }
   }

@@ -142,6 +142,10 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+type RefreshResponseProd struct {
+	Status string `json:"status"`
+}
+
 func (h *AuthHandler) Refresh(c echo.Context) error {
 	cookie, err := c.Cookie("refresh_token")
 	if err != nil {
@@ -212,11 +216,19 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 	}
 
 	h.setTokenCookies(c, accessToken, newRefreshToken)
-	return c.JSON(http.StatusOK, LoginResponse{
-		AccessToken:  accessToken,
-		RefreshToken: newRefreshToken,
-		ExpiresIn:    h.tokenService.GetAccessTokenDurationSeconds(),
-	})
+
+	if !h.isProduction {
+		return c.JSON(http.StatusOK, LoginResponse{
+			AccessToken:  accessToken,
+			RefreshToken: newRefreshToken,
+			ExpiresIn:    h.tokenService.GetAccessTokenDurationSeconds(),
+		})
+	}
+	return c.JSON(http.StatusOK, RefreshResponseProd{Status: "ok"})
+}
+
+type LoginResponseProd struct {
+	Status string `json:"status"`
 }
 
 func (h *AuthHandler) Login(c echo.Context) error {
@@ -269,11 +281,18 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	}
 
 	h.setTokenCookies(c, accessToken, refreshToken)
-	return c.JSON(http.StatusOK, LoginResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		ExpiresIn:    h.tokenService.GetAccessTokenDurationSeconds(),
-	})
+
+	// For development, return tokens in the body for Swagger UI
+	if !h.isProduction {
+		return c.JSON(http.StatusOK, LoginResponse{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+			ExpiresIn:    h.tokenService.GetAccessTokenDurationSeconds(),
+		})
+	}
+
+	// For production, return an empty body for security
+	return c.JSON(http.StatusOK, LoginResponseProd{Status: "ok"})
 }
 
 
