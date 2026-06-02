@@ -83,6 +83,7 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserProfile(ctx context.Context, userID uuid.UUID) (UserProfile, error)
+	GetUserWithProfile(ctx context.Context, id uuid.UUID) (GetUserWithProfileRow, error)
 	IncrementCouponUsage(ctx context.Context, id uuid.UUID) error
 	ListAnnouncementsByCourse(ctx context.Context, nodeID uuid.UUID) ([]Announcement, error)
 	ListAnswersByQuestion(ctx context.Context, questionID uuid.UUID) ([]Answer, error)
@@ -103,6 +104,7 @@ type Querier interface {
 	UpdateLesson(ctx context.Context, arg UpdateLessonParams) (Lesson, error)
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
 	UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error)
+	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UserProfile, error)
 	// Payment Gates
 	UpsertPaymentGate(ctx context.Context, arg UpsertPaymentGateParams) (PaymentGate, error)

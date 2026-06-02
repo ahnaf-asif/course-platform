@@ -24,6 +24,7 @@ services:
     environment:
       - OTEL_COLLECTOR_ADDR=jaeger:4317
       - REDIS_URL=redis:6379
+      - DB_URL=postgres://${DB_USER:-postgres}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-course_platform}?sslmode=disable
     env_file:
       - .env
     depends_on:

@@ -31,6 +31,29 @@ RETURNING *;
 SELECT * FROM user_profiles
 WHERE user_id = $1 LIMIT 1;
 
+-- name: GetUserWithProfile :one
+SELECT 
+    u.id, 
+    u.email, 
+    u.role, 
+    u.created_at,
+    up.full_name, 
+    up.avatar_url, 
+    up.bio, 
+    up.updated_at
+FROM users u
+LEFT JOIN user_profiles up ON u.id = up.user_id
+WHERE u.id = $1 LIMIT 1;
+
+-- name: UpdateUser :one
+UPDATE users
+SET
+    email = COALESCE(sqlc.narg('email'), email),
+    password_hash = COALESCE(sqlc.narg('password_hash'), password_hash),
+    role = COALESCE(sqlc.narg('role'), role)
+WHERE id = $1
+RETURNING *;
+
 -- name: UpdateUserProfile :one
 UPDATE user_profiles
 SET

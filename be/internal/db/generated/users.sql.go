@@ -203,6 +203,48 @@ func (q *Queries) GetUserProfile(ctx context.Context, userID uuid.UUID) (UserPro
 	return i, err
 }
 
+const getUserWithProfile = `-- name: GetUserWithProfile :one
+SELECT 
+    u.id, 
+    u.email, 
+    u.role, 
+    u.created_at,
+    up.full_name, 
+    up.avatar_url, 
+    up.bio, 
+    up.updated_at
+FROM users u
+LEFT JOIN user_profiles up ON u.id = up.user_id
+WHERE u.id = $1 LIMIT 1
+`
+
+type GetUserWithProfileRow struct {
+	ID        uuid.UUID      `json:"id"`
+	Email     string         `json:"email"`
+	Role      UserRole       `json:"role"`
+	CreatedAt time.Time      `json:"created_at"`
+	FullName  sql.NullString `json:"full_name"`
+	AvatarUrl sql.NullString `json:"avatar_url"`
+	Bio       sql.NullString `json:"bio"`
+	UpdatedAt sql.NullTime   `json:"updated_at"`
+}
+
+func (q *Queries) GetUserWithProfile(ctx context.Context, id uuid.UUID) (GetUserWithProfileRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserWithProfile, id)
+	var i GetUserWithProfileRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Role,
+		&i.CreatedAt,
+		&i.FullName,
+		&i.AvatarUrl,
+		&i.Bio,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const revokeAllTokensByFamily = `-- name: RevokeAllTokensByFamily :exec
 UPDATE refresh_tokens
 SET is_revoked = TRUE
@@ -223,6 +265,41 @@ WHERE id = $1
 func (q *Queries) RevokeRefreshToken(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, revokeRefreshToken, id)
 	return err
+}
+
+const updateUser = `-- name: UpdateUser :one
+UPDATE users
+SET
+    email = COALESCE($2, email),
+    password_hash = COALESCE($3, password_hash),
+    role = COALESCE($4, role)
+WHERE id = $1
+RETURNING id, email, password_hash, role, created_at
+`
+
+type UpdateUserParams struct {
+	ID           uuid.UUID      `json:"id"`
+	Email        sql.NullString `json:"email"`
+	PasswordHash sql.NullString `json:"password_hash"`
+	Role         NullUserRole   `json:"role"`
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUser,
+		arg.ID,
+		arg.Email,
+		arg.PasswordHash,
+		arg.Role,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const updateUserProfile = `-- name: UpdateUserProfile :one

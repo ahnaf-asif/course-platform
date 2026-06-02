@@ -108,6 +108,7 @@ func (s *Server) registerRoutes() {
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	authHandler := handlers.NewAuthHandler(s.store, s.tokenService, s.logger)
+	userHandler := handlers.NewUserHandler(s.store, s.cacheService, s.logger)
 
 	// API v1 Group
 	v1 := s.echo.Group("/api/v1")
@@ -196,6 +197,12 @@ func (s *Server) registerRoutes() {
 	protected.Use(internalMiddleware.JWTMiddleware(jwtSecret))
 
 	protected.POST("/auth/logout", authHandler.Logout)
+
+	// User routes
+	users := protected.Group("/users")
+	users.GET("/me", userHandler.GetMe)
+	users.PATCH("/me", userHandler.UpdateMe)
+	users.PUT("/me/password", userHandler.UpdatePassword)
 
 	// Admin routes
 	admin := protected.Group("/admin")
