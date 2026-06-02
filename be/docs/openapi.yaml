@@ -21,6 +21,10 @@ paths:
     $ref: './paths/refresh.yaml'
   /auth/logout:
     $ref: './paths/logout.yaml'
+  /users/me:
+    $ref: './paths/me.yaml'
+  /users/me/password:
+    $ref: './paths/password.yaml'
 components:
   securitySchemes:
     bearerAuth:
@@ -38,6 +42,12 @@ components:
       $ref: './components/schemas/auth.yaml#/LogoutRequest'
     UserResponse:
       $ref: './components/schemas/auth.yaml#/UserResponse'
+    UserProfileResponse:
+      $ref: './components/schemas/user.yaml#/UserProfileResponse'
+    UpdateUserProfileRequest:
+      $ref: './components/schemas/user.yaml#/UpdateUserProfileRequest'
+    UpdatePasswordRequest:
+      $ref: './components/schemas/user.yaml#/UpdatePasswordRequest'
     LoginResponse:
       $ref: './components/schemas/auth.yaml#/LoginResponse'
     ValidationError:

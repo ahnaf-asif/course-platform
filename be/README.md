@@ -94,14 +94,14 @@ We use a **Cache-Aside** strategy. The `CacheService` provides a clean interface
 
 ### Usage Example
 ```go
-// internal/handlers/profile.go
-var user models.User
-err := cache.Get(ctx, "user:"+id, &user)
+// internal/handlers/user.go
+var cachedResp UserProfileResponse
+err := cache.Get(ctx, "user:profile:"+id, &cachedResp)
 if err != nil {
     // Cache miss: fetch from DB
-    user, _ = store.GetUser(ctx, id)
+    row, _ := store.GetUserWithProfile(ctx, id)
     // Set cache for 1 hour
-    cache.Set(ctx, "user:"+id, user, time.Hour)
+    cache.Set(ctx, "user:profile:"+id, row, time.Hour)
 }
 ```
 
@@ -152,6 +152,10 @@ Authentication is handled via **JWT** (Access Token) and **Refresh Tokens** (sto
 - **Rate Limiting:** Auth endpoints are rate-limited to prevent brute-force attacks.
   - `POST /auth/login`: 5 requests / minute per IP.
   - `POST /auth/register`: 3 requests / minute per IP.
+- **User Management Endpoints:**
+  - `GET /api/v1/users/me`: Fetch current user profile (Cached).
+  - `PATCH /api/v1/users/me`: Update email/profile details (Invalidates cache).
+  - `PUT /api/v1/users/me/password`: Secure password update.
 - **CORS:** Allowed origins are configurable via `CORS_ALLOWED_ORIGINS` environment variable (comma-separated). Defaults to `http://localhost:3000`.
 - **Token Reuse Detection:** We use a **Token Family** strategy. If a revoked refresh token is presented (indicating a potential replay attack), the entire family of tokens associated with that session is immediately revoked, and the user is forced to log in again.
 - **Input Sanitization:** 
