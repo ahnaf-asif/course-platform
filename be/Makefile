@@ -38,6 +38,26 @@ test:
 test-integration:
 	go test -v ./tests/...
 
+.PHONY: test-coverage
+test-coverage:
+	go test -v -short -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out
+
+.PHONY: test-coverage-html
+test-coverage-html:
+	go test -v -short -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out
+
+.PHONY: test-integration-coverage
+test-integration-coverage:
+	go test -v -coverprofile=integration_coverage.out ./tests/...
+	go tool cover -func=integration_coverage.out
+
+.PHONY: test-integration-coverage-html
+test-integration-coverage-html:
+	go test -v -coverprofile=integration_coverage.out ./tests/...
+	go tool cover -html=integration_coverage.out
+
 .PHONY: lint
 lint:
 	golangci-lint run
