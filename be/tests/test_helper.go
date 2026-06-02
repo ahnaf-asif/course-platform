@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -16,6 +18,19 @@ import (
 	pgmodule "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
+
+// noEmojiLogger is a custom logger that strips emojis from testcontainers output.
+type noEmojiLogger struct{}
+
+func (l noEmojiLogger) Printf(format string, v ...interface{}) {
+	msg := fmt.Sprintf(format, v...)
+	// Strip common emojis used by testcontainers
+	emojis := []string{"🐳", "✅", "⏳", "🔔", "🚫"}
+	for _, e := range emojis {
+		msg = strings.ReplaceAll(msg, e, "")
+	}
+	log.Print(strings.TrimSpace(msg))
+}
 
 func SetupTestDB(ctx context.Context) (*sql.DB, func(), error) {
 	dbName := "testdb"
@@ -31,6 +46,7 @@ func SetupTestDB(ctx context.Context) (*sql.DB, func(), error) {
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
 				WithStartupTimeout(5*time.Second)),
+		testcontainers.WithLogger(noEmojiLogger{}),
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to start container: %w", err)

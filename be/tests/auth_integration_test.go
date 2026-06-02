@@ -106,11 +106,129 @@ func TestAuthIntegration(t *testing.T) {
 		c := e.NewContext(req, rec)
 
 		err := authHandler.Login(c)
-		// Handlers return HTTPError which is handled by Echo, but here we call it directly
-		// authHandler.Login returns echo.NewHTTPError which contains status and message
 		require.Error(t, err)
 		httpErr, ok := err.(*echo.HTTPError)
 		require.True(t, ok)
 		assert.Equal(t, http.StatusUnauthorized, httpErr.Code)
+	})
+
+	t.Run("Register with duplicate email", func(t *testing.T) {
+		regReq := handlers.RegisterRequest{
+			Email:    "integration@example.com", // Already registered in first test
+			Password: "password123",
+			FullName: "Duplicate Test",
+		}
+		regBody, _ := json.Marshal(regReq)
+		req := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(regBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := authHandler.Register(c)
+		require.Error(t, err)
+		httpErr, ok := err.(*echo.HTTPError)
+		require.True(t, ok)
+		assert.Equal(t, http.StatusConflict, httpErr.Code)
+	})
+
+	t.Run("Login with non-existent user", func(t *testing.T) {
+		loginReq := handlers.LoginRequest{
+			Email:    "nonexistent@example.com",
+			Password: "password123",
+		}
+		loginBody, _ := json.Marshal(loginReq)
+		req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(loginBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := authHandler.Login(c)
+		require.Error(t, err)
+		httpErr, ok := err.(*echo.HTTPError)
+		require.True(t, ok)
+		assert.Equal(t, http.StatusUnauthorized, httpErr.Code)
+	})
+
+	t.Run("Refresh Success", func(t *testing.T) {
+		// 1. Login to get tokens
+		loginReq := handlers.LoginRequest{
+			Email:    "integration@example.com",
+			Password: "password123",
+		}
+		loginBody, _ := json.Marshal(loginReq)
+		req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(loginBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := authHandler.Login(c)
+		require.NoError(t, err)
+
+		cookies := rec.Result().Cookies()
+		var refreshToken string
+		for _, cookie := range cookies {
+			if cookie.Name == "refresh_token" {
+				refreshToken = cookie.Value
+			}
+		}
+		require.NotEmpty(t, refreshToken)
+
+		// 2. Refresh
+		req = httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshToken})
+		rec = httptest.NewRecorder()
+		c = e.NewContext(req, rec)
+
+		err = authHandler.Refresh(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		// Verify new cookies
+		newCookies := rec.Result().Cookies()
+		var newRefreshToken string
+		for _, cookie := range newCookies {
+			if cookie.Name == "refresh_token" {
+				newRefreshToken = cookie.Value
+			}
+		}
+		assert.NotEmpty(t, newRefreshToken)
+		assert.NotEqual(t, refreshToken, newRefreshToken)
+	})
+
+	t.Run("Token Reuse Detection", func(t *testing.T) {
+		// 1. Login to get tokens
+		loginReq := handlers.LoginRequest{
+			Email:    "integration@example.com",
+			Password: "password123",
+		}
+		loginBody, _ := json.Marshal(loginReq)
+		req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(loginBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		authHandler.Login(c)
+
+		oldRefreshToken := rec.Result().Cookies()[1].Value // Assuming second cookie is refresh_token
+
+		// 2. Refresh (First time - Success)
+		req = httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: oldRefreshToken})
+		rec = httptest.NewRecorder()
+		c = e.NewContext(req, rec)
+		authHandler.Refresh(c)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		// 3. Refresh with OLD token (Reuse - Failure)
+		req = httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: oldRefreshToken})
+		rec = httptest.NewRecorder()
+		c = e.NewContext(req, rec)
+
+		err := authHandler.Refresh(c)
+		require.Error(t, err)
+		httpErr, ok := err.(*echo.HTTPError)
+		require.True(t, ok)
+		assert.Equal(t, http.StatusUnauthorized, httpErr.Code)
+		assert.Contains(t, httpErr.Message, "session compromised")
 	})
 }

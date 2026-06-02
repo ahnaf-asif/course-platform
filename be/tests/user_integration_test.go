@@ -139,4 +139,80 @@ func TestUserIntegration(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
+
+	t.Run("UpdatePassword with wrong old password", func(t *testing.T) {
+		// We can use the user from the previous test since it's the same DB instance
+		authUser := &internalMiddleware.AuthUser{
+			Email: email, // This needs to be set up or retrieved
+		}
+		// Let's get the user ID first
+		user, _ := store.GetUserByEmail(ctx, email)
+		authUser.ID = user.ID.String()
+
+		passReq := handlers.UpdatePasswordRequest{
+			OldPassword: "definitely-not-the-password",
+			NewPassword: "some-new-password",
+		}
+		passBody, _ := json.Marshal(passReq)
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/users/me/password", bytes.NewBuffer(passBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.Set("user", authUser)
+
+		err := userHandler.UpdatePassword(c)
+		require.Error(t, err)
+		httpErr, ok := err.(*echo.HTTPError)
+		require.True(t, ok)
+		assert.Equal(t, http.StatusUnauthorized, httpErr.Code)
+	})
+
+	t.Run("UpdateMe with invalid data", func(t *testing.T) {
+		user, _ := store.GetUserByEmail(ctx, email)
+		authUser := &internalMiddleware.AuthUser{
+			ID:    user.ID.String(),
+			Email: email,
+		}
+
+		// 1. Invalid URL for avatar
+		invalidURL := "not-a-url"
+		updateReq := handlers.UpdateUserProfileRequest{
+			AvatarURL: &invalidURL,
+		}
+		updateBody, _ := json.Marshal(updateReq)
+		req := httptest.NewRequest(http.MethodPatch, "/api/v1/users/me", bytes.NewBuffer(updateBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.Set("user", authUser)
+
+		err := userHandler.UpdateMe(c)
+		assert.NoError(t, err) // Echo handler returns nil but writes to recorder if it's c.JSON
+		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+
+		// 2. Email conflict
+		otherEmail := "other@example.com"
+		// Register another user
+		regReq := handlers.RegisterRequest{Email: otherEmail, Password: password, FullName: "Other"}
+		regBody, _ := json.Marshal(regReq)
+		req = httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(regBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		require.NoError(t, authHandler.Register(e.NewContext(req, httptest.NewRecorder())))
+
+		updateReq = handlers.UpdateUserProfileRequest{
+			Email: &otherEmail,
+		}
+		updateBody, _ = json.Marshal(updateReq)
+		req = httptest.NewRequest(http.MethodPatch, "/api/v1/users/me", bytes.NewBuffer(updateBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec = httptest.NewRecorder()
+		c = e.NewContext(req, rec)
+		c.Set("user", authUser)
+
+		err = userHandler.UpdateMe(c)
+		require.Error(t, err)
+		httpErr, ok := err.(*echo.HTTPError)
+		require.True(t, ok)
+		assert.Equal(t, http.StatusConflict, httpErr.Code)
+	})
 }

@@ -212,6 +212,10 @@ func (s *Server) registerRoutes() {
 	})
 }
 
+func (s *Server) GetEcho() *echo.Echo {
+	return s.echo
+}
+
 func (s *Server) Start(addr string) error {
 	return s.echo.Start(addr)
 }
