@@ -47,7 +47,7 @@ func (m *MockStore) CreateRefreshToken(ctx context.Context, arg generated.Create
 	return args.Get(0).(generated.RefreshToken), args.Error(1)
 }
 
-func (m *MockStore) WithTx(ctx context.Context, fn func(generated.Querier) error) error {
+func (m *MockStore) WithTx(_ context.Context, fn func(generated.Querier) error) error {
 	return fn(m)
 }
 

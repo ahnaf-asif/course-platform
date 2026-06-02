@@ -35,7 +35,7 @@ func TestTokenService(t *testing.T) {
 		require.NotEmpty(t, tokenStr)
 
 		// Parse and validate the token
-		token, err := jwt.ParseWithClaims(tokenStr, &AuthClaims{}, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(tokenStr, &AuthClaims{}, func(_ *jwt.Token) (interface{}, error) {
 			return []byte(secret), nil
 		})
 

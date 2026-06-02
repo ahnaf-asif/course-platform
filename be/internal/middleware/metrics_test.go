@@ -17,7 +17,7 @@ func TestPrometheusMiddleware(t *testing.T) {
 	c := e.NewContext(req, rec)
 	c.SetPath("/test")
 
-	handler := func(c echo.Context) error {
+	handler := func(_ echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	}
 
@@ -43,7 +43,7 @@ func TestPrometheusMiddleware_Error(t *testing.T) {
 	c := e.NewContext(req, rec)
 	c.SetPath("/error")
 
-	handler := func(c echo.Context) error {
+	handler := func(_ echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "bad request")
 	}
 

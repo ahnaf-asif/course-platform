@@ -23,7 +23,7 @@ func TestSQLStore_WithTx(t *testing.T) {
 		mock.ExpectBegin()
 		mock.ExpectCommit()
 
-		err := store.WithTx(ctx, func(q generated.Querier) error {
+		err := store.WithTx(ctx, func(_ generated.Querier) error {
 			return nil
 		})
 
@@ -36,7 +36,7 @@ func TestSQLStore_WithTx(t *testing.T) {
 		mock.ExpectRollback()
 
 		callbackErr := errors.New("callback error")
-		err := store.WithTx(ctx, func(q generated.Querier) error {
+		err := store.WithTx(ctx, func(_ generated.Querier) error {
 			return callbackErr
 		})
 
@@ -48,7 +48,7 @@ func TestSQLStore_WithTx(t *testing.T) {
 		beginErr := errors.New("begin error")
 		mock.ExpectBegin().WillReturnError(beginErr)
 
-		err := store.WithTx(ctx, func(q generated.Querier) error {
+		err := store.WithTx(ctx, func(_ generated.Querier) error {
 			return nil
 		})
 
@@ -62,7 +62,7 @@ func TestSQLStore_WithTx(t *testing.T) {
 		mock.ExpectRollback().WillReturnError(rollbackErr)
 
 		callbackErr := errors.New("callback error")
-		err := store.WithTx(ctx, func(q generated.Querier) error {
+		err := store.WithTx(ctx, func(_ generated.Querier) error {
 			return callbackErr
 		})
 

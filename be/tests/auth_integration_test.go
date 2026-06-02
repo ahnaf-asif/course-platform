@@ -163,7 +163,7 @@ func TestAuthIntegration(t *testing.T) {
 
 		err := authHandler.Login(c)
 		require.NoError(t, err)
-		
+
 		cookies := rec.Result().Cookies()
 		var refreshToken string
 		for _, cookie := range cookies {
@@ -207,7 +207,7 @@ func TestAuthIntegration(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		authHandler.Login(c)
-		
+
 		oldRefreshToken := rec.Result().Cookies()[1].Value // Assuming second cookie is refresh_token
 
 		// 2. Refresh (First time - Success)

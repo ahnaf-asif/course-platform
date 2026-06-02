@@ -34,7 +34,7 @@ func TestRBACIntegration(t *testing.T) {
 	store := db.NewStore(conn)
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	tokenService := services.NewTokenService(jwtSecret, 15*time.Minute, 7*24*time.Hour)
-	
+
 	// Create the real server
 	server := api.NewServer(store, tokenService, nil, logger)
 	e := server.GetEcho() // We need a way to get the echo instance from server for ServeHTTP
@@ -54,11 +54,11 @@ func TestRBACIntegration(t *testing.T) {
 
 	t.Run("Admin accessing Admin route", func(t *testing.T) {
 		token, _ := tokenService.GenerateAccessToken(adminUser)
-		
+
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/ping", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		rec := httptest.NewRecorder()
-		
+
 		e.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, rec.Body.String(), "admin")
@@ -66,11 +66,11 @@ func TestRBACIntegration(t *testing.T) {
 
 	t.Run("User accessing Admin route", func(t *testing.T) {
 		token, _ := tokenService.GenerateAccessToken(regularUser)
-		
+
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/ping", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		rec := httptest.NewRecorder()
-		
+
 		e.ServeHTTP(rec, req)
 		// RBAC middleware should return 403 Forbidden
 		assert.Equal(t, http.StatusForbidden, rec.Code)
@@ -79,7 +79,7 @@ func TestRBACIntegration(t *testing.T) {
 	t.Run("Unauthenticated accessing Admin route", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/ping", nil)
 		rec := httptest.NewRecorder()
-		
+
 		e.ServeHTTP(rec, req)
 		// JWT middleware should return 401 Unauthorized
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
