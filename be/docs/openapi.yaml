@@ -47,8 +47,15 @@ paths:
     $ref: './paths/admin_assessment.yaml#/admin/quizzes/{id}'
   /admin/quizzes/{id}/questions:
     $ref: './paths/admin_assessment.yaml#/admin/quizzes/{id}/questions'
+  /admin/tags:
+    $ref: './paths/admin_tags.yaml#/admin/tags'
+  /admin/tags/{id}:
+    $ref: './paths/admin_tags.yaml#/admin/tags/{id}'
+  /admin/nodes/{id}/tags:
+    $ref: './paths/admin_tags.yaml#/admin/nodes/{id}/tags'
+  /admin/nodes/{id}/quizzes:
+    $ref: './paths/admin_assessment.yaml#/admin/nodes/{id}/quizzes'
   /courses/{id}/tree:
-    $ref: './paths/admin_curriculum.yaml#/courses/{id}/tree'
 components:
   securitySchemes:
     bearerAuth:
@@ -112,5 +119,12 @@ components:
       $ref: './components/schemas/assessment.yaml#/BulkQuestionsRequest'
     AttachQuizRequest:
       $ref: './components/schemas/node_quiz.yaml#/AttachQuizRequest'
+    TagResponse:
+      $ref: './components/schemas/tag.yaml#/TagResponse'
+    CreateTagRequest:
+      $ref: './components/schemas/tag.yaml#/CreateTagRequest'
+    UpdateTagRequest:
+      $ref: './components/schemas/tag.yaml#/UpdateTagRequest'
+    AttachTagRequest:
+      $ref: './components/schemas/tag.yaml#/AttachTagRequest'
     CourseTreeResponse:
-      $ref: './components/schemas/curriculum.yaml#/CourseTreeResponse'

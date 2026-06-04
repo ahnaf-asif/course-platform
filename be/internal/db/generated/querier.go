@@ -58,6 +58,7 @@ type Querier interface {
 	DeleteLesson(ctx context.Context, id uuid.UUID) error
 	DeleteQuiz(ctx context.Context, id uuid.UUID) error
 	DeleteSubject(ctx context.Context, id uuid.UUID) error
+	DeleteTag(ctx context.Context, id uuid.UUID) error
 	DetachTagFromNode(ctx context.Context, arg DetachTagFromNodeParams) error
 	GetAttemptWithAnswers(ctx context.Context, id uuid.UUID) ([]GetAttemptWithAnswersRow, error)
 	GetAttemptsByUserAndQuiz(ctx context.Context, arg GetAttemptsByUserAndQuizParams) ([]QuizAttempt, error)
@@ -81,6 +82,7 @@ type Querier interface {
 	GetQuizzesByNode(ctx context.Context, nodeID uuid.UUID) ([]Quiz, error)
 	GetRefreshToken(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetSubject(ctx context.Context, id uuid.UUID) (GetSubjectRow, error)
+	GetTagByID(ctx context.Context, id uuid.UUID) (Tag, error)
 	GetTagBySlug(ctx context.Context, slug string) (Tag, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
@@ -107,6 +109,7 @@ type Querier interface {
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
 	UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, error)
 	UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error)
+	UpdateTag(ctx context.Context, arg UpdateTagParams) (Tag, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UserProfile, error)
 	// Payment Gates

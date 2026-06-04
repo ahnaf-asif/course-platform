@@ -7,6 +7,7 @@ package generated
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -54,6 +55,16 @@ func (q *Queries) CreateTag(ctx context.Context, arg CreateTagParams) (Tag, erro
 	return i, err
 }
 
+const deleteTag = `-- name: DeleteTag :exec
+DELETE FROM tags
+WHERE id = $1
+`
+
+func (q *Queries) DeleteTag(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteTag, id)
+	return err
+}
+
 const detachTagFromNode = `-- name: DetachTagFromNode :exec
 DELETE FROM node_tags
 WHERE node_id = $1 AND tag_id = $2
@@ -67,6 +78,23 @@ type DetachTagFromNodeParams struct {
 func (q *Queries) DetachTagFromNode(ctx context.Context, arg DetachTagFromNodeParams) error {
 	_, err := q.db.ExecContext(ctx, detachTagFromNode, arg.NodeID, arg.TagID)
 	return err
+}
+
+const getTagByID = `-- name: GetTagByID :one
+SELECT id, name, slug, created_at FROM tags
+WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetTagByID(ctx context.Context, id uuid.UUID) (Tag, error) {
+	row := q.db.QueryRowContext(ctx, getTagByID, id)
+	var i Tag
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getTagBySlug = `-- name: GetTagBySlug :one
@@ -187,4 +215,31 @@ func (q *Queries) ListTagsByNode(ctx context.Context, nodeID uuid.UUID) ([]Tag, 
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateTag = `-- name: UpdateTag :one
+UPDATE tags
+SET
+    name = COALESCE($2, name),
+    slug = COALESCE($3, slug)
+WHERE id = $1
+RETURNING id, name, slug, created_at
+`
+
+type UpdateTagParams struct {
+	ID   uuid.UUID      `json:"id"`
+	Name sql.NullString `json:"name"`
+	Slug sql.NullString `json:"slug"`
+}
+
+func (q *Queries) UpdateTag(ctx context.Context, arg UpdateTagParams) (Tag, error) {
+	row := q.db.QueryRowContext(ctx, updateTag, arg.ID, arg.Name, arg.Slug)
+	var i Tag
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.CreatedAt,
+	)
+	return i, err
 }

@@ -112,6 +112,7 @@ func (s *Server) registerRoutes() {
 	courseHandler := handlers.NewCourseHandler(s.store, s.cacheService, s.logger)
 	curriculumHandler := handlers.NewCurriculumHandler(s.store, s.cacheService, s.logger)
 	quizHandler := handlers.NewQuizHandler(s.store, s.cacheService, s.logger)
+	tagHandler := handlers.NewTagHandler(s.store, s.cacheService, s.logger)
 
 	// API v1 Group
 	v1 := s.echo.Group("/api/v1")
@@ -249,6 +250,14 @@ func (s *Server) registerRoutes() {
 	adminNodes := admin.Group("/nodes")
 	adminNodes.POST("/:id/quizzes", quizHandler.AttachQuizToNode)
 	adminNodes.GET("/:id/quizzes", quizHandler.GetQuizzesByNode)
+	adminNodes.POST("/:id/tags", tagHandler.AttachTagToNode)
+	adminNodes.GET("/:id/tags", tagHandler.ListTagsByNode)
+
+	adminTags := admin.Group("/tags")
+	adminTags.POST("", tagHandler.CreateTag)
+	adminTags.GET("", tagHandler.ListTags)
+	adminTags.PATCH("/:id", tagHandler.UpdateTag)
+	adminTags.DELETE("/:id", tagHandler.DeleteTag)
 }
 
 func (s *Server) GetEcho() *echo.Echo {

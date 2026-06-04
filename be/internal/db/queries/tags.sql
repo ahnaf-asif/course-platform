@@ -7,6 +7,10 @@ INSERT INTO tags (
 )
 RETURNING *;
 
+-- name: GetTagByID :one
+SELECT * FROM tags
+WHERE id = $1 LIMIT 1;
+
 -- name: GetTagBySlug :one
 SELECT * FROM tags
 WHERE slug = $1 LIMIT 1;
@@ -14,6 +18,18 @@ WHERE slug = $1 LIMIT 1;
 -- name: ListTags :many
 SELECT * FROM tags
 ORDER BY name ASC;
+
+-- name: UpdateTag :one
+UPDATE tags
+SET
+    name = COALESCE(sqlc.narg('name'), name),
+    slug = COALESCE(sqlc.narg('slug'), slug)
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteTag :exec
+DELETE FROM tags
+WHERE id = $1;
 
 -- name: AttachTagToNode :exec
 INSERT INTO node_tags (node_id, tag_id)

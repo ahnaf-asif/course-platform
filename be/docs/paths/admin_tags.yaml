@@ -1,0 +1,129 @@
+/admin/tags:
+  post:
+    tags:
+      - Admin Tag
+    summary: Create a new tag
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/tag.yaml#/CreateTagRequest'
+    responses:
+      '201':
+        description: Tag created
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/tag.yaml#/TagResponse'
+      '400':
+        $ref: '../components/schemas/errors.yaml#/BadRequest'
+  get:
+    tags:
+      - Tag
+    summary: List all tags
+    responses:
+      '200':
+        description: Tags retrieved
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../components/schemas/tag.yaml#/TagResponse'
+
+/admin/tags/{id}:
+  patch:
+    tags:
+      - Admin Tag
+    summary: Update a tag
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/tag.yaml#/UpdateTagRequest'
+    responses:
+      '200':
+        description: Tag updated
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/tag.yaml#/TagResponse'
+      '404':
+        $ref: '../components/schemas/errors.yaml#/NotFound'
+  delete:
+    tags:
+      - Admin Tag
+    summary: Delete a tag
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: Tag deleted
+      '404':
+        $ref: '../components/schemas/errors.yaml#/NotFound'
+
+/admin/nodes/{id}/tags:
+  post:
+    tags:
+      - Admin Tag
+    summary: Attach a tag to a node
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/tag.yaml#/AttachTagRequest'
+    responses:
+      '204':
+        description: Tag attached
+      '404':
+        $ref: '../components/schemas/errors.yaml#/NotFound'
+  get:
+    tags:
+      - Tag
+    summary: Get tags for a node
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Tags retrieved
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../components/schemas/tag.yaml#/TagResponse'

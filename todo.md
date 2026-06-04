@@ -33,7 +33,7 @@ The foundation of the platform is the hierarchical `NODE` system.
   - Implement `GET /api/v1/admin/nodes/:id/quizzes` to list attached assessments.
 
 ## Phase 3: Taxonomies & Discovery
-- [ ] **Ticket 6: Tagging & Categorization System**
+- [x] **Ticket 6: Tagging & Categorization System**
   - Implement CRUD for Tags (`/api/v1/admin/tags`).
   - Implement `POST /api/v1/admin/nodes/:id/tags` to associate tags with courses/subjects.
   - Add slug generation for tags.
