@@ -91,6 +91,7 @@ type Querier interface {
 	IncrementCouponUsage(ctx context.Context, id uuid.UUID) error
 	ListAnnouncementsByCourse(ctx context.Context, nodeID uuid.UUID) ([]Announcement, error)
 	ListAnswersByQuestion(ctx context.Context, questionID uuid.UUID) ([]Answer, error)
+	ListCourses(ctx context.Context) ([]ListCoursesRow, error)
 	ListEnrollmentsByUser(ctx context.Context, userID uuid.UUID) ([]Enrollment, error)
 	ListNodesByTag(ctx context.Context, tagID uuid.UUID) ([]Node, error)
 	ListProgressByUser(ctx context.Context, userID uuid.UUID) ([]Progress, error)

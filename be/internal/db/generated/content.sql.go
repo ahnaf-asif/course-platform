@@ -569,6 +569,56 @@ func (q *Queries) GetSubject(ctx context.Context, id uuid.UUID) (GetSubjectRow, 
 	return i, err
 }
 
+const listCourses = `-- name: ListCourses :many
+SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.description, c.thumbnail_url, c.is_published
+FROM nodes n
+JOIN courses c ON n.id = c.node_id
+ORDER BY n.created_at DESC
+`
+
+type ListCoursesRow struct {
+	ID           uuid.UUID      `json:"id"`
+	ParentID     uuid.NullUUID  `json:"parent_id"`
+	NodeType     NodeType       `json:"node_type"`
+	CreatedAt    time.Time      `json:"created_at"`
+	Title        string         `json:"title"`
+	Description  sql.NullString `json:"description"`
+	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
+	IsPublished  bool           `json:"is_published"`
+}
+
+func (q *Queries) ListCourses(ctx context.Context) ([]ListCoursesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCourses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCoursesRow
+	for rows.Next() {
+		var i ListCoursesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ParentID,
+			&i.NodeType,
+			&i.CreatedAt,
+			&i.Title,
+			&i.Description,
+			&i.ThumbnailUrl,
+			&i.IsPublished,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateChapter = `-- name: UpdateChapter :one
 UPDATE chapters
 SET

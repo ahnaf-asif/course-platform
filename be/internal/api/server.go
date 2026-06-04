@@ -220,6 +220,7 @@ func (s *Server) registerRoutes() {
 
 	// Admin Course routes
 	adminCourses := admin.Group("/courses")
+	adminCourses.GET("", courseHandler.ListCourses)
 	adminCourses.POST("", courseHandler.CreateCourse)
 	adminCourses.PATCH("/:id", courseHandler.UpdateCourse)
 	adminCourses.DELETE("/:id", courseHandler.DeleteCourse)

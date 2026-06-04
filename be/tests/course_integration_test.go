@@ -37,29 +37,53 @@ func TestCourseIntegration(t *testing.T) {
 	var courseID string
 
 	t.Run("Create Course", func(t *testing.T) {
-		reqBody := handlers.CreateCourseRequest{
-			Title:       "Test Course",
-			Description: "This is a test course description with at least 10 chars.",
-			IsPublished: true,
-		}
-		body, _ := json.Marshal(reqBody)
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/courses", bytes.NewBuffer(body))
-		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
+	        reqBody := handlers.CreateCourseRequest{
+	                Title:       "Test Course",
+	                Description: "This is a test course description with at least 10 chars.",
+	                IsPublished: true,
+	        }
+	        body, _ := json.Marshal(reqBody)
+	        req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/courses", bytes.NewBuffer(body))
+	        req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	        rec := httptest.NewRecorder()
+	        c := e.NewContext(req, rec)
 
-		err := courseHandler.CreateCourse(c)
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusCreated, rec.Code)
+	        err := courseHandler.CreateCourse(c)
+	        assert.NoError(t, err)
+	        assert.Equal(t, http.StatusCreated, rec.Code)
 
-		var resp handlers.CourseResponse
-		json.Unmarshal(rec.Body.Bytes(), &resp)
-		assert.Equal(t, reqBody.Title, resp.Title)
-		assert.Equal(t, reqBody.Description, resp.Description)
-		assert.Equal(t, "COURSE", resp.NodeType)
-		assert.NotEmpty(t, resp.ID)
+	        var resp handlers.CourseResponse
+	        json.Unmarshal(rec.Body.Bytes(), &resp)
+	        assert.Equal(t, reqBody.Title, resp.Title)
+	        assert.Equal(t, reqBody.Description, resp.Description)
+	        assert.Equal(t, "COURSE", resp.NodeType)
+	        assert.NotEmpty(t, resp.ID)
 
-		courseID = resp.ID
+	        courseID = resp.ID
+	})
+
+	t.Run("List Courses", func(t *testing.T) {
+	        req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/courses", nil)
+	        rec := httptest.NewRecorder()
+	        c := e.NewContext(req, rec)
+
+	        err := courseHandler.ListCourses(c)
+	        assert.NoError(t, err)
+	        assert.Equal(t, http.StatusOK, rec.Code)
+
+	        var resp []handlers.CourseResponse
+	        json.Unmarshal(rec.Body.Bytes(), &resp)
+	        assert.GreaterOrEqual(t, len(resp), 1)
+
+	        found := false
+	        for _, course := range resp {
+	                if course.ID == courseID {
+	                        found = true
+	                        assert.Equal(t, "Test Course", course.Title)
+	                        break
+	                }
+	        }
+	        assert.True(t, found, "Created course should be in the list")
 	})
 
 	t.Run("Create Course with Thumbnail", func(t *testing.T) {

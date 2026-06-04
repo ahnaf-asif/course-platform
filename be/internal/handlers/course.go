@@ -138,6 +138,39 @@ func (h *CourseHandler) CreateCourse(c echo.Context) error {
 	return c.JSON(http.StatusCreated, resp)
 }
 
+func (h *CourseHandler) ListCourses(c echo.Context) error {
+	courses, err := h.store.ListCourses(c.Request().Context())
+	if err != nil {
+		h.logger.Error("Failed to list courses", "error", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	resp := make([]CourseResponse, 0, len(courses))
+	for _, row := range courses {
+		course := CourseResponse{
+			ID:          row.ID.String(),
+			NodeType:    string(row.NodeType),
+			Title:       row.Title,
+			Description: row.Description.String,
+			IsPublished: row.IsPublished,
+			CreatedAt:   row.CreatedAt.String(),
+		}
+
+		if row.ParentID.Valid {
+			pID := row.ParentID.UUID.String()
+			course.ParentID = &pID
+		}
+
+		if row.ThumbnailUrl.Valid {
+			course.ThumbnailURL = &row.ThumbnailUrl.String
+		}
+
+		resp = append(resp, course)
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
 type UpdateCourseRequest struct {
 	Title        *string `json:"title" validate:"omitempty,min=3,max=255"`
 	Description  *string `json:"description" validate:"omitempty,min=10"`

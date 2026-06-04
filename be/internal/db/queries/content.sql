@@ -36,6 +36,12 @@ FROM nodes n
 JOIN courses c ON n.id = c.node_id
 WHERE n.id = $1 LIMIT 1;
 
+-- name: ListCourses :many
+SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.description, c.thumbnail_url, c.is_published
+FROM nodes n
+JOIN courses c ON n.id = c.node_id
+ORDER BY n.created_at DESC;
+
 -- name: UpdateCourse :one
 UPDATE courses
 SET
