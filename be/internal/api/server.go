@@ -111,6 +111,7 @@ func (s *Server) registerRoutes() {
 	userHandler := handlers.NewUserHandler(s.store, s.cacheService, s.logger)
 	courseHandler := handlers.NewCourseHandler(s.store, s.cacheService, s.logger)
 	curriculumHandler := handlers.NewCurriculumHandler(s.store, s.cacheService, s.logger)
+	quizHandler := handlers.NewQuizHandler(s.store, s.cacheService, s.logger)
 
 	// API v1 Group
 	v1 := s.echo.Group("/api/v1")
@@ -237,6 +238,13 @@ func (s *Server) registerRoutes() {
 	adminLessons.POST("", curriculumHandler.CreateLesson)
 	adminLessons.PATCH("/:id", curriculumHandler.UpdateLesson)
 	adminLessons.DELETE("/:id", curriculumHandler.DeleteLesson)
+
+	adminQuizzes := admin.Group("/quizzes")
+	adminQuizzes.POST("", quizHandler.CreateQuiz)
+	adminQuizzes.PATCH("/:id", quizHandler.UpdateQuiz)
+	adminQuizzes.DELETE("/:id", quizHandler.DeleteQuiz)
+	adminQuizzes.POST("/:id/questions", quizHandler.AddBulkQuestions)
+	adminQuizzes.GET("/:id/questions", quizHandler.ListQuestions)
 }
 
 func (s *Server) GetEcho() *echo.Echo {

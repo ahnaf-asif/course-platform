@@ -23,7 +23,7 @@ The foundation of the platform is the hierarchical `NODE` system.
   - Add validation for lesson placement within chapters.
 
 ## Phase 2: Assessments & Quizzes
-- [ ] **Ticket 4: Quiz & Question Builder API**
+- [x] **Ticket 4: Quiz & Question Builder API**
   - Implement `POST /api/v1/admin/quizzes` to create a quiz.
   - Implement `POST /api/v1/admin/quizzes/:id/questions` to add questions + answers in bulk.
   - Support `SINGLE` vs `MULTIPLE` choice question types.

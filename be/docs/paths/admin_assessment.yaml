@@ -1,0 +1,126 @@
+/admin/quizzes:
+  post:
+    tags:
+      - Admin Assessment
+    summary: Create a new quiz
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/assessment.yaml#/CreateQuizRequest'
+    responses:
+      '201':
+        description: Quiz created
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assessment.yaml#/QuizResponse'
+      '400':
+        $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '401':
+        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/schemas/errors.yaml#/Forbidden'
+
+/admin/quizzes/{id}:
+  patch:
+    tags:
+      - Admin Assessment
+    summary: Update a quiz
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/assessment.yaml#/UpdateQuizRequest'
+    responses:
+      '200':
+        description: Quiz updated
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assessment.yaml#/QuizResponse'
+      '404':
+        $ref: '../components/schemas/errors.yaml#/NotFound'
+  delete:
+    tags:
+      - Admin Assessment
+    summary: Delete a quiz
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: Quiz deleted
+      '404':
+        $ref: '../components/schemas/errors.yaml#/NotFound'
+
+/admin/quizzes/{id}/questions:
+  post:
+    tags:
+      - Admin Assessment
+    summary: Add questions to a quiz in bulk
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/assessment.yaml#/BulkQuestionsRequest'
+    responses:
+      '201':
+        description: Questions added
+      '400':
+        $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '404':
+        $ref: '../components/schemas/errors.yaml#/NotFound'
+  get:
+    tags:
+      - Admin Assessment
+    summary: Get all questions for a quiz
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Questions retrieved
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../components/schemas/assessment.yaml#/QuestionResponse'
+      '404':
+        $ref: '../components/schemas/errors.yaml#/NotFound'

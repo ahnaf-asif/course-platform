@@ -41,6 +41,12 @@ paths:
     $ref: './paths/admin_curriculum.yaml#/admin/lessons'
   /admin/lessons/{id}:
     $ref: './paths/admin_curriculum.yaml#/admin/lessons/{id}'
+  /admin/quizzes:
+    $ref: './paths/admin_assessment.yaml#/admin/quizzes'
+  /admin/quizzes/{id}:
+    $ref: './paths/admin_assessment.yaml#/admin/quizzes/{id}'
+  /admin/quizzes/{id}/questions:
+    $ref: './paths/admin_assessment.yaml#/admin/quizzes/{id}/questions'
   /courses/{id}/tree:
     $ref: './paths/admin_curriculum.yaml#/courses/{id}/tree'
 components:
@@ -94,5 +100,15 @@ components:
       $ref: './components/schemas/curriculum.yaml#/CreateLessonRequest'
     UpdateLessonRequest:
       $ref: './components/schemas/curriculum.yaml#/UpdateLessonRequest'
+    QuizResponse:
+      $ref: './components/schemas/assessment.yaml#/QuizResponse'
+    CreateQuizRequest:
+      $ref: './components/schemas/assessment.yaml#/CreateQuizRequest'
+    UpdateQuizRequest:
+      $ref: './components/schemas/assessment.yaml#/UpdateQuizRequest'
+    QuestionResponse:
+      $ref: './components/schemas/assessment.yaml#/QuestionResponse'
+    BulkQuestionsRequest:
+      $ref: './components/schemas/assessment.yaml#/BulkQuestionsRequest'
     CourseTreeResponse:
       $ref: './components/schemas/curriculum.yaml#/CourseTreeResponse'

@@ -12,6 +12,18 @@ RETURNING *;
 SELECT * FROM quizzes
 WHERE id = $1 LIMIT 1;
 
+-- name: UpdateQuiz :one
+UPDATE quizzes
+SET
+    title = COALESCE(sqlc.narg('title'), title),
+    passing_score = COALESCE(sqlc.narg('passing_score'), passing_score)
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteQuiz :exec
+DELETE FROM quizzes
+WHERE id = $1;
+
 -- name: AttachQuizToNode :exec
 INSERT INTO node_quiz (node_id, quiz_id)
 VALUES ($1, $2)
