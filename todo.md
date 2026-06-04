@@ -44,7 +44,7 @@ The foundation of the platform is the hierarchical `NODE` system.
   - Run `npm run generate:api` in `/fe` to create typed hooks.
   - Set up the basic Admin Layout and Sidebar in Next.js.
 
-- [ ] **Ticket 8: Course Creation Wizard (FE)**
+- [x] **Ticket 8: Course Creation Wizard (FE)**
   - Build the multi-step form for creating a Course.
   - Implement the "Course Settings" page (Title, Thumbnail, Description).
 
