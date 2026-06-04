@@ -1,0 +1,138 @@
+SubjectResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    parent_id:
+      type: string
+      format: uuid
+    node_type:
+      type: string
+      enum: [SUBJECT]
+    title:
+      type: string
+    sequence_order:
+      type: integer
+    created_at:
+      type: string
+      format: date-time
+  required:
+    - id
+    - parent_id
+    - node_type
+    - title
+    - sequence_order
+    - created_at
+
+CreateSubjectRequest:
+  type: object
+  properties:
+    parent_id:
+      type: string
+      format: uuid
+    title:
+      type: string
+      minLength: 3
+      maxLength: 255
+    sequence_order:
+      type: integer
+      minimum: 0
+  required:
+    - parent_id
+    - title
+    - sequence_order
+
+UpdateSubjectRequest:
+  type: object
+  properties:
+    title:
+      type: string
+      minLength: 3
+      maxLength: 255
+    sequence_order:
+      type: integer
+      minimum: 0
+  minProperties: 1
+
+ChapterResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    parent_id:
+      type: string
+      format: uuid
+    node_type:
+      type: string
+      enum: [CHAPTER]
+    title:
+      type: string
+    sequence_order:
+      type: integer
+    created_at:
+      type: string
+      format: date-time
+  required:
+    - id
+    - parent_id
+    - node_type
+    - title
+    - sequence_order
+    - created_at
+
+CreateChapterRequest:
+  type: object
+  properties:
+    parent_id:
+      type: string
+      format: uuid
+    title:
+      type: string
+      minLength: 3
+      maxLength: 255
+    sequence_order:
+      type: integer
+      minimum: 0
+  required:
+    - parent_id
+    - title
+    - sequence_order
+
+UpdateChapterRequest:
+  type: object
+  properties:
+    title:
+      type: string
+      minLength: 3
+      maxLength: 255
+    sequence_order:
+      type: integer
+      minimum: 0
+  minProperties: 1
+
+CourseTreeResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    parent_id:
+      type: string
+      format: uuid
+      nullable: true
+    node_type:
+      type: string
+    level:
+      type: integer
+    title:
+      type: string
+    sequence_order:
+      type: integer
+      nullable: true
+  required:
+    - id
+    - node_type
+    - level
+    - title

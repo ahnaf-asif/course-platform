@@ -110,6 +110,7 @@ func (s *Server) registerRoutes() {
 	authHandler := handlers.NewAuthHandler(s.store, s.tokenService, s.logger)
 	userHandler := handlers.NewUserHandler(s.store, s.cacheService, s.logger)
 	courseHandler := handlers.NewCourseHandler(s.store, s.cacheService, s.logger)
+	curriculumHandler := handlers.NewCurriculumHandler(s.store, s.cacheService, s.logger)
 
 	// API v1 Group
 	v1 := s.echo.Group("/api/v1")
@@ -205,6 +206,9 @@ func (s *Server) registerRoutes() {
 	users.PATCH("/me", userHandler.UpdateMe)
 	users.PUT("/me/password", userHandler.UpdatePassword)
 
+	// Curriculum Public routes
+	v1.GET("/courses/:id/tree", curriculumHandler.GetCourseTree)
+
 	// Admin routes
 	admin := protected.Group("/admin")
 	admin.Use(internalMiddleware.RequireAdmin())
@@ -217,6 +221,17 @@ func (s *Server) registerRoutes() {
 	adminCourses.POST("", courseHandler.CreateCourse)
 	adminCourses.PATCH("/:id", courseHandler.UpdateCourse)
 	adminCourses.DELETE("/:id", courseHandler.DeleteCourse)
+
+	// Admin Curriculum routes
+	adminSubjects := admin.Group("/subjects")
+	adminSubjects.POST("", curriculumHandler.CreateSubject)
+	adminSubjects.PATCH("/:id", curriculumHandler.UpdateSubject)
+	adminSubjects.DELETE("/:id", curriculumHandler.DeleteSubject)
+
+	adminChapters := admin.Group("/chapters")
+	adminChapters.POST("", curriculumHandler.CreateChapter)
+	adminChapters.PATCH("/:id", curriculumHandler.UpdateChapter)
+	adminChapters.DELETE("/:id", curriculumHandler.DeleteChapter)
 }
 
 func (s *Server) GetEcho() *echo.Echo {

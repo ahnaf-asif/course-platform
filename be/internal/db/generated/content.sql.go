@@ -377,6 +377,83 @@ func (q *Queries) GetCourseTree(ctx context.Context, id uuid.UUID) ([]GetCourseT
 	return items, nil
 }
 
+const getCourseTreeHydrated = `-- name: GetCourseTreeHydrated :many
+WITH RECURSIVE tree AS (
+    -- Anchor
+    SELECT n.id, n.parent_id, n.node_type, 0 AS level
+    FROM nodes n
+    WHERE n.id = $1
+    
+    UNION ALL
+    
+    -- Recursive step
+    SELECT n.id, n.parent_id, n.node_type, t.level + 1
+    FROM nodes n
+    JOIN tree t ON n.parent_id = t.id
+)
+SELECT 
+    t.id, t.parent_id, t.node_type, t.level,
+    c.title as course_title,
+    s.title as subject_title, s.sequence_order as subject_order,
+    ch.title as chapter_title, ch.sequence_order as chapter_order,
+    l.title as lesson_title, l.sequence_order as lesson_order
+FROM tree t
+LEFT JOIN courses c ON t.id = c.node_id
+LEFT JOIN subjects s ON t.id = s.node_id
+LEFT JOIN chapters ch ON t.id = ch.node_id
+LEFT JOIN lessons l ON t.id = l.node_id
+ORDER BY t.level, COALESCE(s.sequence_order, ch.sequence_order, l.sequence_order, 0)
+`
+
+type GetCourseTreeHydratedRow struct {
+	ID           uuid.UUID      `json:"id"`
+	ParentID     uuid.NullUUID  `json:"parent_id"`
+	NodeType     NodeType       `json:"node_type"`
+	Level        int32          `json:"level"`
+	CourseTitle  sql.NullString `json:"course_title"`
+	SubjectTitle sql.NullString `json:"subject_title"`
+	SubjectOrder sql.NullInt32  `json:"subject_order"`
+	ChapterTitle sql.NullString `json:"chapter_title"`
+	ChapterOrder sql.NullInt32  `json:"chapter_order"`
+	LessonTitle  sql.NullString `json:"lesson_title"`
+	LessonOrder  sql.NullInt32  `json:"lesson_order"`
+}
+
+func (q *Queries) GetCourseTreeHydrated(ctx context.Context, id uuid.UUID) ([]GetCourseTreeHydratedRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCourseTreeHydrated, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCourseTreeHydratedRow
+	for rows.Next() {
+		var i GetCourseTreeHydratedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ParentID,
+			&i.NodeType,
+			&i.Level,
+			&i.CourseTitle,
+			&i.SubjectTitle,
+			&i.SubjectOrder,
+			&i.ChapterTitle,
+			&i.ChapterOrder,
+			&i.LessonTitle,
+			&i.LessonOrder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLesson = `-- name: GetLesson :one
 SELECT n.id, n.parent_id, n.node_type, n.created_at, l.title, l.text_content, l.video_url, l.sequence_order
 FROM nodes n

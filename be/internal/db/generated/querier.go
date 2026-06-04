@@ -67,6 +67,7 @@ type Querier interface {
 	GetCourse(ctx context.Context, id uuid.UUID) (GetCourseRow, error)
 	// Tree Traversal
 	GetCourseTree(ctx context.Context, id uuid.UUID) ([]GetCourseTreeRow, error)
+	GetCourseTreeHydrated(ctx context.Context, id uuid.UUID) ([]GetCourseTreeHydratedRow, error)
 	GetEnrollment(ctx context.Context, arg GetEnrollmentParams) (Enrollment, error)
 	GetLesson(ctx context.Context, id uuid.UUID) (GetLessonRow, error)
 	GetNodeWithType(ctx context.Context, id uuid.UUID) (Node, error)

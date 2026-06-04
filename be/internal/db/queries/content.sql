@@ -152,8 +152,35 @@ WITH RECURSIVE tree AS (
     FROM nodes n
     JOIN tree t ON n.parent_id = t.id
 )
-SELECT * FROM tree
+SELECT id, parent_id, node_type, level FROM tree
 ORDER BY level, id;
+
+-- name: GetCourseTreeHydrated :many
+WITH RECURSIVE tree AS (
+    -- Anchor
+    SELECT n.id, n.parent_id, n.node_type, 0 AS level
+    FROM nodes n
+    WHERE n.id = $1
+    
+    UNION ALL
+    
+    -- Recursive step
+    SELECT n.id, n.parent_id, n.node_type, t.level + 1
+    FROM nodes n
+    JOIN tree t ON n.parent_id = t.id
+)
+SELECT 
+    t.id, t.parent_id, t.node_type, t.level,
+    c.title as course_title,
+    s.title as subject_title, s.sequence_order as subject_order,
+    ch.title as chapter_title, ch.sequence_order as chapter_order,
+    l.title as lesson_title, l.sequence_order as lesson_order
+FROM tree t
+LEFT JOIN courses c ON t.id = c.node_id
+LEFT JOIN subjects s ON t.id = s.node_id
+LEFT JOIN chapters ch ON t.id = ch.node_id
+LEFT JOIN lessons l ON t.id = l.node_id
+ORDER BY t.level, COALESCE(s.sequence_order, ch.sequence_order, l.sequence_order, 0);
 
 -- Prerequisites
 -- name: AddPrerequisite :exec

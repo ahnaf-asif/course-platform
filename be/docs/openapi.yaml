@@ -29,6 +29,16 @@ paths:
     $ref: './paths/admin_courses.yaml#/admin/courses'
   /admin/courses/{id}:
     $ref: './paths/admin_courses.yaml#/admin/courses/{id}'
+  /admin/subjects:
+    $ref: './paths/admin_curriculum.yaml#/admin/subjects'
+  /admin/subjects/{id}:
+    $ref: './paths/admin_curriculum.yaml#/admin/subjects/{id}'
+  /admin/chapters:
+    $ref: './paths/admin_curriculum.yaml#/admin/chapters'
+  /admin/chapters/{id}:
+    $ref: './paths/admin_curriculum.yaml#/admin/chapters/{id}'
+  /courses/{id}/tree:
+    $ref: './paths/admin_curriculum.yaml#/courses/{id}/tree'
 components:
   securitySchemes:
     bearerAuth:
@@ -62,3 +72,17 @@ components:
       $ref: './components/schemas/course.yaml#/CreateCourseRequest'
     UpdateCourseRequest:
       $ref: './components/schemas/course.yaml#/UpdateCourseRequest'
+    SubjectResponse:
+      $ref: './components/schemas/curriculum.yaml#/SubjectResponse'
+    CreateSubjectRequest:
+      $ref: './components/schemas/curriculum.yaml#/CreateSubjectRequest'
+    UpdateSubjectRequest:
+      $ref: './components/schemas/curriculum.yaml#/UpdateSubjectRequest'
+    ChapterResponse:
+      $ref: './components/schemas/curriculum.yaml#/ChapterResponse'
+    CreateChapterRequest:
+      $ref: './components/schemas/curriculum.yaml#/CreateChapterRequest'
+    UpdateChapterRequest:
+      $ref: './components/schemas/curriculum.yaml#/UpdateChapterRequest'
+    CourseTreeResponse:
+      $ref: './components/schemas/curriculum.yaml#/CourseTreeResponse'

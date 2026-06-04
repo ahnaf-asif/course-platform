@@ -11,7 +11,7 @@ The foundation of the platform is the hierarchical `NODE` system.
   - Implement `DELETE /api/v1/admin/courses/:id` (Soft/Hard delete)
   - Update OpenAPI spec for Course schemas.
 
-- [ ] **Ticket 2: Curriculum Structure API (Subjects & Chapters)**
+- [x] **Ticket 2: Curriculum Structure API (Subjects & Chapters)**
   - Implement CRUD for Subjects (`/api/v1/admin/subjects`)
   - Implement CRUD for Chapters (`/api/v1/admin/chapters`)
   - Ensure `sequence_order` management is handled correctly.
