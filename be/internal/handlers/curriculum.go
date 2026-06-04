@@ -315,6 +315,176 @@ func (h *CurriculumHandler) DeleteChapter(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+// Lessons
+
+type LessonResponse struct {
+	ID            string  `json:"id"`
+	ParentID      string  `json:"parent_id"`
+	NodeType      string  `json:"node_type"`
+	Title         string  `json:"title"`
+	TextContent   *string `json:"text_content"`
+	VideoURL      *string `json:"video_url"`
+	SequenceOrder int32   `json:"sequence_order"`
+	CreatedAt     string  `json:"created_at"`
+}
+
+type CreateLessonRequest struct {
+	ParentID      string  `json:"parent_id" validate:"required,uuid"`
+	Title         string  `json:"title" validate:"required,min=3,max=255"`
+	TextContent   *string `json:"text_content"`
+	VideoURL      *string `json:"video_url" validate:"omitempty,url"`
+	SequenceOrder int32   `json:"sequence_order" validate:"min=0"`
+}
+
+func (h *CurriculumHandler) CreateLesson(c echo.Context) error {
+	var req CreateLessonRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{"errors": h.formatValidationErrors(err)})
+	}
+
+	parentID, _ := uuid.Parse(req.ParentID)
+
+	var lessonRow generated.GetLessonRow
+	err := h.store.WithTx(c.Request().Context(), func(q generated.Querier) error {
+		node, err := q.CreateNode(c.Request().Context(), generated.CreateNodeParams{
+			ParentID: uuid.NullUUID{UUID: parentID, Valid: true},
+			NodeType: generated.NodeTypeLESSON,
+		})
+		if err != nil {
+			return err
+		}
+
+		params := generated.CreateLessonParams{
+			NodeID:        node.ID,
+			Title:         req.Title,
+			SequenceOrder: req.SequenceOrder,
+		}
+		if req.TextContent != nil {
+			params.TextContent = sql.NullString{String: *req.TextContent, Valid: true}
+		}
+		if req.VideoURL != nil {
+			params.VideoUrl = sql.NullString{String: *req.VideoURL, Valid: true}
+		}
+
+		_, err = q.CreateLesson(c.Request().Context(), params)
+		if err != nil {
+			return err
+		}
+
+		lessonRow, err = q.GetLesson(c.Request().Context(), node.ID)
+		return err
+	})
+
+	if err != nil {
+		h.logger.Error("Failed to create lesson", "error", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	resp := LessonResponse{
+		ID:            lessonRow.ID.String(),
+		ParentID:      lessonRow.ParentID.UUID.String(),
+		NodeType:      string(lessonRow.NodeType),
+		Title:         lessonRow.Title,
+		SequenceOrder: lessonRow.SequenceOrder,
+		CreatedAt:     lessonRow.CreatedAt.String(),
+	}
+	if lessonRow.TextContent.Valid {
+		resp.TextContent = &lessonRow.TextContent.String
+	}
+	if lessonRow.VideoUrl.Valid {
+		resp.VideoURL = &lessonRow.VideoUrl.String
+	}
+
+	return c.JSON(http.StatusCreated, resp)
+}
+
+type UpdateLessonRequest struct {
+	Title         *string `json:"title" validate:"omitempty,min=3,max=255"`
+	TextContent   *string `json:"text_content"`
+	VideoURL      *string `json:"video_url" validate:"omitempty,url"`
+	SequenceOrder *int32  `json:"sequence_order" validate:"omitempty,min=0"`
+}
+
+func (h *CurriculumHandler) UpdateLesson(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid lesson ID")
+	}
+
+	var req UpdateLessonRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{"errors": h.formatValidationErrors(err)})
+	}
+
+	params := generated.UpdateLessonParams{NodeID: id}
+	if req.Title != nil {
+		params.Title = sql.NullString{String: *req.Title, Valid: true}
+	}
+	if req.TextContent != nil {
+		params.TextContent = sql.NullString{String: *req.TextContent, Valid: true}
+	}
+	if req.VideoURL != nil {
+		params.VideoUrl = sql.NullString{String: *req.VideoURL, Valid: true}
+	}
+	if req.SequenceOrder != nil {
+		params.SequenceOrder = sql.NullInt32{Int32: *req.SequenceOrder, Valid: true}
+	}
+
+	_, err = h.store.UpdateLesson(c.Request().Context(), params)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusNotFound, "Lesson not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	row, _ := h.store.GetLesson(c.Request().Context(), id)
+	resp := LessonResponse{
+		ID:            row.ID.String(),
+		ParentID:      row.ParentID.UUID.String(),
+		NodeType:      string(row.NodeType),
+		Title:         row.Title,
+		SequenceOrder: row.SequenceOrder,
+		CreatedAt:     row.CreatedAt.String(),
+	}
+	if row.TextContent.Valid {
+		resp.TextContent = &row.TextContent.String
+	}
+	if row.VideoUrl.Valid {
+		resp.VideoURL = &row.VideoUrl.String
+	}
+	return c.JSON(http.StatusOK, resp)
+}
+
+func (h *CurriculumHandler) DeleteLesson(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid lesson ID")
+	}
+
+	_, err = h.store.GetLesson(c.Request().Context(), id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusNotFound, "Lesson not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	if err := h.store.DeleteLesson(c.Request().Context(), id); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
 // Tree
 
 type CourseTreeResponse struct {

@@ -37,6 +37,10 @@ paths:
     $ref: './paths/admin_curriculum.yaml#/admin/chapters'
   /admin/chapters/{id}:
     $ref: './paths/admin_curriculum.yaml#/admin/chapters/{id}'
+  /admin/lessons:
+    $ref: './paths/admin_curriculum.yaml#/admin/lessons'
+  /admin/lessons/{id}:
+    $ref: './paths/admin_curriculum.yaml#/admin/lessons/{id}'
   /courses/{id}/tree:
     $ref: './paths/admin_curriculum.yaml#/courses/{id}/tree'
 components:
@@ -84,5 +88,11 @@ components:
       $ref: './components/schemas/curriculum.yaml#/CreateChapterRequest'
     UpdateChapterRequest:
       $ref: './components/schemas/curriculum.yaml#/UpdateChapterRequest'
+    LessonResponse:
+      $ref: './components/schemas/curriculum.yaml#/LessonResponse'
+    CreateLessonRequest:
+      $ref: './components/schemas/curriculum.yaml#/CreateLessonRequest'
+    UpdateLessonRequest:
+      $ref: './components/schemas/curriculum.yaml#/UpdateLessonRequest'
     CourseTreeResponse:
       $ref: './components/schemas/curriculum.yaml#/CourseTreeResponse'

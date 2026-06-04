@@ -232,6 +232,11 @@ func (s *Server) registerRoutes() {
 	adminChapters.POST("", curriculumHandler.CreateChapter)
 	adminChapters.PATCH("/:id", curriculumHandler.UpdateChapter)
 	adminChapters.DELETE("/:id", curriculumHandler.DeleteChapter)
+
+	adminLessons := admin.Group("/lessons")
+	adminLessons.POST("", curriculumHandler.CreateLesson)
+	adminLessons.PATCH("/:id", curriculumHandler.UpdateLesson)
+	adminLessons.DELETE("/:id", curriculumHandler.DeleteLesson)
 }
 
 func (s *Server) GetEcho() *echo.Echo {

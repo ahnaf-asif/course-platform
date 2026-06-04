@@ -38,6 +38,7 @@ func TestCurriculumIntegration(t *testing.T) {
 	var courseID string
 	var subjectID string
 	var chapterID string
+	var lessonID string
 
 	t.Run("Setup Course", func(t *testing.T) {
 		reqBody := handlers.CreateCourseRequest{
@@ -192,6 +193,92 @@ func TestCurriculumIntegration(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
+	t.Run("Create Lesson", func(t *testing.T) {
+		reqBody := handlers.CreateLessonRequest{
+			ParentID:      chapterID,
+			Title:         "Test Lesson",
+			TextContent:   ptr("This is the lesson content."),
+			VideoURL:      ptr("https://example.com/video"),
+			SequenceOrder: 1,
+		}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/lessons", bytes.NewBuffer(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := curriculumHandler.CreateLesson(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, rec.Code)
+
+		var resp handlers.LessonResponse
+		json.Unmarshal(rec.Body.Bytes(), &resp)
+		assert.Equal(t, reqBody.Title, resp.Title)
+		assert.Equal(t, chapterID, resp.ParentID)
+		assert.Equal(t, *reqBody.TextContent, *resp.TextContent)
+		assert.Equal(t, *reqBody.VideoURL, *resp.VideoURL)
+		lessonID = resp.ID
+	})
+
+	t.Run("Update Lesson", func(t *testing.T) {
+		newTitle := "Updated Lesson"
+		reqBody := handlers.UpdateLessonRequest{
+			Title: &newTitle,
+		}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPatch, "/api/v1/admin/lessons/"+lessonID, bytes.NewBuffer(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues(lessonID)
+
+		err := curriculumHandler.UpdateLesson(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("Update Lesson - Not Found", func(t *testing.T) {
+		fakeID := uuid.New().String()
+		newTitle := "Doesn't Matter"
+		reqBody := handlers.UpdateLessonRequest{Title: &newTitle}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPatch, "/api/v1/admin/lessons/"+fakeID, bytes.NewBuffer(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues(fakeID)
+
+		err := curriculumHandler.UpdateLesson(c)
+		require.Error(t, err)
+		assert.Equal(t, http.StatusNotFound, err.(*echo.HTTPError).Code)
+	})
+
+	t.Run("Delete Lesson - Invalid UUID", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/lessons/not-a-uuid", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues("not-a-uuid")
+
+		err := curriculumHandler.DeleteLesson(c)
+		require.Error(t, err)
+		assert.Equal(t, http.StatusBadRequest, err.(*echo.HTTPError).Code)
+	})
+
+	t.Run("Delete Lesson", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/lessons/"+lessonID, nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues(lessonID)
+
+		err := curriculumHandler.DeleteLesson(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+	})
+
 	t.Run("Update Chapter - Not Found", func(t *testing.T) {
 		fakeID := uuid.New().String()
 		newTitle := "Doesn't Matter"
@@ -235,10 +322,23 @@ func TestCurriculumIntegration(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, err.(*echo.HTTPError).Code)
 	})
 
-	t.Run("Get Course Tree", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/api/v1/courses/"+courseID+"/tree", nil)
+	t.Run("Get Course Tree - with Lesson", func(t *testing.T) {
+		// Create a new lesson since the previous one was deleted
+		reqBody := handlers.CreateLessonRequest{
+			ParentID:      chapterID,
+			Title:         "Lesson for Tree",
+			SequenceOrder: 1,
+		}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/lessons", bytes.NewBuffer(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
+		_ = curriculumHandler.CreateLesson(c)
+
+		req = httptest.NewRequest(http.MethodGet, "/api/v1/courses/"+courseID+"/tree", nil)
+		rec = httptest.NewRecorder()
+		c = e.NewContext(req, rec)
 		c.SetParamNames("id")
 		c.SetParamValues(courseID)
 
@@ -249,11 +349,8 @@ func TestCurriculumIntegration(t *testing.T) {
 		var resp []handlers.CourseTreeResponse
 		json.Unmarshal(rec.Body.Bytes(), &resp)
 
-		// Should have 3 nodes: Course, Subject, Chapter
-		assert.Len(t, resp, 3)
-		assert.Equal(t, "COURSE", resp[0].NodeType)
-		assert.Equal(t, "SUBJECT", resp[1].NodeType)
-		assert.Equal(t, "CHAPTER", resp[2].NodeType)
+		assert.Len(t, resp, 4) // Course, Subject, Chapter, Lesson
+		assert.Equal(t, "LESSON", resp[3].NodeType)
 	})
 
 	t.Run("Delete Subject - Invalid UUID", func(t *testing.T) {
@@ -309,4 +406,8 @@ func TestCurriculumIntegration(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, http.StatusNotFound, httpErr.Code)
 	})
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }

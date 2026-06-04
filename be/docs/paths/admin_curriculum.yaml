@@ -195,3 +195,88 @@
         $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '404':
         $ref: '../components/schemas/errors.yaml#/NotFound'
+
+/admin/lessons:
+  post:
+    tags:
+      - Admin Curriculum
+    summary: Create a new lesson
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/curriculum.yaml#/CreateLessonRequest'
+    responses:
+      '201':
+        description: Lesson created
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/LessonResponse'
+      '400':
+        $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '401':
+        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/schemas/errors.yaml#/Forbidden'
+
+/admin/lessons/{id}:
+  patch:
+    tags:
+      - Admin Curriculum
+    summary: Update a lesson
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/curriculum.yaml#/UpdateLessonRequest'
+    responses:
+      '200':
+        description: Lesson updated
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/LessonResponse'
+      '400':
+        $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '401':
+        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/schemas/errors.yaml#/Forbidden'
+      '404':
+        $ref: '../components/schemas/errors.yaml#/NotFound'
+  delete:
+    tags:
+      - Admin Curriculum
+    summary: Delete a lesson
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: Lesson deleted
+      '401':
+        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/schemas/errors.yaml#/Forbidden'
+      '404':
+        $ref: '../components/schemas/errors.yaml#/NotFound'

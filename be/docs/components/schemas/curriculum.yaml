@@ -136,3 +136,76 @@ CourseTreeResponse:
     - node_type
     - level
     - title
+
+LessonResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    parent_id:
+      type: string
+      format: uuid
+    node_type:
+      type: string
+      enum: [LESSON]
+    title:
+      type: string
+    text_content:
+      type: string
+      nullable: true
+    video_url:
+      type: string
+      nullable: true
+    sequence_order:
+      type: integer
+    created_at:
+      type: string
+      format: date-time
+  required:
+    - id
+    - parent_id
+    - node_type
+    - title
+    - sequence_order
+    - created_at
+
+CreateLessonRequest:
+  type: object
+  properties:
+    parent_id:
+      type: string
+      format: uuid
+    title:
+      type: string
+      minLength: 3
+      maxLength: 255
+    text_content:
+      type: string
+    video_url:
+      type: string
+      format: uri
+    sequence_order:
+      type: integer
+      minimum: 0
+  required:
+    - parent_id
+    - title
+    - sequence_order
+
+UpdateLessonRequest:
+  type: object
+  properties:
+    title:
+      type: string
+      minLength: 3
+      maxLength: 255
+    text_content:
+      type: string
+    video_url:
+      type: string
+      format: uri
+    sequence_order:
+      type: integer
+      minimum: 0
+  minProperties: 1

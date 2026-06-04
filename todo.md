@@ -17,7 +17,7 @@ The foundation of the platform is the hierarchical `NODE` system.
   - Ensure `sequence_order` management is handled correctly.
   - Implement `GET /api/v1/courses/:id/tree` for a full structural preview.
 
-- [ ] **Ticket 3: Lesson Content & Media API**
+- [x] **Ticket 3: Lesson Content & Media API**
   - Implement CRUD for Lessons (`/api/v1/admin/lessons`)
   - Support `video_url` and `text_content` fields.
   - Add validation for lesson placement within chapters.
