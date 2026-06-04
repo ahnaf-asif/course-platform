@@ -19,11 +19,23 @@
             schema:
               $ref: '../components/schemas/course.yaml#/CourseResponse'
       '400':
-        $ref: '../components/schemas/errors.yaml#/BadRequest'
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '403':
-        $ref: '../components/schemas/errors.yaml#/Forbidden'
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
 
 /admin/courses/{id}:
   patch:
@@ -53,13 +65,29 @@
             schema:
               $ref: '../components/schemas/course.yaml#/CourseResponse'
       '400':
-        $ref: '../components/schemas/errors.yaml#/BadRequest'
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '403':
-        $ref: '../components/schemas/errors.yaml#/Forbidden'
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
   delete:
     tags:
       - Admin Course
@@ -77,8 +105,20 @@
       '204':
         description: Course deleted
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '403':
-        $ref: '../components/schemas/errors.yaml#/Forbidden'
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'

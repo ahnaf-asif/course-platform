@@ -26,36 +26,37 @@ paths:
   /users/me/password:
     $ref: './paths/password.yaml'
   /admin/courses:
-    $ref: './paths/admin_courses.yaml#/admin/courses'
+    $ref: './paths/admin_courses.yaml#/~1admin~1courses'
   /admin/courses/{id}:
-    $ref: './paths/admin_courses.yaml#/admin/courses/{id}'
+    $ref: './paths/admin_courses.yaml#/~1admin~1courses~1{id}'
   /admin/subjects:
-    $ref: './paths/admin_curriculum.yaml#/admin/subjects'
+    $ref: './paths/admin_curriculum.yaml#/~1admin~1subjects'
   /admin/subjects/{id}:
-    $ref: './paths/admin_curriculum.yaml#/admin/subjects/{id}'
+    $ref: './paths/admin_curriculum.yaml#/~1admin~1subjects~1{id}'
   /admin/chapters:
-    $ref: './paths/admin_curriculum.yaml#/admin/chapters'
+    $ref: './paths/admin_curriculum.yaml#/~1admin~1chapters'
   /admin/chapters/{id}:
-    $ref: './paths/admin_curriculum.yaml#/admin/chapters/{id}'
+    $ref: './paths/admin_curriculum.yaml#/~1admin~1chapters~1{id}'
   /admin/lessons:
-    $ref: './paths/admin_curriculum.yaml#/admin/lessons'
+    $ref: './paths/admin_curriculum.yaml#/~1admin~1lessons'
   /admin/lessons/{id}:
-    $ref: './paths/admin_curriculum.yaml#/admin/lessons/{id}'
+    $ref: './paths/admin_curriculum.yaml#/~1admin~1lessons~1{id}'
   /admin/quizzes:
-    $ref: './paths/admin_assessment.yaml#/admin/quizzes'
+    $ref: './paths/admin_assessment.yaml#/~1admin~1quizzes'
   /admin/quizzes/{id}:
-    $ref: './paths/admin_assessment.yaml#/admin/quizzes/{id}'
+    $ref: './paths/admin_assessment.yaml#/~1admin~1quizzes~1{id}'
   /admin/quizzes/{id}/questions:
-    $ref: './paths/admin_assessment.yaml#/admin/quizzes/{id}/questions'
+    $ref: './paths/admin_assessment.yaml#/~1admin~1quizzes~1{id}~1questions'
   /admin/tags:
-    $ref: './paths/admin_tags.yaml#/admin/tags'
+    $ref: './paths/admin_tags.yaml#/~1admin~1tags'
   /admin/tags/{id}:
-    $ref: './paths/admin_tags.yaml#/admin/tags/{id}'
+    $ref: './paths/admin_tags.yaml#/~1admin~1tags~1{id}'
   /admin/nodes/{id}/tags:
-    $ref: './paths/admin_tags.yaml#/admin/nodes/{id}/tags'
+    $ref: './paths/admin_tags.yaml#/~1admin~1nodes~1{id}~1tags'
   /admin/nodes/{id}/quizzes:
-    $ref: './paths/admin_assessment.yaml#/admin/nodes/{id}/quizzes'
+    $ref: './paths/admin_assessment.yaml#/~1admin~1nodes~1{id}~1quizzes'
   /courses/{id}/tree:
+    $ref: './paths/admin_curriculum.yaml#/~1courses~1{id}~1tree'
 components:
   securitySchemes:
     bearerAuth:
@@ -128,3 +129,4 @@ components:
     AttachTagRequest:
       $ref: './components/schemas/tag.yaml#/AttachTagRequest'
     CourseTreeResponse:
+      $ref: './components/schemas/curriculum.yaml#/CourseTreeResponse'

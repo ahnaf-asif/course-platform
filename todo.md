@@ -39,7 +39,7 @@ The foundation of the platform is the hierarchical `NODE` system.
   - Add slug generation for tags.
 
 ## Phase 4: Frontend Admin Foundation
-- [ ] **Ticket 7: Admin API Client & Schema Generation**
+- [x] **Ticket 7: Admin API Client & Schema Generation**
   - Update `be/docs/openapi.yaml` with all new Admin endpoints.
   - Run `npm run generate:api` in `/fe` to create typed hooks.
   - Set up the basic Admin Layout and Sidebar in Next.js.

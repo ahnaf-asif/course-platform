@@ -19,11 +19,23 @@
             schema:
               $ref: '../components/schemas/curriculum.yaml#/SubjectResponse'
       '400':
-        $ref: '../components/schemas/errors.yaml#/BadRequest'
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '403':
-        $ref: '../components/schemas/errors.yaml#/Forbidden'
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
 
 /admin/subjects/{id}:
   patch:
@@ -53,13 +65,29 @@
             schema:
               $ref: '../components/schemas/curriculum.yaml#/SubjectResponse'
       '400':
-        $ref: '../components/schemas/errors.yaml#/BadRequest'
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '403':
-        $ref: '../components/schemas/errors.yaml#/Forbidden'
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
   delete:
     tags:
       - Admin Curriculum
@@ -77,11 +105,23 @@
       '204':
         description: Subject deleted
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '403':
-        $ref: '../components/schemas/errors.yaml#/Forbidden'
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
 
 /admin/chapters:
   post:
@@ -104,11 +144,23 @@
             schema:
               $ref: '../components/schemas/curriculum.yaml#/ChapterResponse'
       '400':
-        $ref: '../components/schemas/errors.yaml#/BadRequest'
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '403':
-        $ref: '../components/schemas/errors.yaml#/Forbidden'
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
 
 /admin/chapters/{id}:
   patch:
@@ -138,13 +190,29 @@
             schema:
               $ref: '../components/schemas/curriculum.yaml#/ChapterResponse'
       '400':
-        $ref: '../components/schemas/errors.yaml#/BadRequest'
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '403':
-        $ref: '../components/schemas/errors.yaml#/Forbidden'
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
   delete:
     tags:
       - Admin Curriculum
@@ -162,11 +230,23 @@
       '204':
         description: Chapter deleted
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '403':
-        $ref: '../components/schemas/errors.yaml#/Forbidden'
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
 
 /courses/{id}/tree:
   get:
@@ -192,9 +272,17 @@
               items:
                 $ref: '../components/schemas/curriculum.yaml#/CourseTreeResponse'
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
 
 /admin/lessons:
   post:
@@ -217,11 +305,23 @@
             schema:
               $ref: '../components/schemas/curriculum.yaml#/LessonResponse'
       '400':
-        $ref: '../components/schemas/errors.yaml#/BadRequest'
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '403':
-        $ref: '../components/schemas/errors.yaml#/Forbidden'
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
 
 /admin/lessons/{id}:
   patch:
@@ -251,13 +351,29 @@
             schema:
               $ref: '../components/schemas/curriculum.yaml#/LessonResponse'
       '400':
-        $ref: '../components/schemas/errors.yaml#/BadRequest'
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '403':
-        $ref: '../components/schemas/errors.yaml#/Forbidden'
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
   delete:
     tags:
       - Admin Curriculum
@@ -275,8 +391,20 @@
       '204':
         description: Lesson deleted
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '403':
-        $ref: '../components/schemas/errors.yaml#/Forbidden'
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'

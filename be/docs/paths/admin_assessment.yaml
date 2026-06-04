@@ -19,11 +19,23 @@
             schema:
               $ref: '../components/schemas/assessment.yaml#/QuizResponse'
       '400':
-        $ref: '../components/schemas/errors.yaml#/BadRequest'
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
       '401':
-        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
       '403':
-        $ref: '../components/schemas/errors.yaml#/Forbidden'
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
 
 /admin/quizzes/{id}:
   patch:
@@ -53,7 +65,11 @@
             schema:
               $ref: '../components/schemas/assessment.yaml#/QuizResponse'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
   delete:
     tags:
       - Admin Assessment
@@ -71,7 +87,11 @@
       '204':
         description: Quiz deleted
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
 
 /admin/quizzes/{id}/questions:
   post:
@@ -97,9 +117,17 @@
       '201':
         description: Questions added
       '400':
-        $ref: '../components/schemas/errors.yaml#/BadRequest'
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
   get:
     tags:
       - Admin Assessment
@@ -123,7 +151,11 @@
               items:
                 $ref: '../components/schemas/assessment.yaml#/QuestionResponse'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
 
 /admin/nodes/{id}/quizzes:
   post:
@@ -149,9 +181,17 @@
       '204':
         description: Quiz attached
       '400':
-        $ref: '../components/schemas/errors.yaml#/BadRequest'
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
   get:
     tags:
       - Admin Assessment
@@ -175,4 +215,8 @@
               items:
                 $ref: '../components/schemas/assessment.yaml#/QuizResponse'
       '404':
-        $ref: '../components/schemas/errors.yaml#/NotFound'
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'

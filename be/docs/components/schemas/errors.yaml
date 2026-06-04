@@ -10,3 +10,35 @@ ValidationError:
             type: string
           message:
             type: string
+
+BadRequest:
+  type: object
+  properties:
+    message:
+      type: string
+  required:
+    - message
+
+Unauthorized:
+  type: object
+  properties:
+    message:
+      type: string
+  required:
+    - message
+
+Forbidden:
+  type: object
+  properties:
+    message:
+      type: string
+  required:
+    - message
+
+NotFound:
+  type: object
+  properties:
+    message:
+      type: string
+  required:
+    - message
