@@ -245,6 +245,10 @@ func (s *Server) registerRoutes() {
 	adminQuizzes.DELETE("/:id", quizHandler.DeleteQuiz)
 	adminQuizzes.POST("/:id/questions", quizHandler.AddBulkQuestions)
 	adminQuizzes.GET("/:id/questions", quizHandler.ListQuestions)
+
+	adminNodes := admin.Group("/nodes")
+	adminNodes.POST("/:id/quizzes", quizHandler.AttachQuizToNode)
+	adminNodes.GET("/:id/quizzes", quizHandler.GetQuizzesByNode)
 }
 
 func (s *Server) GetEcho() *echo.Echo {

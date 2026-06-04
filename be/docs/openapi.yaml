@@ -110,5 +110,7 @@ components:
       $ref: './components/schemas/assessment.yaml#/QuestionResponse'
     BulkQuestionsRequest:
       $ref: './components/schemas/assessment.yaml#/BulkQuestionsRequest'
+    AttachQuizRequest:
+      $ref: './components/schemas/node_quiz.yaml#/AttachQuizRequest'
     CourseTreeResponse:
       $ref: './components/schemas/curriculum.yaml#/CourseTreeResponse'

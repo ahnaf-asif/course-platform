@@ -28,7 +28,7 @@ The foundation of the platform is the hierarchical `NODE` system.
   - Implement `POST /api/v1/admin/quizzes/:id/questions` to add questions + answers in bulk.
   - Support `SINGLE` vs `MULTIPLE` choice question types.
 
-- [ ] **Ticket 5: Quiz-Node Association**
+- [x] **Ticket 5: Quiz-Node Association**
   - Implement `POST /api/v1/admin/nodes/:id/quizzes` to attach a quiz to a specific Lesson or Chapter.
   - Implement `GET /api/v1/admin/nodes/:id/quizzes` to list attached assessments.
 

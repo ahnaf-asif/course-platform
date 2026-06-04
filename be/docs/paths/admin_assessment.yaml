@@ -124,3 +124,55 @@
                 $ref: '../components/schemas/assessment.yaml#/QuestionResponse'
       '404':
         $ref: '../components/schemas/errors.yaml#/NotFound'
+
+/admin/nodes/{id}/quizzes:
+  post:
+    tags:
+      - Admin Assessment
+    summary: Attach a quiz to a node
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/node_quiz.yaml#/AttachQuizRequest'
+    responses:
+      '204':
+        description: Quiz attached
+      '400':
+        $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '404':
+        $ref: '../components/schemas/errors.yaml#/NotFound'
+  get:
+    tags:
+      - Admin Assessment
+    summary: Get quizzes attached to a node
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Quizzes retrieved
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../components/schemas/assessment.yaml#/QuizResponse'
+      '404':
+        $ref: '../components/schemas/errors.yaml#/NotFound'

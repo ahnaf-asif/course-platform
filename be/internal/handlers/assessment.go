@@ -272,6 +272,93 @@ func (h *QuizHandler) ListQuestions(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
+// Node-Quiz Association
+
+type AttachQuizRequest struct {
+	QuizID string `json:"quiz_id" validate:"required,uuid"`
+}
+
+func (h *QuizHandler) AttachQuizToNode(c echo.Context) error {
+	nodeID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid node ID")
+	}
+
+	var req AttachQuizRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{"errors": h.formatValidationErrors(err)})
+	}
+
+	quizID, _ := uuid.Parse(req.QuizID)
+
+	// Verify quiz exists
+	_, err = h.store.GetQuizByID(c.Request().Context(), quizID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusNotFound, "Quiz not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	// Verify node exists
+	_, err = h.store.GetNodeWithType(c.Request().Context(), nodeID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusNotFound, "Node not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	err = h.store.AttachQuizToNode(c.Request().Context(), generated.AttachQuizToNodeParams{
+		NodeID: nodeID,
+		QuizID: quizID,
+	})
+	if err != nil {
+		h.logger.Error("Failed to attach quiz to node", "error", err, "node_id", nodeID, "quiz_id", quizID)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *QuizHandler) GetQuizzesByNode(c echo.Context) error {
+	nodeID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid node ID")
+	}
+
+	// Verify node exists
+	_, err = h.store.GetNodeWithType(c.Request().Context(), nodeID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusNotFound, "Node not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	quizzes, err := h.store.GetQuizzesByNode(c.Request().Context(), nodeID)
+	if err != nil {
+		h.logger.Error("Failed to get quizzes by node", "error", err, "node_id", nodeID)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	resp := make([]QuizResponse, 0, len(quizzes))
+	for _, q := range quizzes {
+		resp = append(resp, QuizResponse{
+			ID:           q.ID.String(),
+			Title:        q.Title,
+			PassingScore: q.PassingScore,
+			CreatedAt:    q.CreatedAt.String(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
 func (h *QuizHandler) formatValidationErrors(err error) []map[string]string {
 	errors := make([]map[string]string, 0)
 	for _, err := range err.(validator.ValidationErrors) {
