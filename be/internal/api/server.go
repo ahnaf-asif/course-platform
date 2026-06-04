@@ -109,6 +109,7 @@ func (s *Server) registerRoutes() {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	authHandler := handlers.NewAuthHandler(s.store, s.tokenService, s.logger)
 	userHandler := handlers.NewUserHandler(s.store, s.cacheService, s.logger)
+	courseHandler := handlers.NewCourseHandler(s.store, s.cacheService, s.logger)
 
 	// API v1 Group
 	v1 := s.echo.Group("/api/v1")
@@ -210,6 +211,12 @@ func (s *Server) registerRoutes() {
 	admin.GET("/ping", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"message": "pong", "role": "admin"})
 	})
+
+	// Admin Course routes
+	adminCourses := admin.Group("/courses")
+	adminCourses.POST("", courseHandler.CreateCourse)
+	adminCourses.PATCH("/:id", courseHandler.UpdateCourse)
+	adminCourses.DELETE("/:id", courseHandler.DeleteCourse)
 }
 
 func (s *Server) GetEcho() *echo.Echo {

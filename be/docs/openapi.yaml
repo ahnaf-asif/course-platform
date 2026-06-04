@@ -25,6 +25,10 @@ paths:
     $ref: './paths/me.yaml'
   /users/me/password:
     $ref: './paths/password.yaml'
+  /admin/courses:
+    $ref: './paths/admin_courses.yaml#/admin/courses'
+  /admin/courses/{id}:
+    $ref: './paths/admin_courses.yaml#/admin/courses/{id}'
 components:
   securitySchemes:
     bearerAuth:
@@ -52,3 +56,9 @@ components:
       $ref: './components/schemas/auth.yaml#/LoginResponse'
     ValidationError:
       $ref: './components/schemas/errors.yaml#/ValidationError'
+    CourseResponse:
+      $ref: './components/schemas/course.yaml#/CourseResponse'
+    CreateCourseRequest:
+      $ref: './components/schemas/course.yaml#/CreateCourseRequest'
+    UpdateCourseRequest:
+      $ref: './components/schemas/course.yaml#/UpdateCourseRequest'

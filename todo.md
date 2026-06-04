@@ -5,7 +5,7 @@ This roadmap focuses on building the core "Course Engine" required for the Admin
 ## Phase 1: Core Curriculum API (CRUD)
 The foundation of the platform is the hierarchical `NODE` system.
 
-- [ ] **Ticket 1: Course Management API**
+- [x] **Ticket 1: Course Management API**
   - Implement `POST /api/v1/admin/courses` (Create course + node)
   - Implement `PATCH /api/v1/admin/courses/:id` (Update metadata/thumbnail)
   - Implement `DELETE /api/v1/admin/courses/:id` (Soft/Hard delete)

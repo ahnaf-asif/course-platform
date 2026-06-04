@@ -1,0 +1,68 @@
+CourseResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    parent_id:
+      type: string
+      format: uuid
+      nullable: true
+    node_type:
+      type: string
+      enum: [COURSE, SUBJECT, CHAPTER, LESSON]
+    title:
+      type: string
+    description:
+      type: string
+    thumbnail_url:
+      type: string
+      nullable: true
+    is_published:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+  required:
+    - id
+    - node_type
+    - title
+    - description
+    - is_published
+    - created_at
+
+CreateCourseRequest:
+  type: object
+  properties:
+    title:
+      type: string
+      minLength: 3
+      maxLength: 255
+    description:
+      type: string
+      minLength: 10
+    thumbnail_url:
+      type: string
+      format: uri
+    is_published:
+      type: boolean
+  required:
+    - title
+    - description
+
+UpdateCourseRequest:
+  type: object
+  properties:
+    title:
+      type: string
+      minLength: 3
+      maxLength: 255
+    description:
+      type: string
+      minLength: 10
+    thumbnail_url:
+      type: string
+      format: uri
+    is_published:
+      type: boolean
+  minProperties: 1

@@ -1,0 +1,84 @@
+/admin/courses:
+  post:
+    tags:
+      - Admin Course
+    summary: Create a new course
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/course.yaml#/CreateCourseRequest'
+    responses:
+      '201':
+        description: Course created
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/course.yaml#/CourseResponse'
+      '400':
+        $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '401':
+        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/schemas/errors.yaml#/Forbidden'
+
+/admin/courses/{id}:
+  patch:
+    tags:
+      - Admin Course
+    summary: Update a course
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/course.yaml#/UpdateCourseRequest'
+    responses:
+      '200':
+        description: Course updated
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/course.yaml#/CourseResponse'
+      '400':
+        $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '401':
+        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/schemas/errors.yaml#/Forbidden'
+      '404':
+        $ref: '../components/schemas/errors.yaml#/NotFound'
+  delete:
+    tags:
+      - Admin Course
+    summary: Delete a course
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: Course deleted
+      '401':
+        $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/schemas/errors.yaml#/Forbidden'
+      '404':
+        $ref: '../components/schemas/errors.yaml#/NotFound'
