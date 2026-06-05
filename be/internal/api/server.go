@@ -51,7 +51,7 @@ func (s *Server) setupMiddleware() {
 	}
 	s.echo.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     strings.Split(allowedOrigins, ","),
-		AllowMethods:     []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodOptions},
+		AllowMethods:     []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete, http.MethodOptions},
 		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, "X-Requested-With"},
 		AllowCredentials: true,
 	}))
@@ -209,10 +209,14 @@ func (s *Server) registerRoutes() {
 	users.PUT("/me/password", userHandler.UpdatePassword)
 
 	// Curriculum Public routes
+	// Public Course Routes
+	v1.GET("/courses/s/:slug", courseHandler.GetCourseBySlug)
+	v1.GET("/courses/s/:slug/tree", curriculumHandler.GetCourseTreeBySlug)
 	v1.GET("/courses/:id/tree", curriculumHandler.GetCourseTree)
 
-	// Admin routes
-	admin := protected.Group("/admin")
+	// Admin Routes
+	admin := v1.Group("/admin")
+	admin.Use(internalMiddleware.JWTMiddleware(jwtSecret))
 	admin.Use(internalMiddleware.RequireAdmin())
 	admin.GET("/ping", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"message": "pong", "role": "admin"})
@@ -242,15 +246,18 @@ func (s *Server) registerRoutes() {
 	adminLessons.DELETE("/:id", curriculumHandler.DeleteLesson)
 
 	adminQuizzes := admin.Group("/quizzes")
+	adminQuizzes.GET("", quizHandler.ListQuizzes)
 	adminQuizzes.POST("", quizHandler.CreateQuiz)
 	adminQuizzes.PATCH("/:id", quizHandler.UpdateQuiz)
 	adminQuizzes.DELETE("/:id", quizHandler.DeleteQuiz)
 	adminQuizzes.POST("/:id/questions", quizHandler.AddBulkQuestions)
 	adminQuizzes.GET("/:id/questions", quizHandler.ListQuestions)
+	adminQuizzes.DELETE("/:id/questions/:qId", quizHandler.DeleteQuestion)
 
 	adminNodes := admin.Group("/nodes")
 	adminNodes.POST("/:id/quizzes", quizHandler.AttachQuizToNode)
 	adminNodes.GET("/:id/quizzes", quizHandler.GetQuizzesByNode)
+	adminNodes.DELETE("/:id/quizzes/:quizId", quizHandler.DetachQuizFromNode)
 	adminNodes.POST("/:id/tags", tagHandler.AttachTagToNode)
 	adminNodes.GET("/:id/tags", tagHandler.ListTagsByNode)
 

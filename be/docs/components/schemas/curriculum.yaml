@@ -131,11 +131,21 @@ CourseTreeResponse:
     sequence_order:
       type: integer
       nullable: true
+    video_url:
+      type: string
+      format: uri
+      nullable: true
+    text_content:
+      type: string
+      nullable: true
+    has_quizzes:
+      type: boolean
   required:
     - id
     - node_type
     - level
     - title
+    - has_quizzes
 
 LessonResponse:
   type: object

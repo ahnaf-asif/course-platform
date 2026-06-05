@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           { withCredentials: true }
         );
         setAccessToken(response.data.access_token);
-      } catch (error) {
+      } catch {
         // Silent fail during hydration is fine, user is just not logged in
       } finally {
         setIsHydrated(true);

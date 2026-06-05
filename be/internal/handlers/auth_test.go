@@ -226,4 +226,31 @@ func TestAuthHandler_Refresh(t *testing.T) {
 
 		mockStore.AssertExpectations(t)
 	})
+
+	t.Run("Token Not Found", func(t *testing.T) {
+		refreshToken := "non-existent-token"
+		hash := tokenService.HashToken(refreshToken)
+
+		req := httptest.NewRequest(http.MethodPost, "/refresh", nil)
+		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshToken})
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		mockStore.On("GetRefreshToken", mock.Anything, hash).Return(generated.RefreshToken{}, http.ErrNoLocation)
+
+		err := h.Refresh(c)
+		assert.Error(t, err)
+		echoErr, ok := err.(*echo.HTTPError)
+		assert.True(t, ok)
+		assert.Equal(t, http.StatusUnauthorized, echoErr.Code)
+
+		// Verify cookies are cleared
+		cookies := rec.Result().Cookies()
+		assert.Len(t, cookies, 2)
+		for _, cookie := range cookies {
+			assert.True(t, cookie.Expires.Before(time.Now()))
+		}
+
+		mockStore.AssertExpectations(t)
+	})
 }

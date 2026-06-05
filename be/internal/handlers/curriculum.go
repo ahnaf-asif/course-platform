@@ -494,6 +494,9 @@ type CourseTreeResponse struct {
 	Level         int32   `json:"level"`
 	Title         string  `json:"title"`
 	SequenceOrder *int32  `json:"sequence_order,omitempty"`
+	VideoURL      *string `json:"video_url,omitempty"`
+	TextContent   *string `json:"text_content,omitempty"`
+	HasQuizzes    bool    `json:"has_quizzes"`
 }
 
 func (h *CurriculumHandler) GetCourseTree(c echo.Context) error {
@@ -512,12 +515,33 @@ func (h *CurriculumHandler) GetCourseTree(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "Course not found")
 	}
 
+	return c.JSON(http.StatusOK, h.mapToCourseTreeResponse(rows))
+}
+
+func (h *CurriculumHandler) GetCourseTreeBySlug(c echo.Context) error {
+	slug := c.Param("slug")
+
+	rows, err := h.store.GetCourseTreeHydratedBySlug(c.Request().Context(), slug)
+	if err != nil {
+		h.logger.Error("Failed to get hydrated course tree by slug", "error", err, "slug", slug)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	if len(rows) == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "Course not found")
+	}
+
+	return c.JSON(http.StatusOK, h.mapToCourseTreeResponseBySlug(rows))
+}
+
+func (h *CurriculumHandler) mapToCourseTreeResponse(rows []generated.GetCourseTreeHydratedRow) []CourseTreeResponse {
 	resp := make([]CourseTreeResponse, 0, len(rows))
 	for _, row := range rows {
 		item := CourseTreeResponse{
-			ID:       row.ID.String(),
-			NodeType: string(row.NodeType),
-			Level:    row.Level,
+			ID:         row.ID.String(),
+			NodeType:   string(row.NodeType),
+			Level:      row.Level,
+			HasQuizzes: row.HasQuizzes,
 		}
 
 		if row.ParentID.Valid {
@@ -544,12 +568,68 @@ func (h *CurriculumHandler) GetCourseTree(c echo.Context) error {
 			if row.LessonOrder.Valid {
 				item.SequenceOrder = &row.LessonOrder.Int32
 			}
+			if row.LessonVideoUrl.Valid {
+				vURL := row.LessonVideoUrl.String
+				item.VideoURL = &vURL
+			}
+			if row.LessonTextContent.Valid {
+				tContent := row.LessonTextContent.String
+				item.TextContent = &tContent
+			}
 		}
 
 		resp = append(resp, item)
 	}
+	return resp
+}
 
-	return c.JSON(http.StatusOK, resp)
+func (h *CurriculumHandler) mapToCourseTreeResponseBySlug(rows []generated.GetCourseTreeHydratedBySlugRow) []CourseTreeResponse {
+	resp := make([]CourseTreeResponse, 0, len(rows))
+	for _, row := range rows {
+		item := CourseTreeResponse{
+			ID:         row.ID.String(),
+			NodeType:   string(row.NodeType),
+			Level:      row.Level,
+			HasQuizzes: row.HasQuizzes,
+		}
+
+		if row.ParentID.Valid {
+			pID := row.ParentID.UUID.String()
+			item.ParentID = &pID
+		}
+
+		// Hydrate title and sequence order based on type
+		switch row.NodeType {
+		case generated.NodeTypeCOURSE:
+			item.Title = row.CourseTitle.String
+		case generated.NodeTypeSUBJECT:
+			item.Title = row.SubjectTitle.String
+			if row.SubjectOrder.Valid {
+				item.SequenceOrder = &row.SubjectOrder.Int32
+			}
+		case generated.NodeTypeCHAPTER:
+			item.Title = row.ChapterTitle.String
+			if row.ChapterOrder.Valid {
+				item.SequenceOrder = &row.ChapterOrder.Int32
+			}
+		case generated.NodeTypeLESSON:
+			item.Title = row.LessonTitle.String
+			if row.LessonOrder.Valid {
+				item.SequenceOrder = &row.LessonOrder.Int32
+			}
+			if row.LessonVideoUrl.Valid {
+				vURL := row.LessonVideoUrl.String
+				item.VideoURL = &vURL
+			}
+			if row.LessonTextContent.Valid {
+				tContent := row.LessonTextContent.String
+				item.TextContent = &tContent
+			}
+		}
+
+		resp = append(resp, item)
+	}
+	return resp
 }
 
 func (h *CurriculumHandler) formatValidationErrors(err error) []map[string]string {

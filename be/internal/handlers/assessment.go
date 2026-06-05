@@ -86,6 +86,26 @@ func (h *QuizHandler) CreateQuiz(c echo.Context) error {
 	})
 }
 
+func (h *QuizHandler) ListQuizzes(c echo.Context) error {
+	quizzes, err := h.store.ListQuizzes(c.Request().Context())
+	if err != nil {
+		h.logger.Error("Failed to list quizzes", "error", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	resp := make([]QuizResponse, 0, len(quizzes))
+	for _, q := range quizzes {
+		resp = append(resp, QuizResponse{
+			ID:           q.ID.String(),
+			Title:        q.Title,
+			PassingScore: q.PassingScore,
+			CreatedAt:    q.CreatedAt.String(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
 type UpdateQuizRequest struct {
 	Title        *string `json:"title" validate:"omitempty,min=3,max=255"`
 	PassingScore *int32  `json:"passing_score" validate:"omitempty,min=0,max=100"`
@@ -272,6 +292,20 @@ func (h *QuizHandler) ListQuestions(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
+func (h *QuizHandler) DeleteQuestion(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("qId"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid question ID")
+	}
+
+	if err := h.store.DeleteQuestion(c.Request().Context(), id); err != nil {
+		h.logger.Error("Failed to delete question", "error", err, "question_id", id)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
 // Node-Quiz Association
 
 type AttachQuizRequest struct {
@@ -357,6 +391,29 @@ func (h *QuizHandler) GetQuizzesByNode(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, resp)
+}
+
+func (h *QuizHandler) DetachQuizFromNode(c echo.Context) error {
+	nodeID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid node ID")
+	}
+
+	quizID, err := uuid.Parse(c.Param("quizId"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid quiz ID")
+	}
+
+	err = h.store.DetachQuizFromNode(c.Request().Context(), generated.DetachQuizFromNodeParams{
+		NodeID: nodeID,
+		QuizID: quizID,
+	})
+	if err != nil {
+		h.logger.Error("Failed to detach quiz from node", "error", err, "node_id", nodeID, "quiz_id", quizID)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }
 
 func (h *QuizHandler) formatValidationErrors(err error) []map[string]string {

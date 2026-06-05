@@ -12,6 +12,10 @@ RETURNING *;
 SELECT * FROM quizzes
 WHERE id = $1 LIMIT 1;
 
+-- name: ListQuizzes :many
+SELECT * FROM quizzes
+ORDER BY created_at DESC;
+
 -- name: UpdateQuiz :one
 UPDATE quizzes
 SET
@@ -34,6 +38,10 @@ SELECT q.* FROM quizzes q
 JOIN node_quiz nq ON q.id = nq.quiz_id
 WHERE nq.node_id = $1;
 
+-- name: DetachQuizFromNode :exec
+DELETE FROM node_quiz
+WHERE node_id = $1 AND quiz_id = $2;
+
 -- Questions
 -- name: CreateQuestion :one
 INSERT INTO questions (
@@ -51,6 +59,10 @@ SELECT * FROM questions
 WHERE quiz_id = $1
 ORDER BY sequence_order;
 
+-- name: DeleteQuestion :exec
+DELETE FROM questions
+WHERE id = $1;
+
 -- Answers
 -- name: CreateAnswer :one
 INSERT INTO answers (
@@ -66,6 +78,10 @@ RETURNING *;
 SELECT * FROM answers
 WHERE question_id = $1
 ORDER BY created_at;
+
+-- name: DeleteAnswersByQuestion :exec
+DELETE FROM answers
+WHERE question_id = $1;
 
 -- Quiz Attempts
 -- name: CreateQuizAttempt :one

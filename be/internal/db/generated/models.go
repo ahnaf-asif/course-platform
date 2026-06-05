@@ -359,6 +359,7 @@ type Course struct {
 	Description  sql.NullString `json:"description"`
 	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
 	IsPublished  bool           `json:"is_published"`
+	Slug         string         `json:"slug"`
 }
 
 type Enrollment struct {

@@ -11,7 +11,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/dashboard');
+      const searchParams = new URLSearchParams(window.location.search);
+      const callbackUrl = searchParams.get('callbackUrl');
+      router.push(callbackUrl || '/dashboard');
     }
   }, [isAuthenticated, router]);
 

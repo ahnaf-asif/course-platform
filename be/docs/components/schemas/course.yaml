@@ -13,6 +13,8 @@ CourseResponse:
       enum: [COURSE, SUBJECT, CHAPTER, LESSON]
     title:
       type: string
+    slug:
+      type: string
     description:
       type: string
     thumbnail_url:
@@ -27,6 +29,7 @@ CourseResponse:
     - id
     - node_type
     - title
+    - slug
     - description
     - is_published
     - created_at
@@ -38,6 +41,9 @@ CreateCourseRequest:
       type: string
       minLength: 3
       maxLength: 255
+    slug:
+      type: string
+      pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
     description:
       type: string
       minLength: 10
@@ -57,6 +63,9 @@ UpdateCourseRequest:
       type: string
       minLength: 3
       maxLength: 255
+    slug:
+      type: string
+      pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
     description:
       type: string
       minLength: 10

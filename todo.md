@@ -48,10 +48,10 @@ The foundation of the platform is the hierarchical `NODE` system.
   - Build the multi-step form for creating a Course.
   - Implement the "Course Settings" page (Title, Thumbnail, Description).
 
-- [ ] **Ticket 9: Curriculum Drag-and-Drop Editor (FE)**
+- [x] **Ticket 9: Curriculum Drag-and-Drop Editor (FE)**
   - Create the UI to manage the Course -> Subject -> Chapter -> Lesson hierarchy.
   - Implement reordering of items.
 
-- [ ] **Ticket 10: Quiz Management UI (FE)**
+- [x] **Ticket 10: Quiz Management UI (FE)**
   - Build the interface for adding questions and setting correct answers.
   - Link quizzes to curriculum nodes.

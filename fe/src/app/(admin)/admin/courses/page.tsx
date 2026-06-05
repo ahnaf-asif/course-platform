@@ -18,6 +18,8 @@ import {
   TextInput,
   Textarea,
   Switch,
+  Alert,
+  Anchor,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
@@ -29,59 +31,88 @@ import {
   IconTrash,
   IconExternalLink,
   IconPhoto,
+  IconAlertCircle,
 } from '@tabler/icons-react';
 import {
   useGetAdminCourses,
   usePostAdminCourses,
+  usePatchAdminCoursesId,
   useDeleteAdminCoursesId,
 } from '@/api/generated/admin-course/admin-course';
 import { CreateCourseRequest } from '@/api/model/components-schemas-course/createCourseRequest';
+import { CourseResponse } from '@/api/model/components-schemas-course/courseResponse';
 import Link from 'next/link';
+import axios from 'axios';
+import { useState } from 'react';
 
 export default function CoursesManagement() {
-  const { data: courses, isLoading, refetch } = useGetAdminCourses();
+  const { data: courses, isPending, isError, refetch } = useGetAdminCourses();
   const { mutateAsync: createCourse, isPending: isCreating } = usePostAdminCourses();
+  const { mutateAsync: updateCourse, isPending: isUpdating } = usePatchAdminCoursesId();
   const { mutateAsync: deleteCourse } = useDeleteAdminCoursesId();
 
   const [opened, { open, close }] = useDisclosure(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const form = useForm<CreateCourseRequest>({
+  const form = useForm<CreateCourseRequest & { slug?: string }>({
     initialValues: {
       title: '',
+      slug: '',
       description: '',
       thumbnail_url: '',
       is_published: false,
     },
     validate: {
       title: (value: string) => (value.length < 3 ? 'Title must be at least 3 characters' : null),
+      slug: (value: string | undefined) => 
+        value && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) ? 'Invalid slug format (lowercase, numbers and hyphens only)' : null,
       description: (value: string) => (value.length < 10 ? 'Description must be at least 10 characters' : null),
       thumbnail_url: (value: string | undefined) =>
         value && !/^(https?:\/\/)/.test(value) ? 'Must be a valid URL' : null,
     },
   });
 
-  const handleCreate = async (values: CreateCourseRequest) => {
+  const handleOpenModal = (course?: CourseResponse) => {
+    if (course) {
+      setEditingId(course.id);
+      form.setValues({
+        title: course.title,
+        slug: course.slug,
+        description: course.description,
+        thumbnail_url: course.thumbnail_url || '',
+        is_published: course.is_published,
+      });
+    } else {
+      setEditingId(null);
+      form.reset();
+    }
+    open();
+  };
+
+  const handleCreateOrUpdate = async (values: CreateCourseRequest & { slug?: string }) => {
     try {
-      const payload = {
+      const payload: CreateCourseRequest & { slug?: string } = {
         ...values,
+        slug: values.slug || undefined,
         thumbnail_url: values.thumbnail_url || undefined,
       };
 
-      await createCourse({ data: payload });
-      notifications.show({
-        title: 'Success',
-        message: 'Course created successfully',
-        color: 'green',
-      });
+      if (editingId) {
+        await updateCourse({ id: editingId, data: payload });
+        notifications.show({ title: 'Success', message: 'Course updated successfully', color: 'green' });
+      } else {
+        await createCourse({ data: payload });
+        notifications.show({ title: 'Success', message: 'Course created successfully', color: 'green' });
+      }
       close();
       form.reset();
       refetch();
-    } catch (error: any) {
-      notifications.show({
-        title: 'Error',
-        message: error.response?.data?.message || 'Failed to create course',
-        color: 'red',
-      });
+    } catch (error) {
+      let message = 'Failed to save course';
+      if (axios.isAxiosError(error)) {
+        message = error.response?.data?.message || message;
+      }
+      notifications.show({ title: 'Error', message, color: 'red' });
     }
   };
 
@@ -95,10 +126,14 @@ export default function CoursesManagement() {
           color: 'blue',
         });
         refetch();
-      } catch (error: any) {
+      } catch (error) {
+        let message = 'Failed to delete course';
+        if (axios.isAxiosError(error)) {
+          message = error.response?.data?.message || message;
+        }
         notifications.show({
           title: 'Error',
-          message: 'Failed to delete course',
+          message,
           color: 'red',
         });
       }
@@ -107,11 +142,16 @@ export default function CoursesManagement() {
 
   return (
     <Stack gap="lg" pos="relative">
-      <LoadingOverlay visible={isLoading} />
+      <LoadingOverlay 
+        visible={isPending} 
+        overlayProps={{ blur: 1 }} 
+        loaderProps={{ size: 'lg', type: 'bars' }}
+        zIndex={1000}
+      />
 
       <Group justify="space-between" align="center">
         <Title order={2}>Courses Management</Title>
-        <Button leftSection={<IconPlus size={18} />} onClick={open}>
+        <Button leftSection={<IconPlus size={18} />} onClick={() => handleOpenModal()}>
           New Course
         </Button>
       </Group>
@@ -149,6 +189,10 @@ export default function CoursesManagement() {
                 </Badge>
               </Group>
 
+              <Text size="xs" c="dimmed" mb="xs" style={{ fontStyle: 'italic' }}>
+                slug: {course.slug}
+              </Text>
+
               <Text size="sm" c="dimmed" lineClamp={2} mb="md" h={40}>
                 {course.description}
               </Text>
@@ -156,14 +200,14 @@ export default function CoursesManagement() {
               <Group gap="xs" mt="auto">
                 <Button
                   component={Link}
-                  href={'/admin/courses/' + course.id + '/curriculum'}
+                  href={`/admin/courses/${course.slug || course.id}/curriculum`}
                   variant="light"
                   style={{ flex: 1 }}
                   leftSection={<IconEdit size={16} />}
                 >
                   Edit Content
                 </Button>
-                
+
                 <Menu shadow="md" width={200} position="bottom-end">
                   <Menu.Target>
                     <ActionIcon variant="subtle" size="lg">
@@ -176,12 +220,12 @@ export default function CoursesManagement() {
                     <Menu.Item
                       leftSection={<IconExternalLink size={14} />}
                       component={Link}
-                      href={'/courses/' + course.id}
+                      href={'/courses/s/' + course.slug}
                       target="_blank"
                     >
                       View Public Page
                     </Menu.Item>
-                    <Menu.Item leftSection={<IconEdit size={14} />}>
+                    <Menu.Item leftSection={<IconEdit size={14} />} onClick={() => handleOpenModal(course)}>
                       Edit Settings
                     </Menu.Item>
                     <Menu.Divider />
@@ -198,28 +242,44 @@ export default function CoursesManagement() {
             </Card>
           ))}
         </SimpleGrid>
-      ) : !isLoading ? (
+      ) : isError ? (
+        <Alert icon={<IconAlertCircle size={16} />} title="Error" color="red" variant="light">
+          Failed to load courses. Please <Anchor fw={700} onClick={() => refetch()}>try again</Anchor> or refresh the page.
+        </Alert>
+      ) : !isPending ? (
         <Card withBorder padding="xl" radius="md" bg="gray.0">
           <Stack align="center" gap="xs">
             <Text fw={500}>No courses found</Text>
             <Text size="sm" c="dimmed">
               Create your first course to get started.
             </Text>
-            <Button variant="outline" mt="sm" onClick={open}>
+            <Button variant="outline" mt="sm" onClick={() => handleOpenModal()}>
               Create Course
             </Button>
           </Stack>
         </Card>
       ) : null}
 
-      <Modal opened={opened} onClose={close} title="Create New Course" centered size="md">
-        <form onSubmit={form.onSubmit(handleCreate)}>
+      <Modal 
+        opened={opened} 
+        onClose={close} 
+        title={editingId ? 'Edit Course Settings' : 'Create New Course'} 
+        centered 
+        size="md"
+      >
+        <form onSubmit={form.onSubmit(handleCreateOrUpdate)}>
           <Stack gap="md">
             <TextInput
               label="Course Title"
               placeholder="e.g. Mastering Advanced Go"
               required
               {...form.getInputProps('title')}
+            />
+            <TextInput
+              label="Course Slug"
+              placeholder="e.g. mastering-advanced-go"
+              description="URL-friendly name. Leave empty to auto-generate."
+              {...form.getInputProps('slug')}
             />
             <Textarea
               label="Description"
@@ -241,8 +301,8 @@ export default function CoursesManagement() {
               <Button variant="subtle" onClick={close}>
                 Cancel
               </Button>
-              <Button type="submit" loading={isCreating}>
-                Create Course
+              <Button type="submit" loading={isCreating || isUpdating}>
+                {editingId ? 'Save Changes' : 'Create Course'}
               </Button>
             </Group>
           </Stack>
