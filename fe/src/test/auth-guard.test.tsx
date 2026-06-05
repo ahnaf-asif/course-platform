@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from './test-utils';
 import { AuthGuard } from '@/components/guards/AuthGuard';
 import * as AuthContextModule from '@/context/AuthContext';
+import { AuthContextType } from '@/context/AuthContext';
 import React from 'react';
 
 const mockPush = vi.fn();
@@ -18,11 +19,22 @@ describe('AuthGuard Component', () => {
     vi.clearAllMocks();
   });
 
+  const defaultMockContext: AuthContextType = {
+    accessToken: null,
+    role: null,
+    userEmail: null,
+    setAccessToken: vi.fn(),
+    clearAuth: vi.fn(),
+    isAuthenticated: false,
+    isHydrated: false,
+  };
+
   it('should show a loader while hydrating', () => {
     vi.spyOn(AuthContextModule, 'useAuthContext').mockReturnValue({
+      ...defaultMockContext,
       isHydrated: false,
       isAuthenticated: false,
-    } as any);
+    });
 
     render(
       <AuthGuard>
@@ -36,9 +48,10 @@ describe('AuthGuard Component', () => {
 
   it('should redirect to login if hydrated and not authenticated', async () => {
     vi.spyOn(AuthContextModule, 'useAuthContext').mockReturnValue({
+      ...defaultMockContext,
       isHydrated: true,
       isAuthenticated: false,
-    } as any);
+    });
 
     render(
       <AuthGuard>
@@ -54,9 +67,10 @@ describe('AuthGuard Component', () => {
 
   it('should render children if hydrated and authenticated', () => {
     vi.spyOn(AuthContextModule, 'useAuthContext').mockReturnValue({
+      ...defaultMockContext,
       isHydrated: true,
       isAuthenticated: true,
-    } as any);
+    });
 
     render(
       <AuthGuard>

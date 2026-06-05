@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import axios from 'axios';
 import { updateAccessToken, setAuthHandlers } from '@/lib/axios';
 
-interface AuthContextType {
+export interface AuthContextType {
   accessToken: string | null;
   role: string | null;
   userEmail: string | null;
