@@ -18,6 +18,8 @@ import {
   Paper,
   Badge,
   Box,
+  Collapse,
+  UnstyledButton,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -31,6 +33,8 @@ import {
   IconChecklist,
   IconPencil,
   IconX,
+  IconChevronDown,
+  IconChevronUp,
 } from '@tabler/icons-react';
 import {
   useGetAdminQuizzesIdQuestions,
@@ -45,6 +49,194 @@ import axios from 'axios';
 import { useEffect, useState } from 'react';
 import CustomRichTextEditor from '@/components/Editor/RichTextEditor';
 import { MathJaxContent } from '@/components/MathJaxContent';
+
+function QuestionCard({ 
+  q, 
+  index, 
+  onEdit, 
+  onDelete, 
+  editingId, 
+  editForm, 
+  handleUpdateSubmit, 
+  setEditingId, 
+  isUpdating 
+}: { 
+  q: any; 
+  index: number; 
+  onEdit: (q: any) => void; 
+  onDelete: (id: string) => void; 
+  editingId: string | null;
+  editForm: any;
+  handleUpdateSubmit: (values: any) => Promise<void>;
+  setEditingId: (id: string | null) => void;
+  isUpdating: boolean;
+}) {
+  const [explanationOpened, setExplanationOpened] = useState(false);
+  const [cardExpanded, setCardExpanded] = useState(false);
+
+  return (
+    <Card withBorder shadow="sm" radius="md" p={0}>
+      {editingId === q.id ? (
+        <Box p="md">
+          <form onSubmit={editForm.onSubmit(handleUpdateSubmit)}>
+            <Stack gap="md">
+              <Group justify="space-between">
+                <Text fw={600}>Editing Question #{index + 1}</Text>
+                <ActionIcon color="gray" variant="subtle" onClick={() => setEditingId(null)}>
+                  <IconX size={18} />
+                </ActionIcon>
+              </Group>
+
+              <TextInput
+                label="Question Content"
+                required
+                {...editForm.getInputProps('content')}
+              />
+
+              <Select
+                label="Question Type"
+                data={[
+                  { value: 'SINGLE', label: 'Single Choice' },
+                  { value: 'MULTIPLE', label: 'Multiple Choice' },
+                ]}
+                {...editForm.getInputProps('question_type')}
+              />
+
+              <CustomRichTextEditor
+                label="Explanation (Optional)"
+                content={editForm.values.explanation}
+                onChange={(content) => editForm.setFieldValue('explanation', content)}
+                minHeight={150}
+                compact
+              />
+
+              <Text size="sm" fw={500} mt="xs">Answer Options</Text>
+              {editForm.values.answers.map((_: any, aIndex: number) => (
+                <Group key={aIndex} align="flex-end">
+                  <TextInput
+                    style={{ flex: 1 }}
+                    placeholder={`Option ${aIndex + 1}`}
+                    required
+                    {...editForm.getInputProps(`answers.${aIndex}.content`)}
+                  />
+                  <Checkbox
+                    label="Correct"
+                    mb={10}
+                    {...editForm.getInputProps(`answers.${aIndex}.is_correct`, { type: 'checkbox' })}
+                  />
+                  {editForm.values.answers.length > 2 && (
+                    <ActionIcon 
+                      color="red" 
+                      variant="subtle" 
+                      mb={8} 
+                      onClick={() => editForm.removeListItem('answers', aIndex)}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  )}
+                </Group>
+              ))}
+
+              <Button 
+                variant="subtle" 
+                size="xs" 
+                leftSection={<IconPlus size={14} />} 
+                onClick={() => editForm.insertListItem('answers', { content: '', is_correct: false })}
+                align-self="flex-start"
+                w="fit-content"
+              >
+                Add Option
+              </Button>
+
+              <Group justify="flex-end" gap="sm">
+                <Button variant="light" color="gray" onClick={() => setEditingId(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" loading={isUpdating}>
+                  Save Changes
+                </Button>
+              </Group>
+            </Stack>
+          </form>
+        </Box>
+      ) : (
+        <>
+          <Box p="md">
+            <Group justify="space-between" wrap="nowrap">
+              <UnstyledButton 
+                onClick={() => setCardExpanded((e) => !e)}
+                style={{ flex: 1, minWidth: 0 }}
+              >
+                <Group gap="sm" wrap="nowrap">
+                  <Box style={{ display: 'flex', alignItems: 'center' }}>
+                    {cardExpanded ? <IconChevronUp size={18} color="var(--mantine-color-gray-6)" /> : <IconChevronDown size={18} color="var(--mantine-color-gray-6)" />}
+                  </Box>
+                  <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+                    <Group gap="xs">
+                      <Badge variant="outline" size="sm">{index + 1}</Badge>
+                      <Badge color={q.question_type === 'SINGLE' ? 'blue' : 'purple'} variant="light" size="sm">
+                        {q.question_type}
+                      </Badge>
+                    </Group>
+                    <Text fw={500} size="sm" truncate="end" lineClamp={1}>{q.content}</Text>
+                  </Stack>
+                </Group>
+              </UnstyledButton>
+
+              <Group gap={5}>
+                <ActionIcon color="blue" variant="subtle" onClick={() => onEdit(q)}>
+                  <IconPencil size={18} />
+                </ActionIcon>
+                <ActionIcon color="red" variant="subtle" onClick={() => onDelete(q.id)}>
+                  <IconTrash size={18} />
+                </ActionIcon>
+              </Group>
+            </Group>
+          </Box>
+
+          <Collapse expanded={cardExpanded}>
+            <Box px="md" pb="md">
+              <Divider mb="md" variant="dotted" />
+              <Text fw={600} size="sm" mb="xs">Question:</Text>
+              <Text size="sm" mb="md">{q.content}</Text>
+
+              <Text fw={600} size="sm" mb="xs">Answer Options:</Text>
+              <Stack gap={5}>
+                {q.answers.map((a: any, i: number) => (
+                  <Group key={i} gap="xs">
+                    {a.is_correct ? <IconCheck size={14} color="green" /> : <Box w={14} />}
+                    <Text size="sm" c={a.is_correct ? 'green' : 'dimmed'}>
+                      {a.content}
+                    </Text>
+                  </Group>
+                ))}
+              </Stack>
+
+              {q.explanation && (
+                <Box mt="md">
+                  <UnstyledButton 
+                    onClick={() => setExplanationOpened((o) => !o)}
+                    style={{ width: '100%' }}
+                  >
+                    <Group gap={4} py={4}>
+                      <Text size="xs" fw={700} c="blue.7" tt="uppercase">Explanation</Text>
+                      {explanationOpened ? <IconChevronUp size={14} color="var(--mantine-color-blue-7)" /> : <IconChevronDown size={14} color="var(--mantine-color-blue-7)" />}
+                    </Group>
+                  </UnstyledButton>
+                  <Collapse expanded={explanationOpened}>
+                    <Box p="xs" bg="blue.0" style={{ borderRadius: '4px', borderLeft: '3px solid var(--mantine-color-blue-4)' }}>
+                      <MathJaxContent html={q.explanation} />
+                    </Box>
+                  </Collapse>
+                </Box>
+              )}
+            </Box>
+          </Collapse>
+        </>
+      )}
+    </Card>
+  );
+}
 
 export default function QuestionManagement() {
   const params = useParams();
@@ -282,126 +474,18 @@ export default function QuestionManagement() {
         <Stack gap="md">
           <Title order={4}>Existing Questions ({questions.length})</Title>
           {questions.map((q, index) => (
-            <Card key={q.id} withBorder shadow="sm" radius="md">
-              {editingId === q.id ? (
-                <form onSubmit={editForm.onSubmit(handleUpdateSubmit)}>
-                  <Stack gap="md">
-                    <Group justify="space-between">
-                      <Text fw={600}>Editing Question #{index + 1}</Text>
-                      <ActionIcon color="gray" variant="subtle" onClick={() => setEditingId(null)}>
-                        <IconX size={18} />
-                      </ActionIcon>
-                    </Group>
-
-                    <TextInput
-                      label="Question Content"
-                      required
-                      {...editForm.getInputProps('content')}
-                    />
-
-                    <Select
-                      label="Question Type"
-                      data={[
-                        { value: 'SINGLE', label: 'Single Choice' },
-                        { value: 'MULTIPLE', label: 'Multiple Choice' },
-                      ]}
-                      {...editForm.getInputProps('question_type')}
-                    />
-
-                    <CustomRichTextEditor
-                      label="Explanation (Optional)"
-                      content={editForm.values.explanation}
-                      onChange={(content) => editForm.setFieldValue('explanation', content)}
-                      minHeight={150}
-                      compact
-                    />
-
-                    <Text size="sm" fw={500} mt="xs">Answer Options</Text>
-                    {editForm.values.answers.map((_, aIndex) => (
-                      <Group key={aIndex} align="flex-end">
-                        <TextInput
-                          style={{ flex: 1 }}
-                          placeholder={`Option ${aIndex + 1}`}
-                          required
-                          {...editForm.getInputProps(`answers.${aIndex}.content`)}
-                        />
-                        <Checkbox
-                          label="Correct"
-                          mb={10}
-                          {...editForm.getInputProps(`answers.${aIndex}.is_correct`, { type: 'checkbox' })}
-                        />
-                        {editForm.values.answers.length > 2 && (
-                          <ActionIcon 
-                            color="red" 
-                            variant="subtle" 
-                            mb={8} 
-                            onClick={() => editForm.removeListItem('answers', aIndex)}
-                          >
-                            <IconTrash size={16} />
-                          </ActionIcon>
-                        )}
-                      </Group>
-                    ))}
-
-                    <Button 
-                      variant="subtle" 
-                      size="xs" 
-                      leftSection={<IconPlus size={14} />} 
-                      onClick={() => editForm.insertListItem('answers', { content: '', is_correct: false })}
-                      align-self="flex-start"
-                      w="fit-content"
-                    >
-                      Add Option
-                    </Button>
-
-                    <Group justify="flex-end" gap="sm">
-                      <Button variant="light" color="gray" onClick={() => setEditingId(null)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" loading={isUpdating}>
-                        Save Changes
-                      </Button>
-                    </Group>
-                  </Stack>
-                </form>
-              ) : (
-                <>
-                  <Group justify="space-between" mb="xs">
-                    <Group gap="xs">
-                      <Badge variant="outline">{index + 1}</Badge>
-                      <Badge color={q.question_type === 'SINGLE' ? 'blue' : 'purple'} variant="light">
-                        {q.question_type}
-                      </Badge>
-                    </Group>
-                    <Group gap={5}>
-                      <ActionIcon color="blue" variant="subtle" onClick={() => handleStartEdit(q)}>
-                        <IconPencil size={18} />
-                      </ActionIcon>
-                      <ActionIcon color="red" variant="subtle" onClick={() => handleDelete(q.id)}>
-                        <IconTrash size={18} />
-                      </ActionIcon>
-                    </Group>
-                  </Group>
-                  <Text fw={500} mb="sm">{q.content}</Text>
-                  {q.explanation && (
-                    <Box mb="sm" p="xs" bg="blue.0" style={{ borderRadius: '4px', borderLeft: '3px solid var(--mantine-color-blue-4)' }}>
-                      <Text size="xs" fw={700} c="blue.7" tt="uppercase" mb={4}>Explanation</Text>
-                      <MathJaxContent html={q.explanation} />
-                    </Box>
-                  )}
-                  <Stack gap={5}>
-                    {q.answers.map((a: any, i: number) => (
-                      <Group key={i} gap="xs">
-                        {a.is_correct ? <IconCheck size={14} color="green" /> : <Box w={14} />}
-                        <Text size="sm" c={a.is_correct ? 'green' : 'dimmed'}>
-                          {a.content}
-                        </Text>
-                      </Group>
-                    ))}
-                  </Stack>
-                </>
-              )}
-            </Card>
+            <QuestionCard
+              key={q.id}
+              q={q}
+              index={index}
+              onEdit={handleStartEdit}
+              onDelete={handleDelete}
+              editingId={editingId}
+              editForm={editForm}
+              handleUpdateSubmit={handleUpdateSubmit}
+              setEditingId={setEditingId}
+              isUpdating={isUpdating}
+            />
           ))}
         </Stack>
       )}
