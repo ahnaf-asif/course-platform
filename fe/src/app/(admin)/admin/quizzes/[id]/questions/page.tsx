@@ -40,6 +40,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
 import { useEffect } from 'react';
+import CustomRichTextEditor from '@/components/Editor/RichTextEditor';
+import { MathJaxContent } from '@/components/MathJaxContent';
 
 export default function QuestionManagement() {
   const params = useParams();
@@ -70,6 +72,7 @@ export default function QuestionManagement() {
       questions: [
         {
           content: '',
+          explanation: '',
           question_type: 'SINGLE',
           answers: [
             { content: '', is_correct: false },
@@ -91,6 +94,7 @@ export default function QuestionManagement() {
   const handleAddQuestion = () => {
     form.insertListItem('questions', {
       content: '',
+      explanation: '',
       question_type: 'SINGLE',
       answers: [
         { content: '', is_correct: false },
@@ -219,6 +223,12 @@ export default function QuestionManagement() {
                 </ActionIcon>
               </Group>
               <Text fw={500} mb="sm">{q.content}</Text>
+              {q.explanation && (
+                <Box mb="sm" p="xs" bg="blue.0" style={{ borderRadius: '4px', borderLeft: '3px solid var(--mantine-color-blue-4)' }}>
+                  <Text size="xs" fw={700} c="blue.7" tt="uppercase" mb={4}>Explanation</Text>
+                  <MathJaxContent html={q.explanation} />
+                </Box>
+              )}
               <Stack gap={5}>
                 {q.answers.map((a, i) => (
                   <Group key={i} gap="xs">
@@ -265,6 +275,14 @@ export default function QuestionManagement() {
                     { value: 'MULTIPLE', label: 'Multiple Choice' },
                   ]}
                   {...form.getInputProps(`questions.${qIndex}.question_type`)}
+                />
+
+                <CustomRichTextEditor
+                  label="Explanation (Optional)"
+                  content={form.values.questions[qIndex].explanation}
+                  onChange={(content) => form.setFieldValue(`questions.${qIndex}.explanation`, content)}
+                  minHeight={150}
+                  compact
                 />
 
                 <Text size="sm" fw={500} mt="xs">Answer Options</Text>
