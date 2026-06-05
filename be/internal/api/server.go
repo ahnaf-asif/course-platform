@@ -242,6 +242,7 @@ func (s *Server) registerRoutes() {
 
 	adminLessons := admin.Group("/lessons")
 	adminLessons.POST("", curriculumHandler.CreateLesson)
+	adminLessons.GET("/:id", curriculumHandler.GetLesson)
 	adminLessons.PATCH("/:id", curriculumHandler.UpdateLesson)
 	adminLessons.DELETE("/:id", curriculumHandler.DeleteLesson)
 
