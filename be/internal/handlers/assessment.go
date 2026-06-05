@@ -176,6 +176,7 @@ type QuestionRequest struct {
 	Content       string         `json:"content" validate:"required"`
 	QuestionType  string         `json:"question_type" validate:"required,oneof=SINGLE MULTIPLE"`
 	SequenceOrder int32          `json:"sequence_order" validate:"min=0"`
+	Explanation   *string        `json:"explanation,omitempty"`
 	Answers       []AnswerOption `json:"answers" validate:"required,min=2"`
 }
 
@@ -189,6 +190,7 @@ type QuestionResponse struct {
 	Content       string         `json:"content"`
 	QuestionType  string         `json:"question_type"`
 	SequenceOrder int32          `json:"sequence_order"`
+	Explanation   *string        `json:"explanation,omitempty"`
 	Answers       []AnswerOption `json:"answers"`
 }
 
@@ -218,12 +220,17 @@ func (h *QuizHandler) AddBulkQuestions(c echo.Context) error {
 
 	err = h.store.WithTx(c.Request().Context(), func(q generated.Querier) error {
 		for _, qReq := range req.Questions {
-			question, err := q.CreateQuestion(c.Request().Context(), generated.CreateQuestionParams{
+			params := generated.CreateQuestionParams{
 				QuizID:        quizID,
 				Content:       qReq.Content,
 				QuestionType:  generated.QuestionType(qReq.QuestionType),
 				SequenceOrder: qReq.SequenceOrder,
-			})
+			}
+			if qReq.Explanation != nil {
+				params.Explanation = sql.NullString{String: *qReq.Explanation, Valid: true}
+			}
+
+			question, err := q.CreateQuestion(c.Request().Context(), params)
 			if err != nil {
 				return err
 			}
@@ -279,12 +286,18 @@ func (h *QuizHandler) ListQuestions(c echo.Context) error {
 			})
 		}
 
+		var explanation *string
+		if q.Explanation.Valid {
+			explanation = &q.Explanation.String
+		}
+
 		resp = append(resp, QuestionResponse{
 			ID:            q.ID.String(),
 			QuizID:        q.QuizID.String(),
 			Content:       q.Content,
 			QuestionType:  string(q.QuestionType),
 			SequenceOrder: q.SequenceOrder,
+			Explanation:   explanation,
 			Answers:       aOpts,
 		})
 	}

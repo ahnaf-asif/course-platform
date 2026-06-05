@@ -434,12 +434,13 @@ type Progress struct {
 }
 
 type Question struct {
-	ID            uuid.UUID    `json:"id"`
-	QuizID        uuid.UUID    `json:"quiz_id"`
-	Content       string       `json:"content"`
-	QuestionType  QuestionType `json:"question_type"`
-	SequenceOrder int32        `json:"sequence_order"`
-	CreatedAt     time.Time    `json:"created_at"`
+	ID            uuid.UUID      `json:"id"`
+	QuizID        uuid.UUID      `json:"quiz_id"`
+	Content       string         `json:"content"`
+	QuestionType  QuestionType   `json:"question_type"`
+	SequenceOrder int32          `json:"sequence_order"`
+	CreatedAt     time.Time      `json:"created_at"`
+	Explanation   sql.NullString `json:"explanation"`
 }
 
 type Quiz struct {

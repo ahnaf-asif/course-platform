@@ -65,18 +65,20 @@ INSERT INTO questions (
     quiz_id,
     content,
     question_type,
-    sequence_order
+    sequence_order,
+    explanation
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5
 )
-RETURNING id, quiz_id, content, question_type, sequence_order, created_at
+RETURNING id, quiz_id, content, question_type, sequence_order, created_at, explanation
 `
 
 type CreateQuestionParams struct {
-	QuizID        uuid.UUID    `json:"quiz_id"`
-	Content       string       `json:"content"`
-	QuestionType  QuestionType `json:"question_type"`
-	SequenceOrder int32        `json:"sequence_order"`
+	QuizID        uuid.UUID      `json:"quiz_id"`
+	Content       string         `json:"content"`
+	QuestionType  QuestionType   `json:"question_type"`
+	SequenceOrder int32          `json:"sequence_order"`
+	Explanation   sql.NullString `json:"explanation"`
 }
 
 // Questions
@@ -86,6 +88,7 @@ func (q *Queries) CreateQuestion(ctx context.Context, arg CreateQuestionParams) 
 		arg.Content,
 		arg.QuestionType,
 		arg.SequenceOrder,
+		arg.Explanation,
 	)
 	var i Question
 	err := row.Scan(
@@ -95,6 +98,7 @@ func (q *Queries) CreateQuestion(ctx context.Context, arg CreateQuestionParams) 
 		&i.QuestionType,
 		&i.SequenceOrder,
 		&i.CreatedAt,
+		&i.Explanation,
 	)
 	return i, err
 }
@@ -245,6 +249,7 @@ SELECT
     qa.id as attempt_id, qa.score, qa.is_passed, qa.completed_at,
     qaa.question_id, qaa.answer_id,
     q.content as question_content,
+    q.explanation as question_explanation,
     a.content as answer_content, a.is_correct
 FROM quiz_attempts qa
 JOIN quiz_attempt_answers qaa ON qa.id = qaa.attempt_id
@@ -254,15 +259,16 @@ WHERE qa.id = $1
 `
 
 type GetAttemptWithAnswersRow struct {
-	AttemptID       uuid.UUID      `json:"attempt_id"`
-	Score           int32          `json:"score"`
-	IsPassed        bool           `json:"is_passed"`
-	CompletedAt     time.Time      `json:"completed_at"`
-	QuestionID      uuid.UUID      `json:"question_id"`
-	AnswerID        uuid.NullUUID  `json:"answer_id"`
-	QuestionContent string         `json:"question_content"`
-	AnswerContent   sql.NullString `json:"answer_content"`
-	IsCorrect       sql.NullBool   `json:"is_correct"`
+	AttemptID           uuid.UUID      `json:"attempt_id"`
+	Score               int32          `json:"score"`
+	IsPassed            bool           `json:"is_passed"`
+	CompletedAt         time.Time      `json:"completed_at"`
+	QuestionID          uuid.UUID      `json:"question_id"`
+	AnswerID            uuid.NullUUID  `json:"answer_id"`
+	QuestionContent     string         `json:"question_content"`
+	QuestionExplanation sql.NullString `json:"question_explanation"`
+	AnswerContent       sql.NullString `json:"answer_content"`
+	IsCorrect           sql.NullBool   `json:"is_correct"`
 }
 
 func (q *Queries) GetAttemptWithAnswers(ctx context.Context, id uuid.UUID) ([]GetAttemptWithAnswersRow, error) {
@@ -282,6 +288,7 @@ func (q *Queries) GetAttemptWithAnswers(ctx context.Context, id uuid.UUID) ([]Ge
 			&i.QuestionID,
 			&i.AnswerID,
 			&i.QuestionContent,
+			&i.QuestionExplanation,
 			&i.AnswerContent,
 			&i.IsCorrect,
 		); err != nil {
@@ -426,7 +433,7 @@ func (q *Queries) ListAnswersByQuestion(ctx context.Context, questionID uuid.UUI
 }
 
 const listQuestionsByQuiz = `-- name: ListQuestionsByQuiz :many
-SELECT id, quiz_id, content, question_type, sequence_order, created_at FROM questions
+SELECT id, quiz_id, content, question_type, sequence_order, created_at, explanation FROM questions
 WHERE quiz_id = $1
 ORDER BY sequence_order
 `
@@ -447,6 +454,7 @@ func (q *Queries) ListQuestionsByQuiz(ctx context.Context, quizID uuid.UUID) ([]
 			&i.QuestionType,
 			&i.SequenceOrder,
 			&i.CreatedAt,
+			&i.Explanation,
 		); err != nil {
 			return nil, err
 		}

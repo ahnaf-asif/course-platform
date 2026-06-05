@@ -58,6 +58,28 @@ func TestAssessmentIntegration(t *testing.T) {
 		quizID = resp.ID
 	})
 
+	t.Run("List Quizzes", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/quizzes", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := quizHandler.ListQuizzes(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var resp []handlers.QuizResponse
+		json.Unmarshal(rec.Body.Bytes(), &resp)
+		assert.True(t, len(resp) >= 1)
+		found := false
+		for _, q := range resp {
+			if q.ID == quizID {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found)
+	})
+
 	t.Run("Update Quiz", func(t *testing.T) {
 		newTitle := "Advanced Go Quiz"
 		reqBody := handlers.UpdateQuizRequest{Title: &newTitle}
@@ -79,12 +101,14 @@ func TestAssessmentIntegration(t *testing.T) {
 	})
 
 	t.Run("Add Bulk Questions", func(t *testing.T) {
+		explanation := "A goroutine is a lightweight thread managed by the Go runtime."
 		reqBody := handlers.BulkQuestionsRequest{
 			Questions: []handlers.QuestionRequest{
 				{
 					Content:       "What is a goroutine?",
 					QuestionType:  "SINGLE",
 					SequenceOrder: 1,
+					Explanation:   &explanation,
 					Answers: []handlers.AnswerOption{
 						{Content: "A lightweight thread", IsCorrect: true},
 						{Content: "A heavy process", IsCorrect: false},
@@ -132,8 +156,11 @@ func TestAssessmentIntegration(t *testing.T) {
 		json.Unmarshal(rec.Body.Bytes(), &resp)
 		assert.Len(t, resp, 2)
 		assert.Equal(t, "What is a goroutine?", resp[0].Content)
+		assert.NotNil(t, resp[0].Explanation)
+		assert.Equal(t, "A goroutine is a lightweight thread managed by the Go runtime.", *resp[0].Explanation)
 		assert.Len(t, resp[0].Answers, 3)
 		assert.Equal(t, "Which keywords are used for control flow in Go?", resp[1].Content)
+		assert.Nil(t, resp[1].Explanation)
 		assert.Len(t, resp[1].Answers, 4)
 	})
 
@@ -307,6 +334,95 @@ func TestAssessmentIntegration(t *testing.T) {
 		if len(gResp) > 0 {
 			assert.Equal(t, assocQuizID, gResp[0].ID)
 		}
+
+		// 3. Detach Quiz
+		dReq := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/nodes/"+nodeID+"/quizzes/"+assocQuizID, nil)
+		dRec := httptest.NewRecorder()
+		dCtx := e.NewContext(dReq, dRec)
+		dCtx.SetParamNames("id", "quizId")
+		dCtx.SetParamValues(nodeID, assocQuizID)
+
+		err = quizHandler.DetachQuizFromNode(dCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusNoContent, dRec.Code)
+
+		// 4. Verify detached
+		gRec2 := httptest.NewRecorder()
+		gCtx2 := e.NewContext(gReq, gRec2)
+		gCtx2.SetParamNames("id")
+		gCtx2.SetParamValues(nodeID)
+		_ = quizHandler.GetQuizzesByNode(gCtx2)
+		var gResp2 []handlers.QuizResponse
+		json.Unmarshal(gRec2.Body.Bytes(), &gResp2)
+		assert.Len(t, gResp2, 0)
+	})
+
+	t.Run("Delete Question", func(t *testing.T) {
+		// Setup: Create a quiz and a question
+		qReqBody := handlers.CreateQuizRequest{Title: "Delete Q Quiz", PassingScore: 50}
+		qBody, _ := json.Marshal(qReqBody)
+		qReq := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer(qBody))
+		qReq.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		qRec := httptest.NewRecorder()
+		err := quizHandler.CreateQuiz(e.NewContext(qReq, qRec))
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, qRec.Code)
+		var qResp handlers.QuizResponse
+		json.Unmarshal(qRec.Body.Bytes(), &qResp)
+
+		bulkReq := handlers.BulkQuestionsRequest{
+			Questions: []handlers.QuestionRequest{
+				{
+					Content: "Q1", QuestionType: "SINGLE", SequenceOrder: 1,
+					Answers: []handlers.AnswerOption{{Content: "A", IsCorrect: true}, {Content: "B", IsCorrect: false}},
+				},
+			},
+		}
+		bulkBody, _ := json.Marshal(bulkReq)
+		bulkReq2 := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer(bulkBody))
+		bulkReq2.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		bulkRec := httptest.NewRecorder()
+		bulkCtx := e.NewContext(bulkReq2, bulkRec)
+		bulkCtx.SetParamNames("id")
+		bulkCtx.SetParamValues(qResp.ID)
+		err = quizHandler.AddBulkQuestions(bulkCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, bulkRec.Code)
+
+		// Get the question ID
+		listRec := httptest.NewRecorder()
+		listCtx := e.NewContext(httptest.NewRequest(http.MethodGet, "/", nil), listRec)
+		listCtx.SetParamNames("id")
+		listCtx.SetParamValues(qResp.ID)
+		err = quizHandler.ListQuestions(listCtx)
+		assert.NoError(t, err)
+		var listResp []handlers.QuestionResponse
+		json.Unmarshal(listRec.Body.Bytes(), &listResp)
+		require.Len(t, listResp, 1)
+		questionID := listResp[0].ID
+
+		// Delete the question
+		delReq := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/quizzes/questions/"+questionID, nil)
+		delRec := httptest.NewRecorder()
+		delCtx := e.NewContext(delReq, delRec)
+		delCtx.SetParamNames("qId")
+		delCtx.SetParamValues(questionID)
+
+		err = quizHandler.DeleteQuestion(delCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusNoContent, delRec.Code)
+
+		// Verify deleted
+		listRec2 := httptest.NewRecorder()
+		_ = quizHandler.ListQuestions(e.NewContext(httptest.NewRequest(http.MethodGet, "/", nil), listRec2))
+		// Note: ListQuestions needs the quiz ID, so we re-setup the context properly
+		listCtx2 := e.NewContext(httptest.NewRequest(http.MethodGet, "/", nil), listRec2)
+		listCtx2.SetParamNames("id")
+		listCtx2.SetParamValues(qResp.ID)
+		_ = quizHandler.ListQuestions(listCtx2)
+		var listResp2 []handlers.QuestionResponse
+		json.Unmarshal(listRec2.Body.Bytes(), &listResp2)
+		assert.Len(t, listResp2, 0)
 	})
 
 	t.Run("Attach Quiz - Quiz Not Found", func(t *testing.T) {
