@@ -36,12 +36,14 @@ import {
   useDeleteAdminQuizzesIdQuestionsQId,
   useGetAdminQuizzes,
 } from '@/api/generated/admin-assessment/admin-assessment';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
+import { useEffect } from 'react';
 
 export default function QuestionManagement() {
   const params = useParams();
+  const router = useRouter();
   const quizId = params.id as string;
 
   const { data: questions, isLoading: loadingQuestions, refetch } = useGetAdminQuizzesIdQuestions(quizId);
@@ -51,6 +53,17 @@ export default function QuestionManagement() {
 
   const currentQuiz = allQuizzes?.find(q => q.id === quizId);
   const isLoading = loadingQuestions || loadingQuizzes;
+
+  useEffect(() => {
+    if (!isLoading && allQuizzes && !currentQuiz) {
+      notifications.show({
+        title: 'Not Found',
+        message: 'The requested quiz does not exist.',
+        color: 'red',
+      });
+      router.push('/admin/quizzes');
+    }
+  }, [isLoading, allQuizzes, currentQuiz, router]);
 
   const form = useForm({
     initialValues: {
