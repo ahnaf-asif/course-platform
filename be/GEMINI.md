@@ -1,6 +1,7 @@
 # 🧬 Gemini Backend Instructions
 
 This document provides specialized instructions for Gemini agents working on the Course Platform backend (`/be`). Adherence to these workflows ensures architectural consistency and type safety. Make sure before making a new api or anything else, first look at a similar thing that has already been created. It will give you an idea of how it is done, the structures and stuff. If you make any changes in /be, you have to run all the ci/cd tests, so that there are no errors.
+ Whenever you are asked to commit something, use imperative language like "do this do that"
 
 ## 🛠 Tech Stack & Conventions
 - **Language**: Go 1.25+

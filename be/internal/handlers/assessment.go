@@ -176,6 +176,7 @@ type QuestionRequest struct {
 	Content       string         `json:"content" validate:"required"`
 	QuestionType  string         `json:"question_type" validate:"required,oneof=SINGLE MULTIPLE"`
 	SequenceOrder int32          `json:"sequence_order" validate:"min=0"`
+	Explanation   *string        `json:"explanation,omitempty"`
 	Answers       []AnswerOption `json:"answers" validate:"required,min=2"`
 }
 
@@ -189,6 +190,7 @@ type QuestionResponse struct {
 	Content       string         `json:"content"`
 	QuestionType  string         `json:"question_type"`
 	SequenceOrder int32          `json:"sequence_order"`
+	Explanation   *string        `json:"explanation,omitempty"`
 	Answers       []AnswerOption `json:"answers"`
 }
 
@@ -218,12 +220,17 @@ func (h *QuizHandler) AddBulkQuestions(c echo.Context) error {
 
 	err = h.store.WithTx(c.Request().Context(), func(q generated.Querier) error {
 		for _, qReq := range req.Questions {
-			question, err := q.CreateQuestion(c.Request().Context(), generated.CreateQuestionParams{
+			params := generated.CreateQuestionParams{
 				QuizID:        quizID,
 				Content:       qReq.Content,
 				QuestionType:  generated.QuestionType(qReq.QuestionType),
 				SequenceOrder: qReq.SequenceOrder,
-			})
+			}
+			if qReq.Explanation != nil {
+				params.Explanation = sql.NullString{String: *qReq.Explanation, Valid: true}
+			}
+
+			question, err := q.CreateQuestion(c.Request().Context(), params)
 			if err != nil {
 				return err
 			}
@@ -279,17 +286,128 @@ func (h *QuizHandler) ListQuestions(c echo.Context) error {
 			})
 		}
 
+		var explanation *string
+		if q.Explanation.Valid {
+			explanation = &q.Explanation.String
+		}
+
 		resp = append(resp, QuestionResponse{
 			ID:            q.ID.String(),
 			QuizID:        q.QuizID.String(),
 			Content:       q.Content,
 			QuestionType:  string(q.QuestionType),
 			SequenceOrder: q.SequenceOrder,
+			Explanation:   explanation,
 			Answers:       aOpts,
 		})
 	}
 
 	return c.JSON(http.StatusOK, resp)
+}
+
+func (h *QuizHandler) UpdateQuestion(c echo.Context) error {
+	quizID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid quiz ID")
+	}
+
+	qID, err := uuid.Parse(c.Param("qId"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid question ID")
+	}
+
+	var req QuestionRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{"errors": h.formatValidationErrors(err)})
+	}
+
+	// Verify quiz exists
+	_, err = h.store.GetQuizByID(c.Request().Context(), quizID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusNotFound, "Quiz not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	var updatedQuestion generated.Question
+	err = h.store.WithTx(c.Request().Context(), func(q generated.Querier) error {
+		params := generated.UpdateQuestionParams{
+			ID:            qID,
+			Content:       sql.NullString{String: req.Content, Valid: true},
+			QuestionType:  generated.NullQuestionType{QuestionType: generated.QuestionType(req.QuestionType), Valid: true},
+			SequenceOrder: sql.NullInt32{Int32: req.SequenceOrder, Valid: true},
+		}
+		if req.Explanation != nil {
+			params.Explanation = sql.NullString{String: *req.Explanation, Valid: true}
+		}
+
+		updatedQuestion, err = q.UpdateQuestion(c.Request().Context(), params)
+		if err != nil {
+			return err
+		}
+
+		// Update answers: delete and recreate
+		if err := q.DeleteAnswersByQuestion(c.Request().Context(), qID); err != nil {
+			return err
+		}
+
+		for _, aReq := range req.Answers {
+			_, err = q.CreateAnswer(c.Request().Context(), generated.CreateAnswerParams{
+				QuestionID: qID,
+				Content:    aReq.Content,
+				IsCorrect:  aReq.IsCorrect,
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusNotFound, "Question not found")
+		}
+		h.logger.Error("Failed to update question", "error", err, "question_id", qID)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	// Return full response with answers
+	answers, err := h.store.ListAnswersByQuestion(c.Request().Context(), updatedQuestion.ID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to retrieve answers")
+	}
+
+	aOpts := make([]AnswerOption, 0, len(answers))
+	for _, a := range answers {
+		idStr := a.ID.String()
+		aOpts = append(aOpts, AnswerOption{
+			ID:        &idStr,
+			Content:   a.Content,
+			IsCorrect: a.IsCorrect,
+		})
+	}
+
+	var explanation *string
+	if updatedQuestion.Explanation.Valid {
+		explanation = &updatedQuestion.Explanation.String
+	}
+
+	return c.JSON(http.StatusOK, QuestionResponse{
+		ID:            updatedQuestion.ID.String(),
+		QuizID:        updatedQuestion.QuizID.String(),
+		Content:       updatedQuestion.Content,
+		QuestionType:  string(updatedQuestion.QuestionType),
+		SequenceOrder: updatedQuestion.SequenceOrder,
+		Explanation:   explanation,
+		Answers:       aOpts,
+	})
 }
 
 func (h *QuizHandler) DeleteQuestion(c echo.Context) error {

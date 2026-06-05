@@ -464,6 +464,38 @@ func (h *CurriculumHandler) UpdateLesson(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
+func (h *CurriculumHandler) GetLesson(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid lesson ID")
+	}
+
+	row, err := h.store.GetLesson(c.Request().Context(), id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusNotFound, "Lesson not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	resp := LessonResponse{
+		ID:            row.ID.String(),
+		ParentID:      row.ParentID.UUID.String(),
+		NodeType:      string(row.NodeType),
+		Title:         row.Title,
+		SequenceOrder: row.SequenceOrder,
+		CreatedAt:     row.CreatedAt.String(),
+	}
+	if row.TextContent.Valid {
+		resp.TextContent = &row.TextContent.String
+	}
+	if row.VideoUrl.Valid {
+		resp.VideoURL = &row.VideoUrl.String
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
 func (h *CurriculumHandler) DeleteLesson(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

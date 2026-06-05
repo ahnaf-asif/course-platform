@@ -177,6 +177,50 @@
               $ref: '../components/schemas/errors.yaml#/NotFound'
 
 /admin/quizzes/{id}/questions/{qId}:
+  patch:
+    tags:
+      - Admin Assessment
+    summary: Update a question in a quiz
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: qId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/assessment.yaml#/QuestionRequest'
+    responses:
+      '200':
+        description: Question updated
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assessment.yaml#/QuestionResponse'
+      '400':
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '404':
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
   delete:
     tags:
       - Admin Assessment

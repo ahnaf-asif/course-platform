@@ -21,7 +21,7 @@ import {
   Badge,
   Alert,
 } from '@mantine/core';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   IconPlus,
@@ -65,15 +65,9 @@ interface ExtendedNode extends CourseTreeResponse {
   children: ExtendedNode[];
 }
 
-import dynamic from 'next/dynamic';
-
-const RichTextEditor = dynamic(() => import('@/components/Editor/RichTextEditor'), {
-  ssr: false,
-  loading: () => <LoadingOverlay visible loaderProps={{ type: 'bars' }} />,
-});
-
 export default function CourseCurriculumPage() {
   const params = useParams();
+  const router = useRouter();
   const slug = params.id as string;
 
   const { data: tree, isLoading, isError, refetch } = useGetCourseTreeBySlug(slug);
@@ -112,8 +106,6 @@ export default function CourseCurriculumPage() {
   const form = useForm({
     initialValues: {
       title: '',
-      video_url: '',
-      text_content: '',
     },
     validate: {
       title: (value) => (value.length < 3 ? 'Title must be at least 3 characters' : null),
@@ -125,8 +117,12 @@ export default function CourseCurriculumPage() {
     action: 'CREATE' | 'EDIT',
     parentId: string | null = null,
     nodeId: string | null = null,
-    initialValues = { title: '', video_url: '', text_content: '' }
+    initialValues = { title: '' }
   ) => {
+    if (type === 'LESSON' && action === 'EDIT') {
+      router.push(`/admin/courses/${slug}/curriculum/lesson/${nodeId}`);
+      return;
+    }
     setModalType({ type, action, parentId, nodeId });
     form.setValues(initialValues);
     openModal();
@@ -154,8 +150,6 @@ export default function CourseCurriculumPage() {
               title: values.title, 
               parent_id: parentId!, 
               sequence_order: nextOrder,
-              video_url: values.video_url || undefined,
-              text_content: values.text_content || undefined
             } 
           });
         }
@@ -164,15 +158,6 @@ export default function CourseCurriculumPage() {
           await updateSubject({ id: nodeId!, data: { title: values.title } });
         } else if (type === 'CHAPTER') {
           await updateChapter({ id: nodeId!, data: { title: values.title } });
-        } else if (type === 'LESSON') {
-          await updateLesson({ 
-            id: nodeId!, 
-            data: { 
-              title: values.title,
-              video_url: values.video_url || undefined,
-              text_content: values.text_content || undefined
-            } 
-          });
         }
       }
 
@@ -338,8 +323,6 @@ export default function CourseCurriculumPage() {
                           onAddChild={(type, parentId) => handleOpenModal(type, 'CREATE', parentId)}
                           onEdit={(node) => handleOpenModal(node.node_type as NodeType, 'EDIT', node.parent_id, node.id, {
                             title: node.title,
-                            video_url: node.video_url || '',
-                            text_content: node.text_content || '',
                           })}
                           onDelete={handleDelete}
                           onManageQuizzes={handleOpenQuizModal}
@@ -374,9 +357,8 @@ export default function CourseCurriculumPage() {
         title={`${modalType.action === 'CREATE' ? 'Create' : 'Edit'} ${modalType.type.toLowerCase()}`}
         centered
         overlayProps={{ blur: 3 }}
-        radius={modalType.type === 'LESSON' ? 0 : 'md'}
-        size={modalType.type === 'LESSON' ? '100%' : 'xl'}
-        fullScreen={modalType.type === 'LESSON'}
+        radius="md"
+        size="lg"
       >
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
@@ -386,23 +368,6 @@ export default function CourseCurriculumPage() {
               required
               {...form.getInputProps('title')}
             />
-            
-            {modalType.type === 'LESSON' && (
-              <>
-                <TextInput
-                  label="Video Content URL"
-                  placeholder="Vimeo, YouTube, or AWS S3 URL"
-                  description="Optional: Video will be primary content"
-                  {...form.getInputProps('video_url')}
-                />
-                <RichTextEditor
-                  label="Lesson Content"
-                  content={form.values.text_content}
-                  onChange={(val) => form.setFieldValue('text_content', val)}
-                  minHeight="calc(100vh - 350px)"
-                />
-              </>
-            )}
 
             <Group justify="flex-end" mt="xl">
               <Button variant="subtle" onClick={closeModal} color="gray">Cancel</Button>

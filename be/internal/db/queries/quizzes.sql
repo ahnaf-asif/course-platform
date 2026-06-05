@@ -48,9 +48,10 @@ INSERT INTO questions (
     quiz_id,
     content,
     question_type,
-    sequence_order
+    sequence_order,
+    explanation
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5
 )
 RETURNING *;
 
@@ -58,6 +59,16 @@ RETURNING *;
 SELECT * FROM questions
 WHERE quiz_id = $1
 ORDER BY sequence_order;
+
+-- name: UpdateQuestion :one
+UPDATE questions
+SET
+    content = COALESCE(sqlc.narg('content'), content),
+    question_type = COALESCE(sqlc.narg('question_type'), question_type),
+    sequence_order = COALESCE(sqlc.narg('sequence_order'), sequence_order),
+    explanation = COALESCE(sqlc.narg('explanation'), explanation)
+WHERE id = $1
+RETURNING *;
 
 -- name: DeleteQuestion :exec
 DELETE FROM questions
@@ -110,6 +121,7 @@ SELECT
     qa.id as attempt_id, qa.score, qa.is_passed, qa.completed_at,
     qaa.question_id, qaa.answer_id,
     q.content as question_content,
+    q.explanation as question_explanation,
     a.content as answer_content, a.is_correct
 FROM quiz_attempts qa
 JOIN quiz_attempt_answers qaa ON qa.id = qaa.attempt_id

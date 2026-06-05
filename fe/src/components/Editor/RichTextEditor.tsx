@@ -17,9 +17,10 @@ interface EditorProps {
   onChange: (content: string) => void;
   label?: string;
   minHeight?: string | number;
+  compact?: boolean;
 }
 
-export default function CustomRichTextEditor({ content, onChange, label, minHeight = 400 }: EditorProps) {
+export default function CustomRichTextEditor({ content, onChange, label, minHeight = 400, compact }: EditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -61,7 +62,7 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
   return (
     <Stack gap={5}>
       {label && <Text size="sm" fw={500}>{label}</Text>}
-      <Box bg="gray.1" p="xl" style={{ borderRadius: '4px', border: '1px solid var(--mantine-color-gray-3)' }}>
+      <Box bg="gray.1" p={compact ? 'xs' : 'xl'} style={{ borderRadius: '4px', border: '1px solid var(--mantine-color-gray-3)' }}>
         <RichTextEditor 
           editor={editor}
           styles={{
@@ -69,19 +70,20 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
             toolbar: { 
               border: '1px solid var(--mantine-color-gray-3)', 
               borderRadius: '8px',
-              marginBottom: '20px',
+              marginBottom: compact ? '10px' : '20px',
               backgroundColor: 'white',
               position: 'sticky',
               top: 0,
               zIndex: 10,
-              boxShadow: 'var(--mantine-shadow-sm)'
+              boxShadow: 'var(--mantine-shadow-sm)',
+              padding: compact ? '4px' : '8px',
             },
             content: { 
               backgroundColor: 'white',
-              maxWidth: '850px',
+              maxWidth: compact ? '100%' : '850px',
               margin: '0 auto',
               minHeight: typeof minHeight === 'number' ? `${minHeight}px` : minHeight,
-              padding: '40px 60px',
+              padding: compact ? '10px 15px' : '40px 60px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
               borderRadius: '2px',
               border: '1px solid var(--mantine-color-gray-2)',

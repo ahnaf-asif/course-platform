@@ -1,0 +1,52 @@
+/admin/users:
+  get:
+    tags:
+      - Admin User
+    summary: List all users with profiles
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: List of users
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../components/schemas/user.yaml#/UserProfileResponse'
+      '401':
+        description: Unauthorized
+      '403':
+        description: Forbidden
+
+/admin/users/{id}/role:
+  patch:
+    tags:
+      - Admin User
+    summary: Update user role
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/user.yaml#/UpdateUserRoleRequest'
+    responses:
+      '200':
+        description: User role updated
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/user.yaml#/UserProfileResponse'
+      '400':
+        description: Bad Request
+      '404':
+        description: Not Found

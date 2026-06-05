@@ -324,6 +324,32 @@
               $ref: '../components/schemas/errors.yaml#/Forbidden'
 
 /admin/lessons/{id}:
+  get:
+    tags:
+      - Admin Curriculum
+    summary: Get a lesson
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Lesson retrieved
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/LessonResponse'
+      '404':
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
   patch:
     tags:
       - Admin Curriculum

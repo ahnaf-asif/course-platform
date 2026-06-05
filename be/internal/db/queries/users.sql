@@ -45,6 +45,20 @@ FROM users u
 LEFT JOIN user_profiles up ON u.id = up.user_id
 WHERE u.id = $1 LIMIT 1;
 
+-- name: ListUsersWithProfiles :many
+SELECT 
+    u.id, 
+    u.email, 
+    u.role, 
+    u.created_at,
+    up.full_name, 
+    up.avatar_url, 
+    up.bio, 
+    up.updated_at
+FROM users u
+LEFT JOIN user_profiles up ON u.id = up.user_id
+ORDER BY u.created_at DESC;
+
 -- name: UpdateUser :one
 UPDATE users
 SET

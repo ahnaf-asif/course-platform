@@ -242,6 +242,7 @@ func (s *Server) registerRoutes() {
 
 	adminLessons := admin.Group("/lessons")
 	adminLessons.POST("", curriculumHandler.CreateLesson)
+	adminLessons.GET("/:id", curriculumHandler.GetLesson)
 	adminLessons.PATCH("/:id", curriculumHandler.UpdateLesson)
 	adminLessons.DELETE("/:id", curriculumHandler.DeleteLesson)
 
@@ -253,6 +254,7 @@ func (s *Server) registerRoutes() {
 	adminQuizzes.POST("/:id/questions", quizHandler.AddBulkQuestions)
 	adminQuizzes.GET("/:id/questions", quizHandler.ListQuestions)
 	adminQuizzes.DELETE("/:id/questions/:qId", quizHandler.DeleteQuestion)
+	adminQuizzes.PATCH("/:id/questions/:qId", quizHandler.UpdateQuestion)
 
 	adminNodes := admin.Group("/nodes")
 	adminNodes.POST("/:id/quizzes", quizHandler.AttachQuizToNode)
@@ -266,6 +268,11 @@ func (s *Server) registerRoutes() {
 	adminTags.GET("", tagHandler.ListTags)
 	adminTags.PATCH("/:id", tagHandler.UpdateTag)
 	adminTags.DELETE("/:id", tagHandler.DeleteTag)
+
+	// Admin User routes
+	adminUsers := admin.Group("/users")
+	adminUsers.GET("", userHandler.ListUsers)
+	adminUsers.PATCH("/:id/role", userHandler.UpdateUserRole)
 }
 
 func (s *Server) GetEcho() *echo.Echo {

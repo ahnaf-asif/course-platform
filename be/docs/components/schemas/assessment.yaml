@@ -71,6 +71,9 @@ QuestionRequest:
     sequence_order:
       type: integer
       minimum: 0
+    explanation:
+      type: string
+      nullable: true
     answers:
       type: array
       items:
@@ -107,6 +110,9 @@ QuestionResponse:
       type: string
     sequence_order:
       type: integer
+    explanation:
+      type: string
+      nullable: true
     answers:
       type: array
       items:

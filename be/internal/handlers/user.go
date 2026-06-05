@@ -274,3 +274,109 @@ func (h *UserHandler) UpdatePassword(c echo.Context) error {
 
 	return c.NoContent(http.StatusNoContent)
 }
+
+// Admin User Management
+
+func (h *UserHandler) ListUsers(c echo.Context) error {
+	rows, err := h.store.ListUsersWithProfiles(c.Request().Context())
+	if err != nil {
+		h.logger.Error("Failed to list users with profiles", "error", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	resp := make([]UserProfileResponse, 0, len(rows))
+	for _, row := range rows {
+		item := UserProfileResponse{
+			ID:        row.ID.String(),
+			Email:     row.Email,
+			Role:      string(row.Role),
+			FullName:  row.FullName.String,
+			CreatedAt: row.CreatedAt.String(),
+		}
+
+		if row.AvatarUrl.Valid {
+			item.AvatarURL = &row.AvatarUrl.String
+		}
+		if row.Bio.Valid {
+			item.Bio = &row.Bio.String
+		}
+		if row.UpdatedAt.Valid {
+			item.UpdatedAt = row.UpdatedAt.Time.String()
+		}
+		resp = append(resp, item)
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
+type UpdateUserRoleRequest struct {
+	Role string `json:"role" validate:"required,oneof=ADMIN USER"`
+}
+
+func (h *UserHandler) UpdateUserRole(c echo.Context) error {
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	var req UpdateUserRoleRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{"errors": h.formatValidationErrors(err)})
+	}
+
+	_, err = h.store.UpdateUser(c.Request().Context(), generated.UpdateUserParams{
+		ID:   userID,
+		Role: generated.NullUserRole{UserRole: generated.UserRole(req.Role), Valid: true},
+	})
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusNotFound, "User not found")
+		}
+		h.logger.Error("Failed to update user role", "error", err, "user_id", userID)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	// Invalidate cache
+	_ = h.cacheService.Delete(c.Request().Context(), h.getUserCacheKey(userID.String()))
+
+	// Return updated user
+	row, err := h.store.GetUserWithProfile(c.Request().Context(), userID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	resp := UserProfileResponse{
+		ID:        row.ID.String(),
+		Email:     row.Email,
+		Role:      string(row.Role),
+		FullName:  row.FullName.String,
+		CreatedAt: row.CreatedAt.String(),
+	}
+
+	if row.AvatarUrl.Valid {
+		resp.AvatarURL = &row.AvatarUrl.String
+	}
+	if row.Bio.Valid {
+		resp.Bio = &row.Bio.String
+	}
+	if row.UpdatedAt.Valid {
+		resp.UpdatedAt = row.UpdatedAt.Time.String()
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
+func (h *UserHandler) formatValidationErrors(err error) []map[string]string {
+	errors := make([]map[string]string, 0)
+	for _, err := range err.(validator.ValidationErrors) {
+		errors = append(errors, map[string]string{
+			"field":   err.Field(),
+			"message": err.Tag(),
+		})
+	}
+	return errors
+}

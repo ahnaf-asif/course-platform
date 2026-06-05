@@ -107,6 +107,7 @@ type Querier interface {
 	ListTags(ctx context.Context) ([]Tag, error)
 	ListTagsByNode(ctx context.Context, nodeID uuid.UUID) ([]Tag, error)
 	ListUnreadNotifications(ctx context.Context, userID uuid.UUID) ([]Notification, error)
+	ListUsersWithProfiles(ctx context.Context) ([]ListUsersWithProfilesRow, error)
 	MarkNotificationRead(ctx context.Context, id uuid.UUID) error
 	Ping(ctx context.Context) (int32, error)
 	RevokeAllTokensByFamily(ctx context.Context, familyID uuid.UUID) error
@@ -115,6 +116,7 @@ type Querier interface {
 	UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Course, error)
 	UpdateLesson(ctx context.Context, arg UpdateLessonParams) (Lesson, error)
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
+	UpdateQuestion(ctx context.Context, arg UpdateQuestionParams) (Question, error)
 	UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, error)
 	UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error)
 	UpdateTag(ctx context.Context, arg UpdateTagParams) (Tag, error)
