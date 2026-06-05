@@ -16,7 +16,6 @@ import {
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import {
-  IconChevronLeft,
   IconDeviceFloppy,
   IconArrowLeft,
 } from '@tabler/icons-react';
@@ -63,7 +62,7 @@ export default function LessonEditPage() {
         text_content: lesson.text_content || '',
       });
     }
-  }, [lesson]);
+  }, [lesson, form]);
 
   const handleSubmit = async (values: typeof form.values) => {
     try {

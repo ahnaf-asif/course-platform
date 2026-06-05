@@ -43,12 +43,27 @@ import {
   usePatchAdminQuizzesIdQuestionsQId,
   useGetAdminQuizzes,
 } from '@/api/generated/admin-assessment/admin-assessment';
+import { QuestionResponse } from '@/api/model/components-schemas-assessment/questionResponse';
+import { AnswerOption } from '@/api/model/components-schemas-assessment/answerOption';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import CustomRichTextEditor from '@/components/Editor/RichTextEditor';
 import { MathJaxContent } from '@/components/MathJaxContent';
+import { UseFormReturnType } from '@mantine/form';
+
+interface EditFormValues {
+  id: string;
+  content: string;
+  explanation: string;
+  question_type: string;
+  sequence_order: number;
+  answers: {
+    content: string;
+    is_correct: boolean;
+  }[];
+}
 
 function QuestionCard({ 
   q, 
@@ -61,13 +76,13 @@ function QuestionCard({
   setEditingId, 
   isUpdating 
 }: { 
-  q: any; 
+  q: QuestionResponse; 
   index: number; 
-  onEdit: (q: any) => void; 
+  onEdit: (q: QuestionResponse) => void; 
   onDelete: (id: string) => void; 
   editingId: string | null;
-  editForm: any;
-  handleUpdateSubmit: (values: any) => Promise<void>;
+  editForm: UseFormReturnType<EditFormValues>;
+  handleUpdateSubmit: (values: EditFormValues) => Promise<void>;
   setEditingId: (id: string | null) => void;
   isUpdating: boolean;
 }) {
@@ -111,7 +126,7 @@ function QuestionCard({
               />
 
               <Text size="sm" fw={500} mt="xs">Answer Options</Text>
-              {editForm.values.answers.map((_: any, aIndex: number) => (
+              {editForm.values.answers.map((_, aIndex) => (
                 <Group key={aIndex} align="flex-end">
                   <TextInput
                     style={{ flex: 1 }}
@@ -161,13 +176,13 @@ function QuestionCard({
         </Box>
       ) : (
         <>
-          <Box p="md">
-            <Group justify="space-between" wrap="nowrap">
-              <UnstyledButton 
-                onClick={() => setCardExpanded((e) => !e)}
-                style={{ flex: 1, minWidth: 0 }}
-              >
-                <Group gap="sm" wrap="nowrap">
+          <UnstyledButton 
+            onClick={() => setCardExpanded((e) => !e)}
+            style={{ width: '100%' }}
+          >
+            <Box p="md">
+              <Group justify="space-between" wrap="nowrap">
+                <Group gap="sm" wrap="nowrap" style={{ flex: 1 }}>
                   <Box style={{ display: 'flex', alignItems: 'center' }}>
                     {cardExpanded ? <IconChevronUp size={18} color="var(--mantine-color-gray-6)" /> : <IconChevronDown size={18} color="var(--mantine-color-gray-6)" />}
                   </Box>
@@ -181,18 +196,17 @@ function QuestionCard({
                     <Text fw={500} size="sm" truncate="end" lineClamp={1}>{q.content}</Text>
                   </Stack>
                 </Group>
-              </UnstyledButton>
-
-              <Group gap={5}>
-                <ActionIcon color="blue" variant="subtle" onClick={() => onEdit(q)}>
-                  <IconPencil size={18} />
-                </ActionIcon>
-                <ActionIcon color="red" variant="subtle" onClick={() => onDelete(q.id)}>
-                  <IconTrash size={18} />
-                </ActionIcon>
+                <Group gap={5}>
+                  <ActionIcon color="blue" variant="subtle" onClick={() => onEdit(q)}>
+                    <IconPencil size={18} />
+                  </ActionIcon>
+                  <ActionIcon color="red" variant="subtle" onClick={() => onDelete(q.id)}>
+                    <IconTrash size={18} />
+                  </ActionIcon>
+                </Group>
               </Group>
-            </Group>
-          </Box>
+            </Box>
+          </UnstyledButton>
 
           <Collapse expanded={cardExpanded}>
             <Box px="md" pb="md">
@@ -202,7 +216,7 @@ function QuestionCard({
 
               <Text fw={600} size="sm" mb="xs">Answer Options:</Text>
               <Stack gap={5}>
-                {q.answers.map((a: any, i: number) => (
+                {q.answers.map((a: AnswerOption, i: number) => (
                   <Group key={i} gap="xs">
                     {a.is_correct ? <IconCheck size={14} color="green" /> : <Box w={14} />}
                     <Text size="sm" c={a.is_correct ? 'green' : 'dimmed'}>
@@ -358,14 +372,14 @@ export default function QuestionManagement() {
     },
   });
 
-  const handleStartEdit = (q: any) => {
+  const handleStartEdit = (q: QuestionResponse) => {
     editForm.setValues({
       id: q.id,
       content: q.content,
       explanation: q.explanation || '',
       question_type: q.question_type,
       sequence_order: q.sequence_order,
-      answers: q.answers.map((a: any) => ({ content: a.content, is_correct: a.is_correct })),
+      answers: q.answers.map((a) => ({ content: a.content, is_correct: a.is_correct })),
     });
     setEditingId(q.id);
   };
