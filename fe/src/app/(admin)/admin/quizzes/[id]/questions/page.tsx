@@ -27,11 +27,14 @@ import {
   IconChevronLeft,
   IconCheck,
   IconAlertCircle,
+  IconInfoCircle,
+  IconChecklist,
 } from '@tabler/icons-react';
 import {
   useGetAdminQuizzesIdQuestions,
   usePostAdminQuizzesIdQuestions,
   useDeleteAdminQuizzesIdQuestionsQId,
+  useGetAdminQuizzes,
 } from '@/api/generated/admin-assessment/admin-assessment';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -41,9 +44,13 @@ export default function QuestionManagement() {
   const params = useParams();
   const quizId = params.id as string;
 
-  const { data: questions, isLoading, refetch } = useGetAdminQuizzesIdQuestions(quizId);
+  const { data: questions, isLoading: loadingQuestions, refetch } = useGetAdminQuizzesIdQuestions(quizId);
+  const { data: allQuizzes, isLoading: loadingQuizzes } = useGetAdminQuizzes();
   const { mutateAsync: addQuestions, isPending: isAdding } = usePostAdminQuizzesIdQuestions();
   const { mutateAsync: deleteQuestion } = useDeleteAdminQuizzesIdQuestionsQId();
+
+  const currentQuiz = allQuizzes?.find(q => q.id === quizId);
+  const isLoading = loadingQuestions || loadingQuizzes;
 
   const form = useForm({
     initialValues: {
@@ -138,11 +145,18 @@ export default function QuestionManagement() {
         <Anchor component={Link} href="/admin/quizzes">
           Quizzes
         </Anchor>
-        <Text color="dimmed">Manage Questions</Text>
+        <Text color="dimmed">{currentQuiz ? currentQuiz.title : 'Manage Questions'}</Text>
       </Breadcrumbs>
 
       <Group justify="space-between">
-        <Title order={2}>Manage Questions</Title>
+        <Stack gap={0}>
+          <Title order={2}>Manage Questions</Title>
+          {currentQuiz && (
+            <Text c="dimmed" size="sm" fw={500}>
+              Quiz: {currentQuiz.title}
+            </Text>
+          )}
+        </Stack>
         <Button 
           variant="light" 
           leftSection={<IconChevronLeft size={16} />} 
@@ -152,6 +166,27 @@ export default function QuestionManagement() {
           Back to Library
         </Button>
       </Group>
+
+      {currentQuiz && (
+        <Card withBorder radius="md" p="md">
+          <Group gap="xl">
+            <Group gap="xs">
+              <IconChecklist size={20} color="var(--mantine-color-blue-6)" />
+              <div>
+                <Text size="xs" c="dimmed" lh={1}>Passing Score</Text>
+                <Text fw={600}>{currentQuiz.passing_score}%</Text>
+              </div>
+            </Group>
+            <Group gap="xs">
+              <IconInfoCircle size={20} color="var(--mantine-color-blue-6)" />
+              <div>
+                <Text size="xs" c="dimmed" lh={1}>Questions Count</Text>
+                <Text fw={600}>{questions?.length || 0}</Text>
+              </div>
+            </Group>
+          </Group>
+        </Card>
+      )}
 
       {/* Existing Questions List */}
       {questions && questions.length > 0 && (
