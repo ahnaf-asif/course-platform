@@ -60,6 +60,16 @@ SELECT * FROM questions
 WHERE quiz_id = $1
 ORDER BY sequence_order;
 
+-- name: UpdateQuestion :one
+UPDATE questions
+SET
+    content = COALESCE(sqlc.narg('content'), content),
+    question_type = COALESCE(sqlc.narg('question_type'), question_type),
+    sequence_order = COALESCE(sqlc.narg('sequence_order'), sequence_order),
+    explanation = COALESCE(sqlc.narg('explanation'), explanation)
+WHERE id = $1
+RETURNING *;
+
 -- name: DeleteQuestion :exec
 DELETE FROM questions
 WHERE id = $1;

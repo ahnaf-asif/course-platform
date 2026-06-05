@@ -115,6 +115,7 @@ type Querier interface {
 	UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Course, error)
 	UpdateLesson(ctx context.Context, arg UpdateLessonParams) (Lesson, error)
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
+	UpdateQuestion(ctx context.Context, arg UpdateQuestionParams) (Question, error)
 	UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, error)
 	UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error)
 	UpdateTag(ctx context.Context, arg UpdateTagParams) (Tag, error)

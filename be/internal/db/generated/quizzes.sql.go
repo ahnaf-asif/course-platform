@@ -502,6 +502,46 @@ func (q *Queries) ListQuizzes(ctx context.Context) ([]Quiz, error) {
 	return items, nil
 }
 
+const updateQuestion = `-- name: UpdateQuestion :one
+UPDATE questions
+SET
+    content = COALESCE($2, content),
+    question_type = COALESCE($3, question_type),
+    sequence_order = COALESCE($4, sequence_order),
+    explanation = COALESCE($5, explanation)
+WHERE id = $1
+RETURNING id, quiz_id, content, question_type, sequence_order, created_at, explanation
+`
+
+type UpdateQuestionParams struct {
+	ID            uuid.UUID        `json:"id"`
+	Content       sql.NullString   `json:"content"`
+	QuestionType  NullQuestionType `json:"question_type"`
+	SequenceOrder sql.NullInt32    `json:"sequence_order"`
+	Explanation   sql.NullString   `json:"explanation"`
+}
+
+func (q *Queries) UpdateQuestion(ctx context.Context, arg UpdateQuestionParams) (Question, error) {
+	row := q.db.QueryRowContext(ctx, updateQuestion,
+		arg.ID,
+		arg.Content,
+		arg.QuestionType,
+		arg.SequenceOrder,
+		arg.Explanation,
+	)
+	var i Question
+	err := row.Scan(
+		&i.ID,
+		&i.QuizID,
+		&i.Content,
+		&i.QuestionType,
+		&i.SequenceOrder,
+		&i.CreatedAt,
+		&i.Explanation,
+	)
+	return i, err
+}
+
 const updateQuiz = `-- name: UpdateQuiz :one
 UPDATE quizzes
 SET

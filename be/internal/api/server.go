@@ -253,6 +253,7 @@ func (s *Server) registerRoutes() {
 	adminQuizzes.POST("/:id/questions", quizHandler.AddBulkQuestions)
 	adminQuizzes.GET("/:id/questions", quizHandler.ListQuestions)
 	adminQuizzes.DELETE("/:id/questions/:qId", quizHandler.DeleteQuestion)
+	adminQuizzes.PATCH("/:id/questions/:qId", quizHandler.UpdateQuestion)
 
 	adminNodes := admin.Group("/nodes")
 	adminNodes.POST("/:id/quizzes", quizHandler.AttachQuizToNode)
