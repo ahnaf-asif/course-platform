@@ -4,12 +4,12 @@ import { AppShell, Group, Title, Menu, UnstyledButton, Text, Avatar } from '@man
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthContext } from '@/context/AuthContext';
 import { AuthGuard } from '@/components/guards/AuthGuard';
-import { IconLogout, IconChevronDown, IconUser, IconLayoutDashboard } from '@tabler/icons-react';
+import { IconLogout, IconChevronDown, IconUser, IconLayoutDashboard, IconShield } from '@tabler/icons-react';
 import Link from 'next/link';
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   const { logout } = useAuth();
-  const { userEmail } = useAuthContext();
+  const { userEmail, role } = useAuthContext();
 
   return (
     <AuthGuard>
@@ -43,6 +43,17 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
                 >
                   Dashboard
                 </Menu.Item>
+
+                {role === 'ADMIN' && (
+                  <Menu.Item
+                    leftSection={<IconShield size={14} stroke={1.5} />}
+                    component={Link}
+                    href="/admin"
+                  >
+                    Admin Panel
+                  </Menu.Item>
+                )}
+
                 <Menu.Item
                   leftSection={<IconUser size={14} stroke={1.5} />}
                   component={Link}
