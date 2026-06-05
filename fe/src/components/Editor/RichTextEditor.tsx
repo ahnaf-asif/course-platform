@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect } from 'react';
-import { RichTextEditor, Link } from '@mantine/tiptap';
+import { RichTextEditor } from '@mantine/tiptap';
 import { useEditor } from '@tiptap/react';
 import Highlight from '@tiptap/extension-highlight';
 import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import Superscript from '@tiptap/extension-superscript';
 import SubScript from '@tiptap/extension-subscript';
@@ -24,8 +23,6 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Underline,
-      Link,
       Superscript,
       SubScript,
       Highlight,
@@ -33,6 +30,7 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
     ],
     content: content || '',
+    immediatelyRender: false,
     onUpdate({ editor }) {
       onChange(editor.getHTML());
     },
