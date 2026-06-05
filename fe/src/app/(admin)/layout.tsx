@@ -131,7 +131,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   href={link.href}
                   label={link.label}
                   leftSection={<link.icon size={20} stroke={1.5} />}
-                  active={pathname === link.href}
+                  active={
+                    link.href === '/admin' 
+                      ? pathname === '/admin' 
+                      : pathname.startsWith(link.href)
+                  }
                   onClick={close}
                 />
               ))}
