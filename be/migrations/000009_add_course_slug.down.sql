@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS idx_courses_slug;
+ALTER TABLE courses DROP COLUMN IF EXISTS slug;

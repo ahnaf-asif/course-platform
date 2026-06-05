@@ -1,0 +1,27 @@
+get:
+  tags:
+    - Course
+  summary: Get course by slug
+  description: Returns public course information including its structure.
+  operationId: getCourseBySlug
+  parameters:
+    - name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Course details
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/course.yaml#/CourseResponse'
+    '404':
+      description: Course not found
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/errors.yaml#/NotFound'
+    '500':
+      description: Internal server error

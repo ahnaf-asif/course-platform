@@ -52,11 +52,17 @@ type Querier interface {
 	CreateTag(ctx context.Context, arg CreateTagParams) (Tag, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserProfile(ctx context.Context, arg CreateUserProfileParams) (UserProfile, error)
+	DeleteAnswersByQuestion(ctx context.Context, questionID uuid.UUID) error
 	DeleteChapter(ctx context.Context, id uuid.UUID) error
 	DeleteCourse(ctx context.Context, id uuid.UUID) error
 	DeleteExpiredRefreshTokens(ctx context.Context) error
 	DeleteLesson(ctx context.Context, id uuid.UUID) error
+	DeleteQuestion(ctx context.Context, id uuid.UUID) error
+	DeleteQuiz(ctx context.Context, id uuid.UUID) error
+	// DELETE HANDLERS (Generic for all nodes)
 	DeleteSubject(ctx context.Context, id uuid.UUID) error
+	DeleteTag(ctx context.Context, id uuid.UUID) error
+	DetachQuizFromNode(ctx context.Context, arg DetachQuizFromNodeParams) error
 	DetachTagFromNode(ctx context.Context, arg DetachTagFromNodeParams) error
 	GetAttemptWithAnswers(ctx context.Context, id uuid.UUID) ([]GetAttemptWithAnswersRow, error)
 	GetAttemptsByUserAndQuiz(ctx context.Context, arg GetAttemptsByUserAndQuizParams) ([]QuizAttempt, error)
@@ -65,8 +71,11 @@ type Querier interface {
 	GetChildNodes(ctx context.Context, parentID uuid.NullUUID) ([]Node, error)
 	GetCouponByCode(ctx context.Context, code string) (Coupon, error)
 	GetCourse(ctx context.Context, id uuid.UUID) (GetCourseRow, error)
+	GetCourseBySlug(ctx context.Context, slug string) (GetCourseBySlugRow, error)
 	// Tree Traversal
 	GetCourseTree(ctx context.Context, id uuid.UUID) ([]GetCourseTreeRow, error)
+	GetCourseTreeHydrated(ctx context.Context, id uuid.UUID) ([]GetCourseTreeHydratedRow, error)
+	GetCourseTreeHydratedBySlug(ctx context.Context, slug string) ([]GetCourseTreeHydratedBySlugRow, error)
 	GetEnrollment(ctx context.Context, arg GetEnrollmentParams) (Enrollment, error)
 	GetLesson(ctx context.Context, id uuid.UUID) (GetLessonRow, error)
 	GetNodeWithType(ctx context.Context, id uuid.UUID) (Node, error)
@@ -79,6 +88,7 @@ type Querier interface {
 	GetQuizzesByNode(ctx context.Context, nodeID uuid.UUID) ([]Quiz, error)
 	GetRefreshToken(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetSubject(ctx context.Context, id uuid.UUID) (GetSubjectRow, error)
+	GetTagByID(ctx context.Context, id uuid.UUID) (Tag, error)
 	GetTagBySlug(ctx context.Context, slug string) (Tag, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
@@ -87,10 +97,12 @@ type Querier interface {
 	IncrementCouponUsage(ctx context.Context, id uuid.UUID) error
 	ListAnnouncementsByCourse(ctx context.Context, nodeID uuid.UUID) ([]Announcement, error)
 	ListAnswersByQuestion(ctx context.Context, questionID uuid.UUID) ([]Answer, error)
+	ListCourses(ctx context.Context) ([]ListCoursesRow, error)
 	ListEnrollmentsByUser(ctx context.Context, userID uuid.UUID) ([]Enrollment, error)
 	ListNodesByTag(ctx context.Context, tagID uuid.UUID) ([]Node, error)
 	ListProgressByUser(ctx context.Context, userID uuid.UUID) ([]Progress, error)
 	ListQuestionsByQuiz(ctx context.Context, quizID uuid.UUID) ([]Question, error)
+	ListQuizzes(ctx context.Context) ([]Quiz, error)
 	ListReviewsByCourse(ctx context.Context, nodeID uuid.UUID) ([]ListReviewsByCourseRow, error)
 	ListTags(ctx context.Context) ([]Tag, error)
 	ListTagsByNode(ctx context.Context, nodeID uuid.UUID) ([]Tag, error)
@@ -103,7 +115,9 @@ type Querier interface {
 	UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Course, error)
 	UpdateLesson(ctx context.Context, arg UpdateLessonParams) (Lesson, error)
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
+	UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, error)
 	UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error)
+	UpdateTag(ctx context.Context, arg UpdateTagParams) (Tag, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UserProfile, error)
 	// Payment Gates

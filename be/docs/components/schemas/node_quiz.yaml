@@ -1,0 +1,8 @@
+AttachQuizRequest:
+  type: object
+  properties:
+    quiz_id:
+      type: string
+      format: uuid
+  required:
+    - quiz_id

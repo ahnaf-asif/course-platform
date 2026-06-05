@@ -12,6 +12,22 @@ RETURNING *;
 SELECT * FROM quizzes
 WHERE id = $1 LIMIT 1;
 
+-- name: ListQuizzes :many
+SELECT * FROM quizzes
+ORDER BY created_at DESC;
+
+-- name: UpdateQuiz :one
+UPDATE quizzes
+SET
+    title = COALESCE(sqlc.narg('title'), title),
+    passing_score = COALESCE(sqlc.narg('passing_score'), passing_score)
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteQuiz :exec
+DELETE FROM quizzes
+WHERE id = $1;
+
 -- name: AttachQuizToNode :exec
 INSERT INTO node_quiz (node_id, quiz_id)
 VALUES ($1, $2)
@@ -21,6 +37,10 @@ ON CONFLICT (node_id, quiz_id) DO NOTHING;
 SELECT q.* FROM quizzes q
 JOIN node_quiz nq ON q.id = nq.quiz_id
 WHERE nq.node_id = $1;
+
+-- name: DetachQuizFromNode :exec
+DELETE FROM node_quiz
+WHERE node_id = $1 AND quiz_id = $2;
 
 -- Questions
 -- name: CreateQuestion :one
@@ -39,6 +59,10 @@ SELECT * FROM questions
 WHERE quiz_id = $1
 ORDER BY sequence_order;
 
+-- name: DeleteQuestion :exec
+DELETE FROM questions
+WHERE id = $1;
+
 -- Answers
 -- name: CreateAnswer :one
 INSERT INTO answers (
@@ -54,6 +78,10 @@ RETURNING *;
 SELECT * FROM answers
 WHERE question_id = $1
 ORDER BY created_at;
+
+-- name: DeleteAnswersByQuestion :exec
+DELETE FROM answers
+WHERE question_id = $1;
 
 -- Quiz Attempts
 -- name: CreateQuizAttempt :one

@@ -10,6 +10,7 @@ import '@mantine/carousel/styles.css';
 import '@mantine/dropzone/styles.css';
 import '@mantine/code-highlight/styles.css';
 import '@mantine/spotlight/styles.css';
+import '@mantine/tiptap/styles.css';
 
 export const metadata: Metadata = {
   title: "Course Platform",
@@ -25,8 +26,28 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <ColorSchemeScript defaultColorScheme="light" />
+        <script
+          id="MathJax-script"
+          async
+          src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+        ></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.MathJax = {
+                tex: {
+                  inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
+                  displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']]
+                },
+                options: {
+                  skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+                }
+              };
+            `,
+          }}
+        ></script>
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>

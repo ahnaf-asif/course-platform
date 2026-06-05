@@ -58,18 +58,20 @@ const createCourse = `-- name: CreateCourse :one
 INSERT INTO courses (
     node_id,
     title,
+    slug,
     description,
     thumbnail_url,
     is_published
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4, $5, $6
 )
-RETURNING node_id, title, description, thumbnail_url, is_published
+RETURNING node_id, title, description, thumbnail_url, is_published, slug
 `
 
 type CreateCourseParams struct {
 	NodeID       uuid.UUID      `json:"node_id"`
 	Title        string         `json:"title"`
+	Slug         string         `json:"slug"`
 	Description  sql.NullString `json:"description"`
 	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
 	IsPublished  bool           `json:"is_published"`
@@ -80,6 +82,7 @@ func (q *Queries) CreateCourse(ctx context.Context, arg CreateCourseParams) (Cou
 	row := q.db.QueryRowContext(ctx, createCourse,
 		arg.NodeID,
 		arg.Title,
+		arg.Slug,
 		arg.Description,
 		arg.ThumbnailUrl,
 		arg.IsPublished,
@@ -91,6 +94,7 @@ func (q *Queries) CreateCourse(ctx context.Context, arg CreateCourseParams) (Cou
 		&i.Description,
 		&i.ThumbnailUrl,
 		&i.IsPublished,
+		&i.Slug,
 	)
 	return i, err
 }
@@ -99,8 +103,8 @@ const createLesson = `-- name: CreateLesson :one
 INSERT INTO lessons (
     node_id,
     title,
-    text_content,
     video_url,
+    text_content,
     sequence_order
 ) VALUES (
     $1, $2, $3, $4, $5
@@ -111,8 +115,8 @@ RETURNING node_id, title, text_content, video_url, sequence_order
 type CreateLessonParams struct {
 	NodeID        uuid.UUID      `json:"node_id"`
 	Title         string         `json:"title"`
-	TextContent   sql.NullString `json:"text_content"`
 	VideoUrl      sql.NullString `json:"video_url"`
+	TextContent   sql.NullString `json:"text_content"`
 	SequenceOrder int32          `json:"sequence_order"`
 }
 
@@ -121,8 +125,8 @@ func (q *Queries) CreateLesson(ctx context.Context, arg CreateLessonParams) (Les
 	row := q.db.QueryRowContext(ctx, createLesson,
 		arg.NodeID,
 		arg.Title,
-		arg.TextContent,
 		arg.VideoUrl,
+		arg.TextContent,
 		arg.SequenceOrder,
 	)
 	var i Lesson
@@ -220,15 +224,16 @@ const deleteSubject = `-- name: DeleteSubject :exec
 DELETE FROM nodes WHERE id = $1
 `
 
+// DELETE HANDLERS (Generic for all nodes)
 func (q *Queries) DeleteSubject(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteSubject, id)
 	return err
 }
 
 const getChapter = `-- name: GetChapter :one
-SELECT n.id, n.parent_id, n.node_type, n.created_at, ch.title, ch.sequence_order
+SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.sequence_order
 FROM nodes n
-JOIN chapters ch ON n.id = ch.node_id
+JOIN chapters c ON n.id = c.node_id
 WHERE n.id = $1 LIMIT 1
 `
 
@@ -258,7 +263,7 @@ func (q *Queries) GetChapter(ctx context.Context, id uuid.UUID) (GetChapterRow, 
 const getChildNodes = `-- name: GetChildNodes :many
 SELECT id, parent_id, node_type, created_at FROM nodes
 WHERE parent_id = $1
-ORDER BY created_at
+ORDER BY id
 `
 
 func (q *Queries) GetChildNodes(ctx context.Context, parentID uuid.NullUUID) ([]Node, error) {
@@ -290,7 +295,7 @@ func (q *Queries) GetChildNodes(ctx context.Context, parentID uuid.NullUUID) ([]
 }
 
 const getCourse = `-- name: GetCourse :one
-SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.description, c.thumbnail_url, c.is_published
+SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.slug, c.description, c.thumbnail_url, c.is_published
 FROM nodes n
 JOIN courses c ON n.id = c.node_id
 WHERE n.id = $1 LIMIT 1
@@ -302,6 +307,7 @@ type GetCourseRow struct {
 	NodeType     NodeType       `json:"node_type"`
 	CreatedAt    time.Time      `json:"created_at"`
 	Title        string         `json:"title"`
+	Slug         string         `json:"slug"`
 	Description  sql.NullString `json:"description"`
 	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
 	IsPublished  bool           `json:"is_published"`
@@ -316,6 +322,43 @@ func (q *Queries) GetCourse(ctx context.Context, id uuid.UUID) (GetCourseRow, er
 		&i.NodeType,
 		&i.CreatedAt,
 		&i.Title,
+		&i.Slug,
+		&i.Description,
+		&i.ThumbnailUrl,
+		&i.IsPublished,
+	)
+	return i, err
+}
+
+const getCourseBySlug = `-- name: GetCourseBySlug :one
+SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.slug, c.description, c.thumbnail_url, c.is_published
+FROM nodes n
+JOIN courses c ON n.id = c.node_id
+WHERE c.slug = $1 OR (CASE WHEN $1 ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN n.id = $1::uuid ELSE FALSE END) LIMIT 1
+`
+
+type GetCourseBySlugRow struct {
+	ID           uuid.UUID      `json:"id"`
+	ParentID     uuid.NullUUID  `json:"parent_id"`
+	NodeType     NodeType       `json:"node_type"`
+	CreatedAt    time.Time      `json:"created_at"`
+	Title        string         `json:"title"`
+	Slug         string         `json:"slug"`
+	Description  sql.NullString `json:"description"`
+	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
+	IsPublished  bool           `json:"is_published"`
+}
+
+func (q *Queries) GetCourseBySlug(ctx context.Context, slug string) (GetCourseBySlugRow, error) {
+	row := q.db.QueryRowContext(ctx, getCourseBySlug, slug)
+	var i GetCourseBySlugRow
+	err := row.Scan(
+		&i.ID,
+		&i.ParentID,
+		&i.NodeType,
+		&i.CreatedAt,
+		&i.Title,
+		&i.Slug,
 		&i.Description,
 		&i.ThumbnailUrl,
 		&i.IsPublished,
@@ -377,8 +420,179 @@ func (q *Queries) GetCourseTree(ctx context.Context, id uuid.UUID) ([]GetCourseT
 	return items, nil
 }
 
+const getCourseTreeHydrated = `-- name: GetCourseTreeHydrated :many
+WITH RECURSIVE tree AS (
+    -- Anchor
+    SELECT n.id, n.parent_id, n.node_type, 0 AS level
+    FROM nodes n
+    WHERE n.id = $1
+    
+    UNION ALL
+    
+    -- Recursive step
+    SELECT n.id, n.parent_id, n.node_type, t.level + 1
+    FROM nodes n
+    JOIN tree t ON n.parent_id = t.id
+)
+SELECT 
+    t.id, t.parent_id, t.node_type, t.level,
+    c.title as course_title,
+    s.title as subject_title, s.sequence_order as subject_order,
+    ch.title as chapter_title, ch.sequence_order as chapter_order,
+    l.title as lesson_title, l.sequence_order as lesson_order,
+    l.video_url as lesson_video_url, l.text_content as lesson_text_content,
+    EXISTS (SELECT 1 FROM node_quiz nq WHERE nq.node_id = t.id) as has_quizzes
+FROM tree t
+LEFT JOIN courses c ON t.id = c.node_id
+LEFT JOIN subjects s ON t.id = s.node_id
+LEFT JOIN chapters ch ON t.id = ch.node_id
+LEFT JOIN lessons l ON t.id = l.node_id
+ORDER BY t.level, COALESCE(s.sequence_order, ch.sequence_order, l.sequence_order, 0)
+`
+
+type GetCourseTreeHydratedRow struct {
+	ID                uuid.UUID      `json:"id"`
+	ParentID          uuid.NullUUID  `json:"parent_id"`
+	NodeType          NodeType       `json:"node_type"`
+	Level             int32          `json:"level"`
+	CourseTitle       sql.NullString `json:"course_title"`
+	SubjectTitle      sql.NullString `json:"subject_title"`
+	SubjectOrder      sql.NullInt32  `json:"subject_order"`
+	ChapterTitle      sql.NullString `json:"chapter_title"`
+	ChapterOrder      sql.NullInt32  `json:"chapter_order"`
+	LessonTitle       sql.NullString `json:"lesson_title"`
+	LessonOrder       sql.NullInt32  `json:"lesson_order"`
+	LessonVideoUrl    sql.NullString `json:"lesson_video_url"`
+	LessonTextContent sql.NullString `json:"lesson_text_content"`
+	HasQuizzes        bool           `json:"has_quizzes"`
+}
+
+func (q *Queries) GetCourseTreeHydrated(ctx context.Context, id uuid.UUID) ([]GetCourseTreeHydratedRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCourseTreeHydrated, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCourseTreeHydratedRow
+	for rows.Next() {
+		var i GetCourseTreeHydratedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ParentID,
+			&i.NodeType,
+			&i.Level,
+			&i.CourseTitle,
+			&i.SubjectTitle,
+			&i.SubjectOrder,
+			&i.ChapterTitle,
+			&i.ChapterOrder,
+			&i.LessonTitle,
+			&i.LessonOrder,
+			&i.LessonVideoUrl,
+			&i.LessonTextContent,
+			&i.HasQuizzes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCourseTreeHydratedBySlug = `-- name: GetCourseTreeHydratedBySlug :many
+WITH RECURSIVE tree AS (
+    -- Anchor: Match by slug OR by node_id (UUID)
+    SELECT n.id, n.parent_id, n.node_type, 0 AS level
+    FROM nodes n
+    JOIN courses c ON n.id = c.node_id
+    WHERE c.slug = $1 OR (CASE WHEN $1 ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN n.id = $1::uuid ELSE FALSE END)
+    
+    UNION ALL
+    
+    -- Recursive step
+    SELECT n.id, n.parent_id, n.node_type, t.level + 1
+    FROM nodes n
+    JOIN tree t ON n.parent_id = t.id
+)
+SELECT 
+    t.id, t.parent_id, t.node_type, t.level,
+    c.title as course_title,
+    s.title as subject_title, s.sequence_order as subject_order,
+    ch.title as chapter_title, ch.sequence_order as chapter_order,
+    l.title as lesson_title, l.sequence_order as lesson_order,
+    l.video_url as lesson_video_url, l.text_content as lesson_text_content,
+    EXISTS (SELECT 1 FROM node_quiz nq WHERE nq.node_id = t.id) as has_quizzes
+FROM tree t
+LEFT JOIN courses c ON t.id = c.node_id
+LEFT JOIN subjects s ON t.id = s.node_id
+LEFT JOIN chapters ch ON t.id = ch.node_id
+LEFT JOIN lessons l ON t.id = l.node_id
+ORDER BY t.level, COALESCE(s.sequence_order, ch.sequence_order, l.sequence_order, 0)
+`
+
+type GetCourseTreeHydratedBySlugRow struct {
+	ID                uuid.UUID      `json:"id"`
+	ParentID          uuid.NullUUID  `json:"parent_id"`
+	NodeType          NodeType       `json:"node_type"`
+	Level             int32          `json:"level"`
+	CourseTitle       sql.NullString `json:"course_title"`
+	SubjectTitle      sql.NullString `json:"subject_title"`
+	SubjectOrder      sql.NullInt32  `json:"subject_order"`
+	ChapterTitle      sql.NullString `json:"chapter_title"`
+	ChapterOrder      sql.NullInt32  `json:"chapter_order"`
+	LessonTitle       sql.NullString `json:"lesson_title"`
+	LessonOrder       sql.NullInt32  `json:"lesson_order"`
+	LessonVideoUrl    sql.NullString `json:"lesson_video_url"`
+	LessonTextContent sql.NullString `json:"lesson_text_content"`
+	HasQuizzes        bool           `json:"has_quizzes"`
+}
+
+func (q *Queries) GetCourseTreeHydratedBySlug(ctx context.Context, slug string) ([]GetCourseTreeHydratedBySlugRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCourseTreeHydratedBySlug, slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCourseTreeHydratedBySlugRow
+	for rows.Next() {
+		var i GetCourseTreeHydratedBySlugRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ParentID,
+			&i.NodeType,
+			&i.Level,
+			&i.CourseTitle,
+			&i.SubjectTitle,
+			&i.SubjectOrder,
+			&i.ChapterTitle,
+			&i.ChapterOrder,
+			&i.LessonTitle,
+			&i.LessonOrder,
+			&i.LessonVideoUrl,
+			&i.LessonTextContent,
+			&i.HasQuizzes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLesson = `-- name: GetLesson :one
-SELECT n.id, n.parent_id, n.node_type, n.created_at, l.title, l.text_content, l.video_url, l.sequence_order
+SELECT n.id, n.parent_id, n.node_type, n.created_at, l.title, l.video_url, l.text_content, l.sequence_order
 FROM nodes n
 JOIN lessons l ON n.id = l.node_id
 WHERE n.id = $1 LIMIT 1
@@ -390,8 +604,8 @@ type GetLessonRow struct {
 	NodeType      NodeType       `json:"node_type"`
 	CreatedAt     time.Time      `json:"created_at"`
 	Title         string         `json:"title"`
-	TextContent   sql.NullString `json:"text_content"`
 	VideoUrl      sql.NullString `json:"video_url"`
+	TextContent   sql.NullString `json:"text_content"`
 	SequenceOrder int32          `json:"sequence_order"`
 }
 
@@ -404,8 +618,8 @@ func (q *Queries) GetLesson(ctx context.Context, id uuid.UUID) (GetLessonRow, er
 		&i.NodeType,
 		&i.CreatedAt,
 		&i.Title,
-		&i.TextContent,
 		&i.VideoUrl,
+		&i.TextContent,
 		&i.SequenceOrder,
 	)
 	return i, err
@@ -492,6 +706,58 @@ func (q *Queries) GetSubject(ctx context.Context, id uuid.UUID) (GetSubjectRow, 
 	return i, err
 }
 
+const listCourses = `-- name: ListCourses :many
+SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.slug, c.description, c.thumbnail_url, c.is_published
+FROM nodes n
+JOIN courses c ON n.id = c.node_id
+ORDER BY n.created_at DESC
+`
+
+type ListCoursesRow struct {
+	ID           uuid.UUID      `json:"id"`
+	ParentID     uuid.NullUUID  `json:"parent_id"`
+	NodeType     NodeType       `json:"node_type"`
+	CreatedAt    time.Time      `json:"created_at"`
+	Title        string         `json:"title"`
+	Slug         string         `json:"slug"`
+	Description  sql.NullString `json:"description"`
+	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
+	IsPublished  bool           `json:"is_published"`
+}
+
+func (q *Queries) ListCourses(ctx context.Context) ([]ListCoursesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCourses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCoursesRow
+	for rows.Next() {
+		var i ListCoursesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ParentID,
+			&i.NodeType,
+			&i.CreatedAt,
+			&i.Title,
+			&i.Slug,
+			&i.Description,
+			&i.ThumbnailUrl,
+			&i.IsPublished,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateChapter = `-- name: UpdateChapter :one
 UPDATE chapters
 SET
@@ -518,16 +784,18 @@ const updateCourse = `-- name: UpdateCourse :one
 UPDATE courses
 SET
     title = COALESCE($2, title),
-    description = COALESCE($3, description),
-    thumbnail_url = COALESCE($4, thumbnail_url),
-    is_published = COALESCE($5, is_published)
+    slug = COALESCE($3, slug),
+    description = COALESCE($4, description),
+    thumbnail_url = COALESCE($5, thumbnail_url),
+    is_published = COALESCE($6, is_published)
 WHERE node_id = $1
-RETURNING node_id, title, description, thumbnail_url, is_published
+RETURNING node_id, title, description, thumbnail_url, is_published, slug
 `
 
 type UpdateCourseParams struct {
 	NodeID       uuid.UUID      `json:"node_id"`
 	Title        sql.NullString `json:"title"`
+	Slug         sql.NullString `json:"slug"`
 	Description  sql.NullString `json:"description"`
 	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
 	IsPublished  sql.NullBool   `json:"is_published"`
@@ -537,6 +805,7 @@ func (q *Queries) UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Cou
 	row := q.db.QueryRowContext(ctx, updateCourse,
 		arg.NodeID,
 		arg.Title,
+		arg.Slug,
 		arg.Description,
 		arg.ThumbnailUrl,
 		arg.IsPublished,
@@ -548,6 +817,7 @@ func (q *Queries) UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Cou
 		&i.Description,
 		&i.ThumbnailUrl,
 		&i.IsPublished,
+		&i.Slug,
 	)
 	return i, err
 }
@@ -556,8 +826,8 @@ const updateLesson = `-- name: UpdateLesson :one
 UPDATE lessons
 SET
     title = COALESCE($2, title),
-    text_content = COALESCE($3, text_content),
-    video_url = COALESCE($4, video_url),
+    video_url = COALESCE($3, video_url),
+    text_content = COALESCE($4, text_content),
     sequence_order = COALESCE($5, sequence_order)
 WHERE node_id = $1
 RETURNING node_id, title, text_content, video_url, sequence_order
@@ -566,8 +836,8 @@ RETURNING node_id, title, text_content, video_url, sequence_order
 type UpdateLessonParams struct {
 	NodeID        uuid.UUID      `json:"node_id"`
 	Title         sql.NullString `json:"title"`
-	TextContent   sql.NullString `json:"text_content"`
 	VideoUrl      sql.NullString `json:"video_url"`
+	TextContent   sql.NullString `json:"text_content"`
 	SequenceOrder sql.NullInt32  `json:"sequence_order"`
 }
 
@@ -575,8 +845,8 @@ func (q *Queries) UpdateLesson(ctx context.Context, arg UpdateLessonParams) (Les
 	row := q.db.QueryRowContext(ctx, updateLesson,
 		arg.NodeID,
 		arg.Title,
-		arg.TextContent,
 		arg.VideoUrl,
+		arg.TextContent,
 		arg.SequenceOrder,
 	)
 	var i Lesson

@@ -51,7 +51,7 @@ func (s *Server) setupMiddleware() {
 	}
 	s.echo.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     strings.Split(allowedOrigins, ","),
-		AllowMethods:     []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodOptions},
+		AllowMethods:     []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete, http.MethodOptions},
 		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, "X-Requested-With"},
 		AllowCredentials: true,
 	}))
@@ -109,6 +109,10 @@ func (s *Server) registerRoutes() {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	authHandler := handlers.NewAuthHandler(s.store, s.tokenService, s.logger)
 	userHandler := handlers.NewUserHandler(s.store, s.cacheService, s.logger)
+	courseHandler := handlers.NewCourseHandler(s.store, s.cacheService, s.logger)
+	curriculumHandler := handlers.NewCurriculumHandler(s.store, s.cacheService, s.logger)
+	quizHandler := handlers.NewQuizHandler(s.store, s.cacheService, s.logger)
+	tagHandler := handlers.NewTagHandler(s.store, s.cacheService, s.logger)
 
 	// API v1 Group
 	v1 := s.echo.Group("/api/v1")
@@ -204,12 +208,64 @@ func (s *Server) registerRoutes() {
 	users.PATCH("/me", userHandler.UpdateMe)
 	users.PUT("/me/password", userHandler.UpdatePassword)
 
-	// Admin routes
-	admin := protected.Group("/admin")
+	// Curriculum Public routes
+	// Public Course Routes
+	v1.GET("/courses/s/:slug", courseHandler.GetCourseBySlug)
+	v1.GET("/courses/s/:slug/tree", curriculumHandler.GetCourseTreeBySlug)
+	v1.GET("/courses/:id/tree", curriculumHandler.GetCourseTree)
+
+	// Admin Routes
+	admin := v1.Group("/admin")
+	admin.Use(internalMiddleware.JWTMiddleware(jwtSecret))
 	admin.Use(internalMiddleware.RequireAdmin())
 	admin.GET("/ping", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"message": "pong", "role": "admin"})
 	})
+
+	// Admin Course routes
+	adminCourses := admin.Group("/courses")
+	adminCourses.GET("", courseHandler.ListCourses)
+	adminCourses.POST("", courseHandler.CreateCourse)
+	adminCourses.PATCH("/:id", courseHandler.UpdateCourse)
+	adminCourses.DELETE("/:id", courseHandler.DeleteCourse)
+
+	// Admin Curriculum routes
+	adminSubjects := admin.Group("/subjects")
+	adminSubjects.POST("", curriculumHandler.CreateSubject)
+	adminSubjects.PATCH("/:id", curriculumHandler.UpdateSubject)
+	adminSubjects.DELETE("/:id", curriculumHandler.DeleteSubject)
+
+	adminChapters := admin.Group("/chapters")
+	adminChapters.POST("", curriculumHandler.CreateChapter)
+	adminChapters.PATCH("/:id", curriculumHandler.UpdateChapter)
+	adminChapters.DELETE("/:id", curriculumHandler.DeleteChapter)
+
+	adminLessons := admin.Group("/lessons")
+	adminLessons.POST("", curriculumHandler.CreateLesson)
+	adminLessons.PATCH("/:id", curriculumHandler.UpdateLesson)
+	adminLessons.DELETE("/:id", curriculumHandler.DeleteLesson)
+
+	adminQuizzes := admin.Group("/quizzes")
+	adminQuizzes.GET("", quizHandler.ListQuizzes)
+	adminQuizzes.POST("", quizHandler.CreateQuiz)
+	adminQuizzes.PATCH("/:id", quizHandler.UpdateQuiz)
+	adminQuizzes.DELETE("/:id", quizHandler.DeleteQuiz)
+	adminQuizzes.POST("/:id/questions", quizHandler.AddBulkQuestions)
+	adminQuizzes.GET("/:id/questions", quizHandler.ListQuestions)
+	adminQuizzes.DELETE("/:id/questions/:qId", quizHandler.DeleteQuestion)
+
+	adminNodes := admin.Group("/nodes")
+	adminNodes.POST("/:id/quizzes", quizHandler.AttachQuizToNode)
+	adminNodes.GET("/:id/quizzes", quizHandler.GetQuizzesByNode)
+	adminNodes.DELETE("/:id/quizzes/:quizId", quizHandler.DetachQuizFromNode)
+	adminNodes.POST("/:id/tags", tagHandler.AttachTagToNode)
+	adminNodes.GET("/:id/tags", tagHandler.ListTagsByNode)
+
+	adminTags := admin.Group("/tags")
+	adminTags.POST("", tagHandler.CreateTag)
+	adminTags.GET("", tagHandler.ListTags)
+	adminTags.PATCH("/:id", tagHandler.UpdateTag)
+	adminTags.DELETE("/:id", tagHandler.DeleteTag)
 }
 
 func (s *Server) GetEcho() *echo.Echo {

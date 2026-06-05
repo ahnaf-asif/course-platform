@@ -1,0 +1,410 @@
+/admin/subjects:
+  post:
+    tags:
+      - Admin Curriculum
+    summary: Create a new subject
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/curriculum.yaml#/CreateSubjectRequest'
+    responses:
+      '201':
+        description: Subject created
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/SubjectResponse'
+      '400':
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
+
+/admin/subjects/{id}:
+  patch:
+    tags:
+      - Admin Curriculum
+    summary: Update a subject
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/curriculum.yaml#/UpdateSubjectRequest'
+    responses:
+      '200':
+        description: Subject updated
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/SubjectResponse'
+      '400':
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
+      '404':
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
+  delete:
+    tags:
+      - Admin Curriculum
+    summary: Delete a subject
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: Subject deleted
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
+      '404':
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
+
+/admin/chapters:
+  post:
+    tags:
+      - Admin Curriculum
+    summary: Create a new chapter
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/curriculum.yaml#/CreateChapterRequest'
+    responses:
+      '201':
+        description: Chapter created
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/ChapterResponse'
+      '400':
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
+
+/admin/chapters/{id}:
+  patch:
+    tags:
+      - Admin Curriculum
+    summary: Update a chapter
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/curriculum.yaml#/UpdateChapterRequest'
+    responses:
+      '200':
+        description: Chapter updated
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/ChapterResponse'
+      '400':
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
+      '404':
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
+  delete:
+    tags:
+      - Admin Curriculum
+    summary: Delete a chapter
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: Chapter deleted
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
+      '404':
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
+
+/courses/{id}/tree:
+  get:
+    tags:
+      - Curriculum
+    summary: Get full course tree
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Course tree retrieved
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../components/schemas/curriculum.yaml#/CourseTreeResponse'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '404':
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
+
+/admin/lessons:
+  post:
+    tags:
+      - Admin Curriculum
+    summary: Create a new lesson
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/curriculum.yaml#/CreateLessonRequest'
+    responses:
+      '201':
+        description: Lesson created
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/LessonResponse'
+      '400':
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
+
+/admin/lessons/{id}:
+  patch:
+    tags:
+      - Admin Curriculum
+    summary: Update a lesson
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/curriculum.yaml#/UpdateLessonRequest'
+    responses:
+      '200':
+        description: Lesson updated
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/LessonResponse'
+      '400':
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/BadRequest'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
+      '404':
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'
+  delete:
+    tags:
+      - Admin Curriculum
+    summary: Delete a lesson
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: Lesson deleted
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Unauthorized'
+      '403':
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/Forbidden'
+      '404':
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/errors.yaml#/NotFound'

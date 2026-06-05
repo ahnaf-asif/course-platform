@@ -25,6 +25,46 @@ paths:
     $ref: './paths/me.yaml'
   /users/me/password:
     $ref: './paths/password.yaml'
+  /admin/courses:
+    $ref: './paths/admin_courses.yaml#/~1admin~1courses'
+  /admin/courses/{id}:
+    $ref: './paths/admin_courses.yaml#/~1admin~1courses~1{id}'
+  /admin/subjects:
+    $ref: './paths/admin_curriculum.yaml#/~1admin~1subjects'
+  /admin/subjects/{id}:
+    $ref: './paths/admin_curriculum.yaml#/~1admin~1subjects~1{id}'
+  /admin/chapters:
+    $ref: './paths/admin_curriculum.yaml#/~1admin~1chapters'
+  /admin/chapters/{id}:
+    $ref: './paths/admin_curriculum.yaml#/~1admin~1chapters~1{id}'
+  /admin/lessons:
+    $ref: './paths/admin_curriculum.yaml#/~1admin~1lessons'
+  /admin/lessons/{id}:
+    $ref: './paths/admin_curriculum.yaml#/~1admin~1lessons~1{id}'
+  /admin/quizzes:
+    $ref: './paths/admin_assessment.yaml#/~1admin~1quizzes'
+  /admin/quizzes/{id}:
+    $ref: './paths/admin_assessment.yaml#/~1admin~1quizzes~1{id}'
+  /admin/quizzes/{id}/questions:
+    $ref: './paths/admin_assessment.yaml#/~1admin~1quizzes~1{id}~1questions'
+  /admin/quizzes/{id}/questions/{qId}:
+    $ref: './paths/admin_assessment.yaml#/~1admin~1quizzes~1{id}~1questions~1{qId}'
+  /admin/tags:
+    $ref: './paths/admin_tags.yaml#/~1admin~1tags'
+  /admin/tags/{id}:
+    $ref: './paths/admin_tags.yaml#/~1admin~1tags~1{id}'
+  /admin/nodes/{id}/tags:
+    $ref: './paths/admin_tags.yaml#/~1admin~1nodes~1{id}~1tags'
+  /admin/nodes/{id}/quizzes:
+    $ref: './paths/admin_assessment.yaml#/~1admin~1nodes~1{id}~1quizzes'
+  /admin/nodes/{id}/quizzes/{quizId}:
+    $ref: './paths/admin_assessment.yaml#/~1admin~1nodes~1{id}~1quizzes~1{quizId}'
+  /courses/{id}/tree:
+    $ref: './paths/admin_curriculum.yaml#/~1courses~1{id}~1tree'
+  /courses/s/{slug}:
+    $ref: './paths/course_by_slug.yaml'
+  /courses/s/{slug}/tree:
+    $ref: './paths/course_tree_by_slug.yaml'
 components:
   securitySchemes:
     bearerAuth:
@@ -52,3 +92,49 @@ components:
       $ref: './components/schemas/auth.yaml#/LoginResponse'
     ValidationError:
       $ref: './components/schemas/errors.yaml#/ValidationError'
+    CourseResponse:
+      $ref: './components/schemas/course.yaml#/CourseResponse'
+    CreateCourseRequest:
+      $ref: './components/schemas/course.yaml#/CreateCourseRequest'
+    UpdateCourseRequest:
+      $ref: './components/schemas/course.yaml#/UpdateCourseRequest'
+    SubjectResponse:
+      $ref: './components/schemas/curriculum.yaml#/SubjectResponse'
+    CreateSubjectRequest:
+      $ref: './components/schemas/curriculum.yaml#/CreateSubjectRequest'
+    UpdateSubjectRequest:
+      $ref: './components/schemas/curriculum.yaml#/UpdateSubjectRequest'
+    ChapterResponse:
+      $ref: './components/schemas/curriculum.yaml#/ChapterResponse'
+    CreateChapterRequest:
+      $ref: './components/schemas/curriculum.yaml#/CreateChapterRequest'
+    UpdateChapterRequest:
+      $ref: './components/schemas/curriculum.yaml#/UpdateChapterRequest'
+    LessonResponse:
+      $ref: './components/schemas/curriculum.yaml#/LessonResponse'
+    CreateLessonRequest:
+      $ref: './components/schemas/curriculum.yaml#/CreateLessonRequest'
+    UpdateLessonRequest:
+      $ref: './components/schemas/curriculum.yaml#/UpdateLessonRequest'
+    QuizResponse:
+      $ref: './components/schemas/assessment.yaml#/QuizResponse'
+    CreateQuizRequest:
+      $ref: './components/schemas/assessment.yaml#/CreateQuizRequest'
+    UpdateQuizRequest:
+      $ref: './components/schemas/assessment.yaml#/UpdateQuizRequest'
+    QuestionResponse:
+      $ref: './components/schemas/assessment.yaml#/QuestionResponse'
+    BulkQuestionsRequest:
+      $ref: './components/schemas/assessment.yaml#/BulkQuestionsRequest'
+    AttachQuizRequest:
+      $ref: './components/schemas/node_quiz.yaml#/AttachQuizRequest'
+    TagResponse:
+      $ref: './components/schemas/tag.yaml#/TagResponse'
+    CreateTagRequest:
+      $ref: './components/schemas/tag.yaml#/CreateTagRequest'
+    UpdateTagRequest:
+      $ref: './components/schemas/tag.yaml#/UpdateTagRequest'
+    AttachTagRequest:
+      $ref: './components/schemas/tag.yaml#/AttachTagRequest'
+    CourseTreeResponse:
+      $ref: './components/schemas/curriculum.yaml#/CourseTreeResponse'

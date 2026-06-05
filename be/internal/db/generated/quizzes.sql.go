@@ -195,6 +195,51 @@ func (q *Queries) CreateQuizAttemptAnswer(ctx context.Context, arg CreateQuizAtt
 	return i, err
 }
 
+const deleteAnswersByQuestion = `-- name: DeleteAnswersByQuestion :exec
+DELETE FROM answers
+WHERE question_id = $1
+`
+
+func (q *Queries) DeleteAnswersByQuestion(ctx context.Context, questionID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteAnswersByQuestion, questionID)
+	return err
+}
+
+const deleteQuestion = `-- name: DeleteQuestion :exec
+DELETE FROM questions
+WHERE id = $1
+`
+
+func (q *Queries) DeleteQuestion(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteQuestion, id)
+	return err
+}
+
+const deleteQuiz = `-- name: DeleteQuiz :exec
+DELETE FROM quizzes
+WHERE id = $1
+`
+
+func (q *Queries) DeleteQuiz(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteQuiz, id)
+	return err
+}
+
+const detachQuizFromNode = `-- name: DetachQuizFromNode :exec
+DELETE FROM node_quiz
+WHERE node_id = $1 AND quiz_id = $2
+`
+
+type DetachQuizFromNodeParams struct {
+	NodeID uuid.UUID `json:"node_id"`
+	QuizID uuid.UUID `json:"quiz_id"`
+}
+
+func (q *Queries) DetachQuizFromNode(ctx context.Context, arg DetachQuizFromNodeParams) error {
+	_, err := q.db.ExecContext(ctx, detachQuizFromNode, arg.NodeID, arg.QuizID)
+	return err
+}
+
 const getAttemptWithAnswers = `-- name: GetAttemptWithAnswers :many
 SELECT 
     qa.id as attempt_id, qa.score, qa.is_passed, qa.completed_at,
@@ -414,4 +459,64 @@ func (q *Queries) ListQuestionsByQuiz(ctx context.Context, quizID uuid.UUID) ([]
 		return nil, err
 	}
 	return items, nil
+}
+
+const listQuizzes = `-- name: ListQuizzes :many
+SELECT id, title, passing_score, created_at FROM quizzes
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListQuizzes(ctx context.Context) ([]Quiz, error) {
+	rows, err := q.db.QueryContext(ctx, listQuizzes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Quiz
+	for rows.Next() {
+		var i Quiz
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.PassingScore,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateQuiz = `-- name: UpdateQuiz :one
+UPDATE quizzes
+SET
+    title = COALESCE($2, title),
+    passing_score = COALESCE($3, passing_score)
+WHERE id = $1
+RETURNING id, title, passing_score, created_at
+`
+
+type UpdateQuizParams struct {
+	ID           uuid.UUID      `json:"id"`
+	Title        sql.NullString `json:"title"`
+	PassingScore sql.NullInt32  `json:"passing_score"`
+}
+
+func (q *Queries) UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, error) {
+	row := q.db.QueryRowContext(ctx, updateQuiz, arg.ID, arg.Title, arg.PassingScore)
+	var i Quiz
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.PassingScore,
+		&i.CreatedAt,
+	)
+	return i, err
 }

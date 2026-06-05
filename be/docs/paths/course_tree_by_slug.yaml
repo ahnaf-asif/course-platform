@@ -1,0 +1,29 @@
+get:
+  tags:
+    - Course
+  summary: Get course tree by slug
+  description: Returns the full curriculum hierarchy for a course identified by slug.
+  operationId: getCourseTreeBySlug
+  parameters:
+    - name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Course tree hierarchy
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '../components/schemas/curriculum.yaml#/CourseTreeResponse'
+    '404':
+      description: Course not found
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/errors.yaml#/NotFound'
+    '500':
+      description: Internal server error

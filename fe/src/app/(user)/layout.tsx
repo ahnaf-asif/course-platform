@@ -4,11 +4,12 @@ import { AppShell, Group, Title, Menu, UnstyledButton, Text, Avatar } from '@man
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthContext } from '@/context/AuthContext';
 import { AuthGuard } from '@/components/guards/AuthGuard';
-import { IconLogout, IconChevronDown } from '@tabler/icons-react';
+import { IconLogout, IconChevronDown, IconUser, IconLayoutDashboard, IconShield } from '@tabler/icons-react';
+import Link from 'next/link';
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   const { logout } = useAuth();
-  const { userEmail } = useAuthContext();
+  const { userEmail, role } = useAuthContext();
 
   return (
     <AuthGuard>
@@ -20,7 +21,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
           <Group h="100%" px="md" justify="space-between">
             <Title order={3}>Course Platform</Title>
             
-            <Menu shadow="md" width={200}>
+            <Menu shadow="md" width={200} position="bottom-end">
               <Menu.Target>
                 <UnstyledButton>
                   <Group gap={7}>
@@ -34,6 +35,36 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
               </Menu.Target>
 
               <Menu.Dropdown>
+                <Menu.Label>Application</Menu.Label>
+                <Menu.Item
+                  leftSection={<IconLayoutDashboard size={14} stroke={1.5} />}
+                  component={Link}
+                  href="/dashboard"
+                >
+                  Dashboard
+                </Menu.Item>
+
+                {role === 'ADMIN' && (
+                  <Menu.Item
+                    leftSection={<IconShield size={14} stroke={1.5} />}
+                    component={Link}
+                    href="/admin"
+                  >
+                    Admin Panel
+                  </Menu.Item>
+                )}
+
+                <Menu.Item
+                  leftSection={<IconUser size={14} stroke={1.5} />}
+                  component={Link}
+                  href="/profile"
+                >
+                  My Profile
+                </Menu.Item>
+
+                <Menu.Divider />
+
+                <Menu.Label>Danger zone</Menu.Label>
                 <Menu.Item
                   color="red"
                   leftSection={<IconLogout size={14} stroke={1.5} />}

@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import axios from 'axios';
 import { updateAccessToken, setAuthHandlers } from '@/lib/axios';
 
-interface AuthContextType {
+export interface AuthContextType {
   accessToken: string | null;
   role: string | null;
   userEmail: string | null;
@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           { withCredentials: true }
         );
         setAccessToken(response.data.access_token);
-      } catch (error) {
+      } catch {
         // Silent fail during hydration is fine, user is just not logged in
       } finally {
         setIsHydrated(true);

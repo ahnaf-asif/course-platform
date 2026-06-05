@@ -1,0 +1,120 @@
+QuizResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    title:
+      type: string
+    passing_score:
+      type: integer
+    created_at:
+      type: string
+      format: date-time
+  required:
+    - id
+    - title
+    - passing_score
+    - created_at
+
+CreateQuizRequest:
+  type: object
+  properties:
+    title:
+      type: string
+      minLength: 3
+      maxLength: 255
+    passing_score:
+      type: integer
+      minimum: 0
+      maximum: 100
+  required:
+    - title
+    - passing_score
+
+UpdateQuizRequest:
+  type: object
+  properties:
+    title:
+      type: string
+      minLength: 3
+      maxLength: 255
+    passing_score:
+      type: integer
+      minimum: 0
+      maximum: 100
+  minProperties: 1
+
+AnswerOption:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    content:
+      type: string
+    is_correct:
+      type: boolean
+  required:
+    - content
+    - is_correct
+
+QuestionRequest:
+  type: object
+  properties:
+    content:
+      type: string
+      minLength: 1
+    question_type:
+      type: string
+      enum: [SINGLE, MULTIPLE]
+    sequence_order:
+      type: integer
+      minimum: 0
+    answers:
+      type: array
+      items:
+        $ref: '#/AnswerOption'
+      minItems: 2
+  required:
+    - content
+    - question_type
+    - sequence_order
+    - answers
+
+BulkQuestionsRequest:
+  type: object
+  properties:
+    questions:
+      type: array
+      items:
+        $ref: '#/QuestionRequest'
+  required:
+    - questions
+
+QuestionResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    quiz_id:
+      type: string
+      format: uuid
+    content:
+      type: string
+    question_type:
+      type: string
+    sequence_order:
+      type: integer
+    answers:
+      type: array
+      items:
+        $ref: '#/AnswerOption'
+  required:
+    - id
+    - quiz_id
+    - content
+    - question_type
+    - sequence_order
+    - answers
