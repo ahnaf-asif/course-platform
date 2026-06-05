@@ -107,6 +107,7 @@ type Querier interface {
 	ListTags(ctx context.Context) ([]Tag, error)
 	ListTagsByNode(ctx context.Context, nodeID uuid.UUID) ([]Tag, error)
 	ListUnreadNotifications(ctx context.Context, userID uuid.UUID) ([]Notification, error)
+	ListUsersWithProfiles(ctx context.Context) ([]ListUsersWithProfilesRow, error)
 	MarkNotificationRead(ctx context.Context, id uuid.UUID) error
 	Ping(ctx context.Context) (int32, error)
 	RevokeAllTokensByFamily(ctx context.Context, familyID uuid.UUID) error

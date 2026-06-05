@@ -59,6 +59,10 @@ paths:
     $ref: './paths/admin_assessment.yaml#/~1admin~1nodes~1{id}~1quizzes'
   /admin/nodes/{id}/quizzes/{quizId}:
     $ref: './paths/admin_assessment.yaml#/~1admin~1nodes~1{id}~1quizzes~1{quizId}'
+  /admin/users:
+    $ref: './paths/admin_users.yaml#/~1admin~1users'
+  /admin/users/{id}/role:
+    $ref: './paths/admin_users.yaml#/~1admin~1users~1{id}~1role'
   /courses/{id}/tree:
     $ref: './paths/admin_curriculum.yaml#/~1courses~1{id}~1tree'
   /courses/s/{slug}:
@@ -88,6 +92,8 @@ components:
       $ref: './components/schemas/user.yaml#/UpdateUserProfileRequest'
     UpdatePasswordRequest:
       $ref: './components/schemas/user.yaml#/UpdatePasswordRequest'
+    UpdateUserRoleRequest:
+      $ref: './components/schemas/user.yaml#/UpdateUserRoleRequest'
     LoginResponse:
       $ref: './components/schemas/auth.yaml#/LoginResponse'
     ValidationError:

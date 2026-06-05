@@ -61,3 +61,12 @@ UpdatePasswordRequest:
   required:
     - old_password
     - new_password
+
+UpdateUserRoleRequest:
+  type: object
+  properties:
+    role:
+      type: string
+      enum: [ADMIN, USER]
+  required:
+    - role

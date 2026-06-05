@@ -268,6 +268,11 @@ func (s *Server) registerRoutes() {
 	adminTags.GET("", tagHandler.ListTags)
 	adminTags.PATCH("/:id", tagHandler.UpdateTag)
 	adminTags.DELETE("/:id", tagHandler.DeleteTag)
+
+	// Admin User routes
+	adminUsers := admin.Group("/users")
+	adminUsers.GET("", userHandler.ListUsers)
+	adminUsers.PATCH("/:id/role", userHandler.UpdateUserRole)
 }
 
 func (s *Server) GetEcho() *echo.Echo {

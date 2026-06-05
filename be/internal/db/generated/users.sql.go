@@ -245,6 +245,64 @@ func (q *Queries) GetUserWithProfile(ctx context.Context, id uuid.UUID) (GetUser
 	return i, err
 }
 
+const listUsersWithProfiles = `-- name: ListUsersWithProfiles :many
+SELECT 
+    u.id, 
+    u.email, 
+    u.role, 
+    u.created_at,
+    up.full_name, 
+    up.avatar_url, 
+    up.bio, 
+    up.updated_at
+FROM users u
+LEFT JOIN user_profiles up ON u.id = up.user_id
+ORDER BY u.created_at DESC
+`
+
+type ListUsersWithProfilesRow struct {
+	ID        uuid.UUID      `json:"id"`
+	Email     string         `json:"email"`
+	Role      UserRole       `json:"role"`
+	CreatedAt time.Time      `json:"created_at"`
+	FullName  sql.NullString `json:"full_name"`
+	AvatarUrl sql.NullString `json:"avatar_url"`
+	Bio       sql.NullString `json:"bio"`
+	UpdatedAt sql.NullTime   `json:"updated_at"`
+}
+
+func (q *Queries) ListUsersWithProfiles(ctx context.Context) ([]ListUsersWithProfilesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersWithProfiles)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUsersWithProfilesRow
+	for rows.Next() {
+		var i ListUsersWithProfilesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Role,
+			&i.CreatedAt,
+			&i.FullName,
+			&i.AvatarUrl,
+			&i.Bio,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const revokeAllTokensByFamily = `-- name: RevokeAllTokensByFamily :exec
 UPDATE refresh_tokens
 SET is_revoked = TRUE
