@@ -1,0 +1,361 @@
+info:
+  contact: {}
+paths:
+  /docs/readme:
+    get:
+      description: Serves the README.md file rendered as HTML
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML content
+          schema:
+            type: string
+      summary: Show project README
+      tags:
+      - Documentation
+  /files:
+    get:
+      description: Returns a list of all files in the raw bucket
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: List files in Raw bucket
+      tags:
+      - Management
+  /files/{file_name}:
+    delete:
+      description: Permanently deletes a file from the raw bucket
+      parameters:
+      - description: Name of the file
+        in: path
+        name: file_name
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a file from Raw bucket
+      tags:
+      - Management
+    get:
+      description: Redirects the client to a temporary pre-signed URL in Raw bucket
+        (private access)
+      parameters:
+      - description: Name of the file
+        in: path
+        name: file_name
+        required: true
+        type: string
+      responses:
+        "307":
+          description: Temporary Redirect
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Redirect to pre-signed download URL (from Raw bucket)
+      tags:
+      - Management
+  /health:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Service health check
+      tags:
+      - Public
+  /p/{file_name}:
+    get:
+      description: Serves a file directly from the public bucket without authentication
+      parameters:
+      - description: Name of the file
+        in: path
+        name: file_name
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Direct public file access
+      tags:
+      - Public
+  /stream-token/{video_id}:
+    get:
+      description: Generates a short-lived HMAC token for secure HLS playback
+      parameters:
+      - description: ID of the video
+        in: path
+        name: video_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get HLS stream token
+      tags:
+      - Management
+  /stream/{video_id}/{segment}:
+    get:
+      description: Serves encrypted .ts video segments. Requires valid token and referer.
+      parameters:
+      - description: ID of the video
+        in: path
+        name: video_id
+        required: true
+        type: string
+      - description: Segment filename
+        in: path
+        name: segment
+        required: true
+        type: string
+      - description: Session token
+        in: query
+        name: token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Serve HLS segment
+      tags:
+      - Streaming
+  /stream/{video_id}/index.m3u8:
+    get:
+      description: Serves the .m3u8 playlist file. Requires valid token and referer.
+      parameters:
+      - description: ID of the video
+        in: path
+        name: video_id
+        required: true
+        type: string
+      - description: Session token
+        in: query
+        name: token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Serve HLS manifest
+      tags:
+      - Streaming
+  /stream/{video_id}/key:
+    get:
+      description: Serves the AES-128 key for segment decryption. Requires valid token
+        and referer.
+      parameters:
+      - description: ID of the video
+        in: path
+        name: video_id
+        required: true
+        type: string
+      - description: Session token
+        in: query
+        name: token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Serve AES decryption key
+      tags:
+      - Streaming
+  /transcode:
+    post:
+      consumes:
+      - application/json
+      description: Manually trigger transcoding for a file already in Raw bucket
+      parameters:
+      - description: Name of the file in Raw bucket
+        in: query
+        name: file_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Trigger HLS transcoding manually
+      tags:
+      - Management
+  /upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads a file. Specify visibility=public for direct public access.
+      parameters:
+      - description: The file to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: 'public or private (default: private)'
+        in: query
+        name: visibility
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Upload file directly
+      tags:
+      - Management
+  /upload-url:
+    get:
+      consumes:
+      - application/json
+      description: Generates a pre-signed URL for direct upload. Specify visibility=public
+        for public access.
+      parameters:
+      - description: Name of the file
+        in: query
+        name: file_name
+        required: true
+        type: string
+      - description: 'public or private (default: private)'
+        in: query
+        name: visibility
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get pre-signed upload URL
+      tags:
+      - Management
+swagger: "2.0"
