@@ -32,5 +32,7 @@ docker-compose.override.yml
 
 # Local development
 tmp/
+data/
+minio_data/
 coverage.html
 build-errors.log
