@@ -62,17 +62,17 @@ export default function LessonEditPage() {
         text_content: lesson.text_content || '',
       });
     }
-  }, [lesson, form]);
+  }, [lesson]);
 
   const handleSubmit = async (values: typeof form.values) => {
     try {
-      await updateLesson({ 
-        id: lessonId, 
-        data: { 
+      await updateLesson({
+        id: lessonId,
+        data: {
           title: values.title,
           video_url: values.video_url || undefined,
           text_content: values.text_content || undefined
-        } 
+        }
       });
 
       notifications.show({
@@ -118,10 +118,10 @@ export default function LessonEditPage() {
           </Breadcrumbs>
           <Title order={2}>Edit Lesson: {lesson?.title}</Title>
         </Stack>
-        <Button 
-          variant="light" 
-          leftSection={<IconArrowLeft size={18} />} 
-          component={Link} 
+        <Button
+          variant="light"
+          leftSection={<IconArrowLeft size={18} />}
+          component={Link}
           href={`/admin/courses/${courseSlug}/curriculum`}
         >
           Back to Curriculum
@@ -139,16 +139,16 @@ export default function LessonEditPage() {
                 size="md"
                 {...form.getInputProps('title')}
               />
-              
+
               <TextInput
                 label="Video URL"
                 placeholder="Vimeo, YouTube, or AWS S3 URL"
                 description="Optional: Video will be primary content"
                 {...form.getInputProps('video_url')}
               />
-              
+
               <Divider my="sm" label="Lesson Content" labelPosition="center" />
-              
+
               <RichTextEditor
                 content={form.values.text_content}
                 onChange={(val) => form.setFieldValue('text_content', val)}
@@ -156,16 +156,16 @@ export default function LessonEditPage() {
               />
 
               <Group justify="flex-end" mt="xl">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => router.push(`/admin/courses/${courseSlug}/curriculum`)}
                   color="gray"
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
-                  size="md" 
+                <Button
+                  type="submit"
+                  size="md"
                   loading={isUpdating}
                   leftSection={<IconDeviceFloppy size={18} />}
                 >
