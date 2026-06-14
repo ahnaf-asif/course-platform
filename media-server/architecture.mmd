@@ -33,12 +33,12 @@ graph TD
     Backend -- "HTTP /api/v1/* (X-API-KEY)" --> Router
 
     %% Routing
-    Router --> AuthMW
+    Router -- "API Key or Upload Token" --> AuthMW
     AuthMW --> FileHandler
-    Router -- "Wildcard /stream/*" --> HLSHandler
+    Router -- "Wildcard /stream/* (GET/HEAD)" --> HLSHandler
 
     %% File Management Flow
-    FileHandler -- "Upload/Download/Presign" --> MinioSvc
+    FileHandler -- "Presign /upload-url" --> MinioSvc
     FileHandler -- "Trigger Transcode" --> TaskProc
     MinioSvc -- "S3 API" --> Minio
 
@@ -50,11 +50,12 @@ graph TD
     TranscodeSvc -- "Stage Files" --> LocalTmp
     TranscodeSvc -- "Spawn Process" --> FFmpeg
     FFmpeg -- "Read/Write" --> LocalTmp
+    TranscodeSvc -- "Relative key path in .m3u8" --> LocalTmp
     TranscodeSvc -- "Upload HLS Segments" --> MinioSvc
 
     %% Streaming Flow
     HLSHandler -- "Validate Token/Cookie" --> SecurityLogic["HMAC Security Logic"]
-    HLSHandler -- "Set Session Cookie" --> Browser
+    HLSHandler -- "Set stream_token Cookie" --> Browser
     HLSHandler -- "Fetch Objects" --> TranscodeSvc
     TranscodeSvc -- "Get manifest/ts/key" --> MinioSvc
 
@@ -62,11 +63,21 @@ graph TD
     subgraph "HLS Secure Pipeline"
         Step1["1. Manifest Request + Token"]
         Step2["2. Validate HMAC Signature"]
-        Step3["3. Set stream_token Cookie"]
-        Step4["4. Player fetches segments (auto-cookie)"]
-        Step5["5. Key Request (relative path)"]
+        Step3["3. Set HttpOnly Session Cookie"]
+        Step4["4. Player fetches segments (Auto-Cookie)"]
+        Step5["5. Key Request (Relative Path)"]
         
         Step1 --> Step2 --> Step3 --> Step4 --> Step5
+    end
+
+    %% Upload Flow
+    subgraph "Secure Upload Pipeline"
+        Up1["1. Request upload_token (Go Backend)"]
+        Up2["2. POST /upload?upload_token=... (Direct)"]
+        Up3["3. Validate Temporary Signature"]
+        Up4["4. Stream Binary to Minio"]
+        
+        Up1 --> Up2 --> Up3 --> Up4
     end
 
     classDef infrastructure fill:#f9f,stroke:#333,stroke-width:2px;
