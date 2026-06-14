@@ -8,7 +8,7 @@ import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import Superscript from '@tiptap/extension-superscript';
 import SubScript from '@tiptap/extension-subscript';
-import Image from '@tiptap/extension-image';
+import ImageResize from 'tiptap-extension-resize-image';
 import { MathExtension } from './extensions/MathExtension';
 import { IconMathFunction, IconPhoto } from '@tabler/icons-react';
 import { Stack, Text, Box, FileButton, Tooltip } from '@mantine/core';
@@ -33,9 +33,9 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
       SubScript,
       Highlight,
       MathExtension,
-      Image.configure({
+      ImageResize.configure({
         HTMLAttributes: {
-          style: 'max-width: 100%; height: auto; border-radius: 4px;',
+          style: 'border-radius: 4px; display: inline-block;',
         },
       }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
