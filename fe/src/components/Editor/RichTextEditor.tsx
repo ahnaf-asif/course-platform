@@ -13,6 +13,7 @@ import { MathExtension } from './extensions/MathExtension';
 import { IconMathFunction, IconPhoto } from '@tabler/icons-react';
 import { Stack, Text, Box, FileButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { axiosInstance } from '@/lib/axios';
 import axios from 'axios';
 
 interface EditorProps {
@@ -95,9 +96,17 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
     });
 
     try {
-      // Use the proxied /media-api route with public visibility
-      // The Next.js proxy automatically adds the X-API-KEY server-side.
-      const response = await axios.post('/media-api/upload?visibility=public', formData, {
+      // 1. Get a Temporary Upload Token from Go Backend (Authenticated)
+      // This hides the master API_KEY from the browser
+      const authRes = await axiosInstance<{ token: string }>({
+        url: '/admin/media/upload-token',
+        method: 'GET',
+      });
+      
+      const { token } = authRes;
+
+      // 2. Use the proxied /media-api route with public visibility and temporary token
+      const response = await axios.post(`/media-api/upload?visibility=public&upload_token=${token}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
