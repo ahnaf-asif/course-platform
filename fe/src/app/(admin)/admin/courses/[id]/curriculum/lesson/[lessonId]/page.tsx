@@ -28,6 +28,7 @@ import Link from 'next/link';
 import axios from 'axios';
 import { useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import VideoUpload from './_components/VideoUpload';
 
 const RichTextEditor = dynamic(() => import('@/components/Editor/RichTextEditor'), {
   ssr: false,
@@ -140,11 +141,9 @@ export default function LessonEditPage() {
                 {...form.getInputProps('title')}
               />
 
-              <TextInput
-                label="Video URL"
-                placeholder="Vimeo, YouTube, or AWS S3 URL"
-                description="Optional: Video will be primary content"
-                {...form.getInputProps('video_url')}
+              <VideoUpload 
+                value={form.values.video_url} 
+                onChange={(val) => form.setFieldValue('video_url', val)} 
               />
 
               <Divider my="sm" label="Lesson Content" labelPosition="center" />

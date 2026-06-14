@@ -51,6 +51,7 @@ type IMinioService interface {
 
 type MinioService struct {
 	client MinioClient
+	signer MinioClient // Client configured with public endpoint for signing
 	cfg    *config.Config
 }
 
@@ -63,11 +64,21 @@ func NewMinioService(cfg *config.Config) (*MinioService, error) {
 		return nil, err
 	}
 
+	// Create a signer client using the public endpoint
+	signer, err := minio.New(cfg.MinioPublicEndpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(cfg.MinioAccessKey, cfg.MinioSecretKey, ""),
+		Secure: cfg.MinioUseSSL,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	realClient := &RealMinioClient{Client: client}
-	return NewMinioServiceWithClient(realClient, cfg)
+	realSigner := &RealMinioClient{Client: signer}
+	return NewMinioServiceWithClients(realClient, realSigner, cfg)
 }
 
-func NewMinioServiceWithClient(client MinioClient, cfg *config.Config) (*MinioService, error) {
+func NewMinioServiceWithClients(client MinioClient, signer MinioClient, cfg *config.Config) (*MinioService, error) {
 	// Ensure all three buckets exist
 	ctx := context.Background()
 	buckets := []string{cfg.MinioBucketRaw, cfg.MinioBucketProcessed, cfg.MinioBucketPublic}
@@ -88,12 +99,13 @@ func NewMinioServiceWithClient(client MinioClient, cfg *config.Config) (*MinioSe
 
 	return &MinioService{
 		client: client,
+		signer: signer,
 		cfg:    cfg,
 	}, nil
 }
 
 func (s *MinioService) GetPresignedPutURL(ctx context.Context, bucket, objectName string, expiry time.Duration) (string, error) {
-	presignedURL, err := s.client.PresignedPutObject(ctx, bucket, objectName, expiry)
+	presignedURL, err := s.signer.PresignedPutObject(ctx, bucket, objectName, expiry)
 	if err != nil {
 		return "", err
 	}
@@ -102,7 +114,7 @@ func (s *MinioService) GetPresignedPutURL(ctx context.Context, bucket, objectNam
 
 func (s *MinioService) GetPresignedGetURL(ctx context.Context, bucket, objectName string, expiry time.Duration) (string, error) {
 	reqParams := make(url.Values)
-	presignedURL, err := s.client.PresignedGetObject(ctx, bucket, objectName, expiry, reqParams)
+	presignedURL, err := s.signer.PresignedGetObject(ctx, bucket, objectName, expiry, reqParams)
 	if err != nil {
 		return "", err
 	}

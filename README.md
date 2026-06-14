@@ -80,6 +80,7 @@ For specific development guides, troubleshooting, and architectural details, ple
 
 - 📚 **[Backend Documentation](./be/README.md)**
 - 🎨 **[Frontend Documentation](./fe/README.md)**
+- 🛡️ **[Secure Media System](./DOCS_MEDIA_SYSTEM.md)**
 - 📡 **[API Specification (OpenAPI)](./be/docs/openapi.yaml)**
 
 ---
