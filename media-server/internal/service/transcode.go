@@ -115,7 +115,8 @@ func (s *TranscodeService) ProcessVideo(videoID string, inputPath string, opts *
 	}
 
 	// 4. Create key info file for ffmpeg
-	keyURL := fmt.Sprintf("%s/api/v1/stream/%s/key", s.cfg.PublicBaseURL, videoID)
+	// Use a relative URL 'key' so the player fetches it from the same directory as index.m3u8
+	keyURL := "key" 
 	keyInfoPath := filepath.Join(workDir, "key.info")
 	keyInfoContent := fmt.Sprintf("%s\n%s", keyURL, keyPath)
 	if err := os.WriteFile(keyInfoPath, []byte(keyInfoContent), 0644); err != nil {
