@@ -176,9 +176,9 @@ function QuestionCard({
         </Box>
       ) : (
         <>
-          <UnstyledButton 
+          <Box 
             onClick={() => setCardExpanded((e) => !e)}
-            style={{ width: '100%' }}
+            style={{ width: '100%', cursor: 'pointer' }}
           >
             <Box p="md">
               <Group justify="space-between" wrap="nowrap">
@@ -197,16 +197,30 @@ function QuestionCard({
                   </Stack>
                 </Group>
                 <Group gap={5}>
-                  <ActionIcon color="blue" variant="subtle" onClick={() => onEdit(q)}>
+                  <ActionIcon 
+                    color="blue" 
+                    variant="subtle" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(q);
+                    }}
+                  >
                     <IconPencil size={18} />
                   </ActionIcon>
-                  <ActionIcon color="red" variant="subtle" onClick={() => onDelete(q.id)}>
+                  <ActionIcon 
+                    color="red" 
+                    variant="subtle" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(q.id);
+                    }}
+                  >
                     <IconTrash size={18} />
                   </ActionIcon>
                 </Group>
               </Group>
             </Box>
-          </UnstyledButton>
+          </Box>
 
           <Collapse expanded={cardExpanded}>
             <Box px="md" pb="md">
