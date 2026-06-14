@@ -185,6 +185,67 @@ PostCSS variables are configured in `postcss.config.cjs` to match Mantine's stan
 
 ---
 
+## 📂 Media & File Management
+
+The platform includes a dedicated Go-based Media Server for handling file uploads and secure HLS video streaming. For security and ease of use, all media requests are proxied through the frontend.
+
+### 📡 Media API Proxy
+The frontend uses Next.js rewrites to proxy requests from `/media-api/*` to the Media Server. This eliminates CORS issues and simplifies authorization.
+- **Local Dev URL**: `http://localhost:8081/api/v1`
+- **Frontend Proxy**: `/media-api/...`
+
+### 🔓 Public Files (Images, PDFs, etc.)
+Public files are stored in a dedicated S3 bucket and can be accessed directly via a URL.
+
+#### Uploading Public Files
+To upload a file publicly, append `?visibility=public` to the upload request.
+```typescript
+const formData = new FormData();
+formData.append('file', file);
+
+const res = await axios.post('/media-api/upload?visibility=public', formData, {
+  headers: { 'X-API-KEY': 'your-secret-key' }
+});
+
+// Access URL
+const publicUrl = res.data.proxied_public_url; // e.g., /media-api/p/filename.jpg
+```
+
+### 🔐 Private Files & Secure Streaming (HLS)
+Videos and sensitive documents are stored in private buckets. Access is granted via **Short-lived HMAC Tokens** and **Session Cookies**.
+
+#### The Secure Pipeline:
+1.  **Upload**: Upload the video (`.mp4`) to `/media-api/upload`. The Media Server automatically triggers an asynchronous transcoding task.
+2.  **Transcoding**: The server splits the video into small chunks (`.ts`), encrypts them with AES-128, and generates a manifest (`index.m3u8`).
+3.  **Token Acquisition**: The frontend requests a playback token for a specific `video_id` from `/media-api/stream-token/:video_id`.
+4.  **Authorization**: 
+    - The first request to the manifest includes the token: `/media-api/stream/:id/index.m3u8?token=...`.
+    - Upon success, the Media Server sets an **HttpOnly Session Cookie** (`stream_token`).
+    - The browser automatically attaches this cookie to all subsequent requests for video segments and the decryption key.
+
+#### Implementation Example (HLS.js):
+```tsx
+import Hls from 'hls.js';
+
+// 1. Get Token
+const { token } = await axios.get(`/media-api/stream-token/${videoId}`);
+
+// 2. Load into Player
+const manifestUrl = `/media-api/stream/${videoId}/index.m3u8?token=${token}`;
+if (Hls.isSupported()) {
+  const hls = new Hls();
+  hls.loadSource(manifestUrl);
+  hls.attachMedia(videoElement);
+}
+```
+
+### 🛠 Troubleshooting
+- **401 Unauthorized**: Ensure you are using the `/media-api` proxy path. Requests made directly to port 8081 will fail cookie validation.
+- **Transcoding Delay**: Transcoding is an intensive background task. Use the `/test-video` page to monitor status polling.
+- **File Limits**: The maximum upload size is currently configured to **500MB**.
+
+---
+
 ## 🐳 Docker & Orchestration
 
 ### Standalone Production Build

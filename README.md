@@ -10,6 +10,7 @@ This repository is a monorepo containing both the frontend and backend component
 
 - **[`/be`](./be)**: High-performance Go backend using Echo, SQLC, and PostgreSQL.
 - **[`/fe`](./fe)**: Modern React frontend using Next.js 16, Mantine UI, and TanStack Query.
+- **[`/media-server`](./media-server)**: Specialized Go server for secure HLS video transcoding and file management.
 
 ---
 
@@ -18,10 +19,17 @@ This repository is a monorepo containing both the frontend and backend component
 ### [Backend (`/be`)](./be/README.md#%EF%B8%8F-tech-stack)
 - **Language**: Go 1.25
 - **Web Framework**: Echo v4
-- **Database**: PostgreSQL 16 + Redis 7 (Caching)
+- **Database**: PostgreSQL 16 + Redis 7 (Caching & Tasks)
 - **SQL Generator**: SQLC (Type-safe Go from SQL)
 - **Observability**: Prometheus (Metrics), Jaeger (Tracing), Grafana
 - **Orchestration**: Kubernetes + Docker Compose
+
+### [Media Server (`/media-server`)](./media-server/README.md)
+- **Language**: Go 1.25
+- **Processing**: FFmpeg (HLS Transcoding)
+- **Storage**: Minio (S3-Compatible Object Storage)
+- **Task Queue**: Asynq (Redis-backed background workers)
+- **Security**: HMAC Stream Tokens + Session Cookies
 
 ### [Frontend (`/fe`)](./fe/README.md#%EF%B8%8F-tech-stack)
 - **Framework**: Next.js 16 (App Router, React 19)
