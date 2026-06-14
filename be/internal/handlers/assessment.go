@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -19,12 +20,14 @@ import (
 type QuizHandler struct {
 	store        db.Store
 	cacheService *services.CacheService
+	minioService services.IMinioService
+	taskService  *services.TaskService
 	validate     *validator.Validate
 	logger       *slog.Logger
 	isProduction bool
 }
 
-func NewQuizHandler(store db.Store, cacheService *services.CacheService, logger *slog.Logger) *QuizHandler {
+func NewQuizHandler(store db.Store, cacheService *services.CacheService, minioService services.IMinioService, taskService *services.TaskService, logger *slog.Logger) *QuizHandler {
 	v := validator.New()
 	env := os.Getenv("ENV")
 
@@ -39,10 +42,55 @@ func NewQuizHandler(store db.Store, cacheService *services.CacheService, logger 
 	return &QuizHandler{
 		store:        store,
 		cacheService: cacheService,
+		minioService: minioService,
+		taskService:  taskService,
 		validate:     v,
 		logger:       logger,
 		isProduction: env == "production",
 	}
+}
+
+func (h *QuizHandler) BulkUploadCSV(c echo.Context) error {
+	quizID := c.Param("id")
+	if _, err := uuid.Parse(quizID); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid quiz ID")
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "CSV file is required")
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	// 1. Upload CSV to Minio (temporary)
+	objectName := fmt.Sprintf("bulkupload/quiz/%s/%s_%s", quizID, uuid.New().String(), file.Filename)
+	bucket := os.Getenv("MINIO_BUCKET_TEMP")
+	if bucket == "" {
+		bucket = "temp-imports"
+	}
+
+	err = h.minioService.UploadFile(c.Request().Context(), bucket, objectName, src, file.Size, "text/csv")
+	if err != nil {
+		h.logger.Error("Failed to upload CSV to Minio", "error", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to stage import file")
+	}
+
+	// 2. Enqueue Task for Background Processing
+	err = h.taskService.EnqueueQuizBulkUpload(quizID, objectName, bucket)
+	if err != nil {
+		h.logger.Error("Failed to enqueue bulk upload task", "error", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to start background import")
+	}
+
+	return c.JSON(http.StatusAccepted, map[string]string{
+		"message": "Bulk upload started in background",
+		"task_id": objectName,
+	})
 }
 
 // Quiz CRUD

@@ -36,7 +36,7 @@ func TestRBACIntegration(t *testing.T) {
 	tokenService := services.NewTokenService(jwtSecret, 15*time.Minute, 7*24*time.Hour)
 
 	// Create the real server
-	server := api.NewServer(store, tokenService, nil, logger)
+	server := api.NewServer(store, tokenService, nil, nil, nil, logger)
 	e := server.GetEcho() // We need a way to get the echo instance from server for ServeHTTP
 
 	// Setup users with different roles

@@ -42,3 +42,11 @@ func (s *SQLStore) WithTx(ctx context.Context, fn func(generated.Querier) error)
 
 	return tx.Commit()
 }
+
+func ToNullString(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{String: s, Valid: true}
+}
+

@@ -23,10 +23,12 @@ type Server struct {
 	store        db.Store
 	tokenService *services.TokenService
 	cacheService *services.CacheService
+	minioService *services.MinioService
+	taskService  *services.TaskService
 	logger       *slog.Logger
 }
 
-func NewServer(store db.Store, tokenService *services.TokenService, cacheService *services.CacheService, logger *slog.Logger) *Server {
+func NewServer(store db.Store, tokenService *services.TokenService, cacheService *services.CacheService, minioService *services.MinioService, taskService *services.TaskService, logger *slog.Logger) *Server {
 	e := echo.New()
 
 	s := &Server{
@@ -34,6 +36,8 @@ func NewServer(store db.Store, tokenService *services.TokenService, cacheService
 		store:        store,
 		tokenService: tokenService,
 		cacheService: cacheService,
+		minioService: minioService,
+		taskService:  taskService,
 		logger:       logger,
 	}
 
@@ -111,7 +115,7 @@ func (s *Server) registerRoutes() {
 	userHandler := handlers.NewUserHandler(s.store, s.cacheService, s.logger)
 	courseHandler := handlers.NewCourseHandler(s.store, s.cacheService, s.logger)
 	curriculumHandler := handlers.NewCurriculumHandler(s.store, s.cacheService, s.logger)
-	quizHandler := handlers.NewQuizHandler(s.store, s.cacheService, s.logger)
+	quizHandler := handlers.NewQuizHandler(s.store, s.cacheService, s.minioService, s.taskService, s.logger)
 	tagHandler := handlers.NewTagHandler(s.store, s.cacheService, s.logger)
 
 	// API v1 Group
@@ -252,6 +256,7 @@ func (s *Server) registerRoutes() {
 	adminQuizzes.PATCH("/:id", quizHandler.UpdateQuiz)
 	adminQuizzes.DELETE("/:id", quizHandler.DeleteQuiz)
 	adminQuizzes.POST("/:id/questions", quizHandler.AddBulkQuestions)
+	adminQuizzes.POST("/:id/questions/csv", quizHandler.BulkUploadCSV)
 	adminQuizzes.GET("/:id/questions", quizHandler.ListQuestions)
 	adminQuizzes.DELETE("/:id/questions/:qId", quizHandler.DeleteQuestion)
 	adminQuizzes.PATCH("/:id/questions/:qId", quizHandler.UpdateQuestion)

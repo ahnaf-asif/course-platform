@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,41 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-// MockStore is a mock implementation of db.Store
-type MockStore struct {
-	mock.Mock
-	generated.Querier // This will satisfy most of the interface with nil methods
-}
-
-func (m *MockStore) GetRefreshToken(ctx context.Context, hash string) (generated.RefreshToken, error) {
-	args := m.Called(ctx, hash)
-	return args.Get(0).(generated.RefreshToken), args.Error(1)
-}
-
-func (m *MockStore) RevokeRefreshToken(ctx context.Context, id uuid.UUID) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-func (m *MockStore) RevokeAllTokensByFamily(ctx context.Context, familyID uuid.UUID) error {
-	args := m.Called(ctx, familyID)
-	return args.Error(0)
-}
-
-func (m *MockStore) GetUserByID(ctx context.Context, id uuid.UUID) (generated.User, error) {
-	args := m.Called(ctx, id)
-	return args.Get(0).(generated.User), args.Error(1)
-}
-
-func (m *MockStore) CreateRefreshToken(ctx context.Context, arg generated.CreateRefreshTokenParams) (generated.RefreshToken, error) {
-	args := m.Called(ctx, arg)
-	return args.Get(0).(generated.RefreshToken), args.Error(1)
-}
-
-func (m *MockStore) WithTx(_ context.Context, fn func(generated.Querier) error) error {
-	return fn(m)
-}
 
 func TestAuthHandler_Logout(t *testing.T) {
 	e := echo.New()
