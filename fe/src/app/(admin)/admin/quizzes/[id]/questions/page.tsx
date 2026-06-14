@@ -65,21 +65,21 @@ interface EditFormValues {
   }[];
 }
 
-function QuestionCard({ 
-  q, 
-  index, 
-  onEdit, 
-  onDelete, 
-  editingId, 
-  editForm, 
-  handleUpdateSubmit, 
-  setEditingId, 
-  isUpdating 
-}: { 
-  q: QuestionResponse; 
-  index: number; 
-  onEdit: (q: QuestionResponse) => void; 
-  onDelete: (id: string) => void; 
+function QuestionCard({
+  q,
+  index,
+  onEdit,
+  onDelete,
+  editingId,
+  editForm,
+  handleUpdateSubmit,
+  setEditingId,
+  isUpdating
+}: {
+  q: QuestionResponse;
+  index: number;
+  onEdit: (q: QuestionResponse) => void;
+  onDelete: (id: string) => void;
   editingId: string | null;
   editForm: UseFormReturnType<EditFormValues>;
   handleUpdateSubmit: (values: EditFormValues) => Promise<void>;
@@ -140,10 +140,10 @@ function QuestionCard({
                     {...editForm.getInputProps(`answers.${aIndex}.is_correct`, { type: 'checkbox' })}
                   />
                   {editForm.values.answers.length > 2 && (
-                    <ActionIcon 
-                      color="red" 
-                      variant="subtle" 
-                      mb={8} 
+                    <ActionIcon
+                      color="red"
+                      variant="subtle"
+                      mb={8}
                       onClick={() => editForm.removeListItem('answers', aIndex)}
                     >
                       <IconTrash size={16} />
@@ -152,10 +152,10 @@ function QuestionCard({
                 </Group>
               ))}
 
-              <Button 
-                variant="subtle" 
-                size="xs" 
-                leftSection={<IconPlus size={14} />} 
+              <Button
+                variant="subtle"
+                size="xs"
+                leftSection={<IconPlus size={14} />}
                 onClick={() => editForm.insertListItem('answers', { content: '', is_correct: false })}
                 align-self="flex-start"
                 w="fit-content"
@@ -176,7 +176,7 @@ function QuestionCard({
         </Box>
       ) : (
         <>
-          <Box 
+          <Box
             onClick={() => setCardExpanded((e) => !e)}
             style={{ width: '100%', cursor: 'pointer' }}
           >
@@ -197,9 +197,9 @@ function QuestionCard({
                   </Stack>
                 </Group>
                 <Group gap={5}>
-                  <ActionIcon 
-                    color="blue" 
-                    variant="subtle" 
+                  <ActionIcon
+                    color="blue"
+                    variant="subtle"
                     onClick={(e) => {
                       e.stopPropagation();
                       onEdit(q);
@@ -207,9 +207,9 @@ function QuestionCard({
                   >
                     <IconPencil size={18} />
                   </ActionIcon>
-                  <ActionIcon 
-                    color="red" 
-                    variant="subtle" 
+                  <ActionIcon
+                    color="red"
+                    variant="subtle"
                     onClick={(e) => {
                       e.stopPropagation();
                       onDelete(q.id);
@@ -242,7 +242,7 @@ function QuestionCard({
 
               {q.explanation && (
                 <Box mt="md">
-                  <UnstyledButton 
+                  <UnstyledButton
                     onClick={() => setExplanationOpened((o) => !o)}
                     style={{ width: '100%' }}
                   >
@@ -411,9 +411,9 @@ export default function QuestionManagement() {
     }
 
     try {
-      await updateQuestion({ 
-        id: quizId, 
-        qId: values.id, 
+      await updateQuestion({
+        id: quizId,
+        qId: values.id,
         data: {
           content: values.content,
           explanation: values.explanation || null,
@@ -466,10 +466,10 @@ export default function QuestionManagement() {
             </Text>
           )}
         </Stack>
-        <Button 
-          variant="light" 
-          leftSection={<IconChevronLeft size={16} />} 
-          component={Link} 
+        <Button
+          variant="light"
+          leftSection={<IconChevronLeft size={16} />}
+          component={Link}
           href="/admin/quizzes"
         >
           Back to Library
@@ -574,10 +574,10 @@ export default function QuestionManagement() {
                       {...form.getInputProps(`questions.${qIndex}.answers.${aIndex}.is_correct`, { type: 'checkbox' })}
                     />
                     {form.values.questions[qIndex].answers.length > 2 && (
-                      <ActionIcon 
-                        color="red" 
-                        variant="subtle" 
-                        mb={8} 
+                      <ActionIcon
+                        color="red"
+                        variant="subtle"
+                        mb={8}
                         onClick={() => form.removeListItem(`questions.${qIndex}.answers`, aIndex)}
                       >
                         <IconTrash size={16} />
@@ -586,10 +586,10 @@ export default function QuestionManagement() {
                   </Group>
                 ))}
 
-                <Button 
-                  variant="subtle" 
-                  size="xs" 
-                  leftSection={<IconPlus size={14} />} 
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  leftSection={<IconPlus size={14} />}
                   onClick={() => handleAddAnswer(qIndex)}
                   align-self="flex-start"
                   w="fit-content"
@@ -601,9 +601,9 @@ export default function QuestionManagement() {
           ))}
 
           <Group justify="space-between">
-            <Button 
-              variant="outline" 
-              leftSection={<IconPlus size={18} />} 
+            <Button
+              variant="outline"
+              leftSection={<IconPlus size={18} />}
               onClick={handleAddQuestion}
             >
               Add Another Question
