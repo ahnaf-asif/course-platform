@@ -44,6 +44,7 @@ import { CourseResponse } from '@/api/model/components-schemas-course/courseResp
 import Link from 'next/link';
 import axios from 'axios';
 import { useState } from 'react';
+import ImageUpload from '@/components/ImageUpload';
 
 export default function CoursesManagement() {
   const { data: courses, isPending, isError, refetch } = useGetAdminCourses();
@@ -64,11 +65,11 @@ export default function CoursesManagement() {
     },
     validate: {
       title: (value: string) => (value.length < 3 ? 'Title must be at least 3 characters' : null),
-      slug: (value: string | undefined) => 
+      slug: (value: string | undefined) =>
         value && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) ? 'Invalid slug format (lowercase, numbers and hyphens only)' : null,
       description: (value: string) => (value.length < 10 ? 'Description must be at least 10 characters' : null),
       thumbnail_url: (value: string | undefined) =>
-        value && !/^(https?:\/\/)/.test(value) ? 'Must be a valid URL' : null,
+        value && !/^(https?:\/\/|\/media-api\/)/.test(value) ? 'Must be a valid URL or media path' : null,
     },
   });
 
@@ -96,6 +97,8 @@ export default function CoursesManagement() {
         slug: values.slug || undefined,
         thumbnail_url: values.thumbnail_url || undefined,
       };
+
+      console.log(payload);
 
       if (editingId) {
         await updateCourse({ id: editingId, data: payload });
@@ -142,9 +145,9 @@ export default function CoursesManagement() {
 
   return (
     <Stack gap="lg" pos="relative">
-      <LoadingOverlay 
-        visible={isPending} 
-        overlayProps={{ blur: 1 }} 
+      <LoadingOverlay
+        visible={isPending}
+        overlayProps={{ blur: 1 }}
         loaderProps={{ size: 'lg', type: 'bars' }}
         zIndex={1000}
       />
@@ -260,11 +263,11 @@ export default function CoursesManagement() {
         </Card>
       ) : null}
 
-      <Modal 
-        opened={opened} 
-        onClose={close} 
-        title={editingId ? 'Edit Course Settings' : 'Create New Course'} 
-        centered 
+      <Modal
+        opened={opened}
+        onClose={close}
+        title={editingId ? 'Edit Course Settings' : 'Create New Course'}
+        centered
         size="md"
       >
         <form onSubmit={form.onSubmit(handleCreateOrUpdate)}>
@@ -288,11 +291,14 @@ export default function CoursesManagement() {
               minRows={3}
               {...form.getInputProps('description')}
             />
-            <TextInput
-              label="Thumbnail URL"
-              placeholder="https://example.com/image.png"
-              {...form.getInputProps('thumbnail_url')}
+
+            <ImageUpload
+              label="Course Thumbnail"
+              description="A preview image for your course. Recommended size 1200x800."
+              value={form.values.thumbnail_url || ''}
+              onChange={(val) => form.setFieldValue('thumbnail_url', val)}
             />
+
             <Switch
               label="Publish immediately"
               {...form.getInputProps('is_published', { type: 'checkbox' })}

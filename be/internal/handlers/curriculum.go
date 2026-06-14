@@ -332,7 +332,7 @@ type CreateLessonRequest struct {
 	ParentID      string  `json:"parent_id" validate:"required,uuid"`
 	Title         string  `json:"title" validate:"required,min=3,max=255"`
 	TextContent   *string `json:"text_content"`
-	VideoURL      *string `json:"video_url" validate:"omitempty,url"`
+	VideoURL      *string `json:"video_url" validate:"omitempty"`
 	SequenceOrder int32   `json:"sequence_order" validate:"min=0"`
 }
 
@@ -405,7 +405,7 @@ func (h *CurriculumHandler) CreateLesson(c echo.Context) error {
 type UpdateLessonRequest struct {
 	Title         *string `json:"title" validate:"omitempty,min=3,max=255"`
 	TextContent   *string `json:"text_content"`
-	VideoURL      *string `json:"video_url" validate:"omitempty,url"`
+	VideoURL      *string `json:"video_url" validate:"omitempty"`
 	SequenceOrder *int32  `json:"sequence_order" validate:"omitempty,min=0"`
 }
 
@@ -662,6 +662,60 @@ func (h *CurriculumHandler) mapToCourseTreeResponseBySlug(rows []generated.GetCo
 		resp = append(resp, item)
 	}
 	return resp
+}
+
+func (h *CurriculumHandler) GetMediaUploadToken(c echo.Context) error {
+	mediaServerURL := os.Getenv("MEDIA_SERVER_URL")
+	apiKey := os.Getenv("MEDIA_SERVER_API_KEY")
+
+	// Call Media Server to get a temporary token for the "upload" action
+	req, _ := http.NewRequest("GET", mediaServerURL+"/stream-token/upload", nil)
+	req.Header.Set("X-API-KEY", apiKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadGateway, "Media server unreachable")
+	}
+	defer resp.Body.Close()
+
+	return c.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
+}
+
+func (h *CurriculumHandler) GetMediaStreamToken(c echo.Context) error {
+	videoID := c.Param("videoId")
+	mediaServerURL := os.Getenv("MEDIA_SERVER_URL")
+	apiKey := os.Getenv("MEDIA_SERVER_API_KEY")
+
+	req, _ := http.NewRequest("GET", mediaServerURL+"/stream-token/"+videoID, nil)
+	req.Header.Set("X-API-KEY", apiKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadGateway, "Media server unreachable")
+	}
+	defer resp.Body.Close()
+
+	return c.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
+}
+
+func (h *CurriculumHandler) TriggerMediaTranscode(c echo.Context) error {
+	mediaServerURL := os.Getenv("MEDIA_SERVER_URL")
+	apiKey := os.Getenv("MEDIA_SERVER_API_KEY")
+
+	req, _ := http.NewRequest("POST", mediaServerURL+"/transcode", c.Request().Body)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-KEY", apiKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadGateway, "Media server unreachable")
+	}
+	defer resp.Body.Close()
+
+	return c.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
 }
 
 func (h *CurriculumHandler) formatValidationErrors(err error) []map[string]string {

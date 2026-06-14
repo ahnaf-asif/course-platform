@@ -22,6 +22,7 @@ type Config struct {
 	AllowedOrigins       string
 	AppEnv               string
 	RedisAddress         string
+	MinioPublicEndpoint  string
 	// Transcoding Defaults
 	DefaultVideoBitrate  string
 	DefaultVideoCodec    string
@@ -50,6 +51,7 @@ func LoadConfig() *Config {
 		AllowedOrigins:       getEnv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"),
 		AppEnv:               getEnv("APP_ENV", "development"),
 		RedisAddress:         getEnv("REDIS_ADDRESS", "localhost:6379"),
+		MinioPublicEndpoint:  getEnv("MINIO_PUBLIC_ENDPOINT", "localhost:9000"),
 		DefaultVideoBitrate:  getEnv("DEFAULT_VIDEO_BITRATE", "2M"),
 		DefaultVideoCodec:    getEnv("DEFAULT_VIDEO_CODEC", "libx264"),
 		DefaultHlsTime:       getEnv("DEFAULT_HLS_TIME", "10"),

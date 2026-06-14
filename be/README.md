@@ -172,6 +172,13 @@ admin.Use(internalMiddleware.RequireAdmin()) // Only users with role 'ADMIN'
 
 Available roles: `USER`, `ADMIN`.
 
+### 🎥 Media Authorization
+The backend serves as the secure gatekeeper for the Media Server.
+- **Upload Tokens**: Issues short-lived signatures for authorized uploads.
+- **Stream Tokens**: Generates HMAC tokens for secure video playback.
+- **Transcode Triggers**: Proxies manual transcoding requests.
+- **Environment**: Requires `MEDIA_SERVER_URL` and `MEDIA_SERVER_API_KEY`.
+
 ---
 
 ## 🧪 Testing Strategy

@@ -26,7 +26,7 @@ func TestGenerateAndValidateStreamToken(t *testing.T) {
 	// Wrong video ID
 	err = ValidateStreamToken(token, "wrong-video", secret)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "video ID mismatch")
+	assert.Contains(t, err.Error(), "token video ID mismatch")
 
 	// Wrong secret
 	err = ValidateStreamToken(token, videoID, "wrong-secret")
@@ -96,13 +96,14 @@ func TestHLSProtectionMiddleware(t *testing.T) {
 		err := h(c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
-		assert.Contains(t, rec.Body.String(), "Unauthorized referer")
+		assert.Contains(t, rec.Body.String(), "Referer unauthorized")
 	})
 
-	t.Run("Missing Referer", func(t *testing.T) {
+	t.Run("Missing Referer - Localhost Allowed", func(t *testing.T) {
 		videoID := "video1"
 		token := GenerateStreamToken(videoID, secret, 1*time.Hour)
 		req := httptest.NewRequest(http.MethodGet, "/stream/"+videoID+"/index.m3u8?token="+token, nil)
+		// No referer, but origin contains localhost
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		c.SetParamNames("video_id")
@@ -110,8 +111,7 @@ func TestHLSProtectionMiddleware(t *testing.T) {
 
 		err := h(c)
 		assert.NoError(t, err)
-		assert.Equal(t, http.StatusForbidden, rec.Code)
-		assert.Contains(t, rec.Body.String(), "Referer required")
+		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
 	t.Run("Missing Token", func(t *testing.T) {

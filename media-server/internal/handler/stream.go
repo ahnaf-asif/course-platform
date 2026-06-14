@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -45,54 +46,72 @@ func (h *StreamHandler) GetToken(c echo.Context) error {
 	})
 }
 
-// ServeManifest godoc
-// @Summary Serve HLS manifest
-// @Description Serves the .m3u8 playlist file. Requires valid token and referer.
-// @Tags Streaming
-// @Param video_id path string true "ID of the video"
-// @Param token query string true "Session token"
-// @Success 200
-// @Failure 401 {object} map[string]string
-// @Failure 403 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Router /stream/{video_id}/index.m3u8 [get]
-func (h *StreamHandler) ServeManifest(c echo.Context) error {
-	videoID := c.Param("video_id")
-	return h.serveFile(c, videoID, "index.m3u8")
+// ServeStream handles all HLS related requests (manifest, segments, keys)
+func (h *StreamHandler) ServeStream(c echo.Context) error {
+	path := c.Param("*") // Get everything after /stream/
+	parts := strings.Split(path, "/")
+
+	if len(parts) < 2 {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "invalid stream path"})
+	}
+
+	videoID := parts[0]
+	fileName := parts[1]
+
+	// Map virtual 'key' path to actual 'video.key' file
+	if fileName == "key" {
+		fileName = "video.key"
+	}
+
+	if err := h.validateAccess(c, videoID); err != nil {
+		return err
+	}
+
+	return h.serveFile(c, videoID, fileName)
 }
 
-// ServeSegment godoc
-// @Summary Serve HLS segment
-// @Description Serves encrypted .ts video segments. Requires valid token and referer.
-// @Tags Streaming
-// @Param video_id path string true "ID of the video"
-// @Param segment path string true "Segment filename"
-// @Param token query string true "Session token"
-// @Success 200
-// @Failure 401 {object} map[string]string
-// @Failure 403 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Router /stream/{video_id}/{segment} [get]
-func (h *StreamHandler) ServeSegment(c echo.Context) error {
-	videoID := c.Param("video_id")
-	segment := c.Param("segment")
-	return h.serveFile(c, videoID, segment)
-}
+func (h *StreamHandler) validateAccess(c echo.Context, videoID string) error {
+	if videoID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "video_id required"})
+	}
 
-// ServeKey godoc
-// @Summary Serve AES decryption key
-// @Description Serves the AES-128 key for segment decryption. Requires valid token and referer.
-// @Tags Streaming
-// @Param video_id path string true "ID of the video"
-// @Param token query string true "Session token"
-// @Success 200
-// @Failure 401 {object} map[string]string
-// @Failure 403 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Router /stream/{video_id}/key [get]
-func (h *StreamHandler) ServeKey(c echo.Context) error {
-	videoID := c.Param("video_id")
-	return h.serveFile(c, videoID, "video.key")
+	// 1. Try to get token from Query Param
+	token := c.QueryParam("token")
+
+	// 2. If not in Query, try Cookie
+	if token == "" {
+		cookie, err := c.Cookie("stream_token")
+		if err == nil {
+			token = cookie.Value
+		}
+	}
+
+	if token == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"message": "Missing stream token"})
+	}
+
+	// Validate the token
+	if err := middleware.ValidateStreamToken(token, videoID, h.cfg.StreamSecret); err != nil {
+		fmt.Printf("[HLS ERROR] Token validation failed for video %s: %v\n", videoID, err)
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"message": "Access denied",
+			"error":   err.Error(),
+		})
+	}
+
+	// 3. If token was valid and came from URL, set/refresh the cookie for segments
+	if c.QueryParam("token") != "" {
+		cookie := new(http.Cookie)
+		cookie.Name = "stream_token"
+		cookie.Value = token
+		cookie.Path = "/" // Important: accessible to all sub-requests
+		cookie.Expires = time.Now().Add(2 * time.Hour)
+		cookie.HttpOnly = true
+		cookie.SameSite = http.SameSiteLaxMode
+		c.SetCookie(cookie)
+	}
+
+	return nil
 }
 
 func (h *StreamHandler) serveFile(c echo.Context, videoID, fileName string) error {

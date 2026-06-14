@@ -24,6 +24,8 @@ services:
     environment:
       - OTEL_COLLECTOR_ADDR=jaeger:4317
       - REDIS_URL=redis:6379
+      - DB_URL=postgres://${DB_USER:-postgres}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-course_platform}?sslmode=disable
+      - MEDIA_SERVER_URL=http://media-server:8081/api/v1
     env_file:
       - be/.env
     depends_on:
@@ -54,12 +56,82 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_BASE_URL=http://api:8080/api/v1
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1
+      - MEDIA_API_URL=http://media-server:8081/api/v1
       - PORT=3000
     env_file:
       - be/.env
     depends_on:
       - api
+      - media-server
+
+  media-server:
+    build:
+      context: media-server
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    environment:
+      - PORT=8081
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_USE_SSL=false
+      - MINIO_BUCKET_RAW=pre-processed
+      - MINIO_BUCKET_PROCESSED=processed
+      - MINIO_BUCKET_PUBLIC=public
+      - API_KEY=secret-api-key
+      - PUBLIC_BASE_URL=http://localhost:8081
+      - MINIO_PUBLIC_ENDPOINT=localhost:9000
+      - STREAM_SECRET=super-secret-stream-key
+      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - REDIS_ADDRESS=redis:6379
+    depends_on:
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio-setup:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc alias set local http://minio:9000 minioadmin minioadmin) do echo 'Waiting for Minio...' && sleep 1; done;
+      /usr/bin/mc mb --ignore-existing local/pre-processed;
+      /usr/bin/mc mb --ignore-existing local/processed;
+      /usr/bin/mc mb --ignore-existing local/public;
+      /usr/bin/mc anonymous set public local/public;
+      echo 'Setting CORS policy...';
+      printf '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:GetBucketLocation\",\"s3:ListBucket\"],\"Principal\":{\"AWS\":[\"*\"]},\"Resource\":[\"arn:aws:s3:::*\"]},{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\",\"s3:GetObject\",\"s3:DeleteObject\"],\"Principal\":{\"AWS\":[\"*\"]},\"Resource\":[\"arn:aws:s3:::*\"]}]}' > /tmp/cors.json;
+      # Note: Actual CORS is set via browser settings or API, mc doesn't have a direct cors command in some versions.
+      # However, we can set the bucket to public-read-write for dev, or use the Minio API.
+      exit 0;
+      "
 
   redis:
     image: redis:7-alpine
@@ -85,7 +157,7 @@ services:
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3001:3000" # Changed host port to 3001 to avoid conflict with Next.js
+      - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     depends_on:
@@ -94,9 +166,10 @@ services:
   jaeger:
     image: jaegertracing/all-in-one:latest
     ports:
-      - "16686:16686" # UI
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
 
 volumes:
   postgres_data:
+  minio_data:

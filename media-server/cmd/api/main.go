@@ -65,6 +65,7 @@ func SetupRouter(cfg *config.Config, minioService service.IMinioService, transco
 	e.Use(middleware.Logger()) //nolint:staticcheck
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
+	e.Use(middleware.BodyLimit("500M"))
 
 	// Initialize Handlers
 	h := handler.NewHandler(minioService, transcodeService, taskProcessor, cfg)
@@ -86,17 +87,12 @@ func SetupRouter(cfg *config.Config, minioService service.IMinioService, transco
 		e.GET("/api/v1/docs/*", echoSwagger.WrapHandler)
 	}
 
-	// HLS Protected routes
-	stream := api.Group("/stream")
-	stream.Use(customMiddleware.HLSProtection(cfg.StreamSecret, cfg.AllowedOrigins))
-	stream.GET("/:video_id/index.m3u8", sh.ServeManifest)
-	stream.GET("/:video_id/:segment", sh.ServeSegment)
-	stream.GET("/:video_id/key", sh.ServeKey)
+	// HLS Protected routes (Access validation handled inside StreamHandler)
+	api.Match([]string{"GET", "HEAD"}, "/stream/*", sh.ServeStream)
 
-	// Protected routes (require API key)
+	// Protected routes (require API key or upload token)
 	protected := api.Group("")
-	protected.Use(customMiddleware.APIKeyAuth(cfg.APIKey))
-
+	protected.Use(customMiddleware.APIKeyAuth(cfg.APIKey, cfg.StreamSecret))
 	protected.GET("/upload-url", h.GetUploadURL)
 	protected.POST("/upload", h.UploadFile)
 	protected.POST("/transcode", h.TriggerTranscode) // New endpoint

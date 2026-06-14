@@ -8,9 +8,13 @@ import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import Superscript from '@tiptap/extension-superscript';
 import SubScript from '@tiptap/extension-subscript';
+import ImageResize from 'tiptap-extension-resize-image';
 import { MathExtension } from './extensions/MathExtension';
-import { IconMathFunction } from '@tabler/icons-react';
-import { Stack, Text, Box } from '@mantine/core';
+import { IconMathFunction, IconPhoto } from '@tabler/icons-react';
+import { Stack, Text, Box, FileButton } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { axiosInstance } from '@/lib/axios';
+import axios from 'axios';
 
 interface EditorProps {
   content?: string;
@@ -28,6 +32,11 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
       SubScript,
       Highlight,
       MathExtension,
+      ImageResize.configure({
+        HTMLAttributes: {
+          style: 'border-radius: 4px; display: inline-block;',
+        },
+      }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
     ],
     content: content || '',
@@ -48,7 +57,10 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
   // Handle external content changes (e.g. form reset or initial load)
   useEffect(() => {
     if (editor && content !== undefined && content !== editor.getHTML()) {
-      editor.commands.setContent(content || '');
+      // Use queueMicrotask to avoid React warning: flushSync was called from inside a lifecycle method
+      queueMicrotask(() => {
+        editor.commands.setContent(content || '');
+      });
     }
   }, [content, editor]);
 
@@ -56,6 +68,80 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
     const latex = window.prompt('Enter LaTeX formula (e.g. f_x, E=mc^2):', '');
     if (latex !== null && latex.trim() !== '') {
       editor?.chain().focus().setMath({ latex }).run();
+    }
+  };
+
+  const handleImageUpload = async (file: File | null) => {
+    if (!file) return;
+
+    // Check if it's an image
+    if (!file.type.startsWith('image/')) {
+      notifications.show({
+        title: 'Invalid file',
+        message: 'Please upload an image file.',
+        color: 'red',
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const id = notifications.show({
+      loading: true,
+      title: 'Uploading image',
+      message: 'Please wait...',
+      autoClose: false,
+      withCloseButton: false,
+    });
+
+    try {
+      // 1. Get a Temporary Upload Token from Go Backend (Authenticated)
+      // This hides the master API_KEY from the browser
+      const authRes = await axiosInstance<{ token: string }>({
+        url: '/admin/media/upload-token',
+        method: 'GET',
+      });
+      
+      const { token } = authRes;
+
+      // 2. Use the proxied /media-api route with public visibility and temporary token
+      const response = await axios.post(`/media-api/upload?visibility=public&upload_token=${token}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      // Get the file name from response and construct the proxy path
+      const fileName = response.data.file_name;
+      const proxiedUrl = `/media-api/p/${fileName}`;
+
+      if (editor) {
+        editor.chain().focus().setImage({ src: proxiedUrl }).run();
+      }
+
+      notifications.update({
+        id,
+        color: 'green',
+        title: 'Success',
+        message: 'Image uploaded and inserted',
+        loading: false,
+        autoClose: 2000,
+      });
+    } catch (error: unknown) {
+      console.error('Image upload error:', error);
+      let message = 'An unknown error occurred';
+      if (axios.isAxiosError(error)) {
+        message = error.response?.data?.message || error.message;
+      }
+      notifications.update({
+        id,
+        color: 'red',
+        title: 'Upload failed',
+        message,
+        loading: false,
+        autoClose: 5000,
+      });
     }
   };
 
@@ -137,6 +223,18 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
               >
                 <IconMathFunction size={16} stroke={1.5} />
               </RichTextEditor.Control>
+
+              <FileButton onChange={handleImageUpload} accept="image/png,image/jpeg,image/gif,image/webp">
+                {(props) => (
+                  <RichTextEditor.Control
+                    {...props}
+                    aria-label="Upload Image"
+                    title="Upload Image"
+                  >
+                    <IconPhoto size={16} stroke={1.5} />
+                  </RichTextEditor.Control>
+                )}
+              </FileButton>
             </RichTextEditor.ControlsGroup>
 
             <RichTextEditor.ControlsGroup>

@@ -185,6 +185,78 @@ PostCSS variables are configured in `postcss.config.cjs` to match Mantine's stan
 
 ---
 
+## 📂 Media & File Management
+
+The platform includes a dedicated Go-based Media Server for handling file uploads and secure HLS video streaming. For security and ease of use, all media requests are proxied through the frontend.
+
+### 📡 Media API Proxy
+The frontend uses Next.js rewrites to proxy requests from `/media-api/*` to the Media Server. This eliminates CORS issues and simplifies authorization.
+- **Local Dev URL**: `http://localhost:8081/api/v1`
+- **Frontend Proxy**: `/media-api/...`
+
+### 🔓 Public Files (Images, PDFs, etc.)
+Public files are stored in a dedicated bucket and can be accessed directly via a relative proxy path.
+
+#### Uploading Public Files
+1.  **Authorize**: Get a temporary token from the backend.
+2.  **Upload**: Send binary data to `/media-api/upload?visibility=public&upload_token=...`.
+
+**Reusable Component:** Use the `<ImageUpload />` component for automatic handling.
+```tsx
+import ImageUpload from '@/components/ImageUpload';
+
+<ImageUpload 
+  value={thumbnail} 
+  onChange={(url) => setThumbnail(url)} 
+/>
+// Result: /media-api/p/unique_id_name.png
+```
+
+### 🔐 Private Files & Secure Streaming (HLS)
+Videos are split and encrypted using HLS. Access requires a **Session Handshake**.
+
+#### The Secure Pipeline:
+1.  **Upload**: Use the `<VideoUpload />` component. It handles temporary token acquisition and direct binary upload to the media server via proxy.
+2.  **Transcoding**: The Media Server automatically triggers background processing.
+3.  **Readiness**: The component polls the backend to verify manifest availability.
+4.  **Playback**: 
+    - The player requests `index.m3u8?token=...`.
+    - The Media Server sets a **Session Cookie**.
+    - All segments are automatically authorized via the cookie.
+
+**Reusable Component:**
+```tsx
+import VideoUpload from '@/app/(admin)/admin/courses/[id]/curriculum/lesson/[lessonId]/_components/VideoUpload';
+
+<VideoUpload 
+  value={videoId} 
+  onChange={(id) => setVideoId(id)} 
+/>
+```
+
+#### Implementation Example (HLS.js):
+```tsx
+import Hls from 'hls.js';
+
+// 1. Get Token
+const { token } = await axios.get(`/media-api/stream-token/${videoId}`);
+
+// 2. Load into Player
+const manifestUrl = `/media-api/stream/${videoId}/index.m3u8?token=${token}`;
+if (Hls.isSupported()) {
+  const hls = new Hls();
+  hls.loadSource(manifestUrl);
+  hls.attachMedia(videoElement);
+}
+```
+
+### 🛠 Troubleshooting
+- **401 Unauthorized**: Ensure you are using the `/media-api` proxy path. Requests made directly to port 8081 will fail cookie validation.
+- **Transcoding Delay**: Transcoding is an intensive background task. Use the `/test-video` page to monitor status polling.
+- **File Limits**: The maximum upload size is currently configured to **500MB**.
+
+---
+
 ## 🐳 Docker & Orchestration
 
 ### Standalone Production Build

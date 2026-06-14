@@ -38,7 +38,7 @@ func GenerateStreamToken(videoID, secret string, expiry time.Duration) string {
 func ValidateStreamToken(token, expectedVideoID, secret string) error {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
-		return fmt.Errorf("invalid token format")
+		return fmt.Errorf("invalid token format: expected 3 parts, got %d", len(parts))
 	}
 
 	b64VideoID := parts[0]
@@ -47,8 +47,11 @@ func ValidateStreamToken(token, expectedVideoID, secret string) error {
 
 	// 1. Verify Video ID matches
 	decodedVideoID, err := base64.RawURLEncoding.DecodeString(b64VideoID)
-	if err != nil || string(decodedVideoID) != expectedVideoID {
-		return fmt.Errorf("token video ID mismatch")
+	if err != nil {
+		return fmt.Errorf("failed to decode video ID from token: %v", err)
+	}
+	if string(decodedVideoID) != expectedVideoID {
+		return fmt.Errorf("token video ID mismatch: got %s, expected %s", string(decodedVideoID), expectedVideoID)
 	}
 
 	// 2. Verify Signature
@@ -59,17 +62,17 @@ func ValidateStreamToken(token, expectedVideoID, secret string) error {
 
 	// Use ConstantTimeCompare to prevent timing attacks
 	if subtle.ConstantTimeCompare([]byte(providedSignature), []byte(expectedSignature)) != 1 {
-		return fmt.Errorf("invalid token signature")
+		return fmt.Errorf("invalid token signature: mismatch between provided and expected")
 	}
 
 	// 3. Verify Expiration
 	expiresAt, err := strconv.ParseInt(expiresStr, 10, 64)
 	if err != nil {
-		return fmt.Errorf("invalid expiration format")
+		return fmt.Errorf("invalid expiration format in token")
 	}
 
 	if time.Now().Unix() > (expiresAt + int64(ClockDriftAllowance.Seconds())) {
-		return fmt.Errorf("token expired")
+		return fmt.Errorf("token expired: expires at %d, current time %d", expiresAt, time.Now().Unix())
 	}
 
 	return nil
@@ -97,13 +100,21 @@ func HLSProtection(secret, allowedOriginsStr string) echo.MiddlewareFunc {
 					}
 				}
 			} else {
-				// Strictly require referer for everything under /stream
-				// browsers reliably send referer for these types of requests
-				return c.JSON(http.StatusForbidden, map[string]string{"message": "Referer required"})
+				// If referer is missing, we check if localhost is allowed
+				// This is common for HEAD requests or programmatic checks from the browser
+				for _, origin := range allowedOrigins {
+					if strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1") {
+						isAllowed = true
+						break
+					}
+				}
 			}
 
 			if !isAllowed && allowedOriginsStr != "*" {
-				return c.JSON(http.StatusForbidden, map[string]string{"message": "Unauthorized referer"})
+				return c.JSON(http.StatusForbidden, map[string]string{
+					"message": "Referer unauthorized", 
+					"referer": referer,
+				})
 			}
 
 			// 2. Token Validation
@@ -114,6 +125,9 @@ func HLSProtection(secret, allowedOriginsStr string) echo.MiddlewareFunc {
 
 			videoID := c.Param("video_id")
 			if err := ValidateStreamToken(token, videoID, secret); err != nil {
+				// LOG THE FAILURE REASON
+				fmt.Printf("[HLS ERROR] Token validation failed for video %s: %v\n", videoID, err)
+				
 				return c.JSON(http.StatusUnauthorized, map[string]string{
 					"message": "Access denied",
 					"error":   err.Error(),
