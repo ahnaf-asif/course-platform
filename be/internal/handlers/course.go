@@ -78,6 +78,7 @@ func (h *CourseHandler) CreateCourse(c echo.Context) error {
 	}
 
 	if err := h.validate.Struct(req); err != nil {
+		h.logger.Error("Course create validation failed", "error", err, "payload", req)
 		return c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{"errors": h.formatValidationErrors(err)})
 	}
 
@@ -182,6 +183,7 @@ func (h *CourseHandler) UpdateCourse(c echo.Context) error {
 	}
 
 	if err := h.validate.Struct(req); err != nil {
+		h.logger.Error("Course update validation failed", "error", err, "payload", req)
 		return c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{"errors": h.formatValidationErrors(err)})
 	}
 
