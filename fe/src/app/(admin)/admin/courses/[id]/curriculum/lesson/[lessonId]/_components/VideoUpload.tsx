@@ -15,6 +15,8 @@ import {
   Box,
   Modal,
   AspectRatio,
+  Center,
+  Loader,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { 
@@ -35,12 +37,95 @@ interface VideoUploadProps {
   onChange: (value: string) => void;
 }
 
+// Sub-component to handle secure player initialization safely inside Modal
+function PreviewPlayer({ videoId }: { videoId: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let hls: Hls | null = null;
+
+    const initPlayer = async () => {
+      if (!videoRef.current) return;
+
+      try {
+        setLoading(true);
+        // 1. Get secure token from Go Backend (Authenticated)
+        const res = await axiosInstance<{ token: string }>({
+          url: `/admin/media/token/${videoId}`,
+          method: 'GET'
+        });
+        
+        const token = res.token;
+        const manifestUrl = `/media-api/stream/${videoId}/index.m3u8?token=${token}`;
+
+        // 2. Initialize Hls.js
+        if (Hls.isSupported()) {
+          hls = new Hls();
+          hls.loadSource(manifestUrl);
+          hls.attachMedia(videoRef.current);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            setLoading(false);
+            videoRef.current?.play().catch(() => console.log("Autoplay blocked"));
+          });
+          hls.on(Hls.Events.ERROR, (_, data) => {
+            if (data.fatal) {
+              setError("Failed to load video stream");
+            }
+          });
+        } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+          // Native Safari support
+          videoRef.current.src = manifestUrl;
+          videoRef.current.addEventListener('loadedmetadata', () => {
+            setLoading(false);
+            videoRef.current?.play().catch(() => console.log("Autoplay blocked"));
+          });
+        }
+      } catch (err) {
+        console.error('Failed to init preview:', err);
+        setError("Could not acquire secure playback token");
+      }
+    };
+
+    initPlayer();
+
+    return () => {
+      if (hls) {
+        hls.destroy();
+      }
+    };
+  }, [videoId]);
+
+  if (error) {
+    return (
+      <Center h="100%" bg="dark.8" style={{ borderRadius: '4px' }}>
+        <Text c="red" size="sm">{error}</Text>
+      </Center>
+    );
+  }
+
+  return (
+    <Box pos="relative" h="100%" w="100%">
+      {loading && (
+        <Center pos="absolute" inset={0} bg="dark.8" style={{ zIndex: 1, borderRadius: '4px' }}>
+          <Loader size="sm" color="blue" />
+        </Center>
+      )}
+      <video 
+        ref={videoRef} 
+        controls 
+        style={{ width: '100%', height: '100%', backgroundColor: 'black', borderRadius: '4px' }}
+      />
+    </Box>
+  );
+}
+
 export default function VideoUpload({ value, onChange }: VideoUploadProps) {
   const [opened, { open, close }] = useDisclosure(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<'idle' | 'processing' | 'ready'>('idle');
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   const isInternalMedia = value && !value.startsWith('http');
 
@@ -68,42 +153,6 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
     }
   }, [value, isInternalMedia]);
 
-  // Handle HLS Player initialization when modal opens
-  useEffect(() => {
-    let hls: Hls | null = null;
-
-    const initPlayer = async () => {
-      if (opened && value && videoRef.current) {
-        try {
-          const res = await axiosInstance<{ token: string }>({
-            url: `/admin/media/token/${value}`,
-            method: 'GET'
-          });
-          const token = res.token;
-          const manifestUrl = `/media-api/stream/${value}/index.m3u8?token=${token}`;
-
-          if (Hls.isSupported()) {
-            hls = new Hls();
-            hls.loadSource(manifestUrl);
-            hls.attachMedia(videoRef.current);
-          } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-            videoRef.current.src = manifestUrl;
-          }
-        } catch (error) {
-          console.error('Failed to get preview token:', error);
-        }
-      }
-    };
-
-    initPlayer();
-
-    return () => {
-      if (hls) {
-        hls.destroy();
-      }
-    };
-  }, [opened, value]);
-
   const handleUpload = async (file: File | null) => {
     if (!file) return;
 
@@ -112,7 +161,6 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
 
     try {
       // 1. Get a Temporary Upload Token from Go Backend (Authenticated)
-      // This hides the master API_KEY from the browser
       const authRes = await axiosInstance<{ token: string }>({
         url: '/admin/media/upload-token',
         method: 'GET',
@@ -124,7 +172,6 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
       formData.append('file', file);
 
       // 2. Perform DIRECT UPLOAD to Media Server (via Next.js proxy)
-      // We pass the temporary upload_token instead of the master API_KEY
       const response = await axios.post(`/media-api/upload?upload_token=${token}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -244,11 +291,7 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
         overlayProps={{ blur: 3 }}
       >
         <AspectRatio ratio={16 / 9}>
-          <video 
-            ref={videoRef} 
-            controls 
-            style={{ width: '100%', height: '100%', backgroundColor: 'black', borderRadius: '4px' }}
-          />
+          {opened && <PreviewPlayer videoId={value} />}
         </AspectRatio>
       </Modal>
     </Paper>
