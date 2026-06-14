@@ -96,9 +96,9 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
 
     try {
       // Use the proxied /media-api route with public visibility
+      // The Next.js proxy automatically adds the X-API-KEY server-side.
       const response = await axios.post('/media-api/upload?visibility=public', formData, {
         headers: {
-          'X-API-KEY': 'secret-api-key',
           'Content-Type': 'multipart/form-data',
         },
       });

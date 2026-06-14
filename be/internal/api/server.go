@@ -273,6 +273,12 @@ func (s *Server) registerRoutes() {
 	adminUsers := admin.Group("/users")
 	adminUsers.GET("", userHandler.ListUsers)
 	adminUsers.PATCH("/:id/role", userHandler.UpdateUserRole)
+
+	// Admin Media routes (Authorization for Media Server)
+	adminMedia := admin.Group("/media")
+	adminMedia.GET("/upload-url", curriculumHandler.GetMediaUploadURL)
+	adminMedia.GET("/token/:videoId", curriculumHandler.GetMediaStreamToken)
+	adminMedia.POST("/transcode", curriculumHandler.TriggerMediaTranscode)
 }
 
 func (s *Server) GetEcho() *echo.Echo {
