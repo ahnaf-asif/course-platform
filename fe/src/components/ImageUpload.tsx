@@ -73,10 +73,10 @@ export default function ImageUpload({ value, onChange, label, description }: Ima
         },
       });
 
-      // Get the public URL from response
-      // Standardize on the proxied path
-      const imageUrl = response.data.public_url;
-      const proxiedUrl = imageUrl.replace('http://localhost:8081/api/v1', '/media-api');
+      // Get the file name from response and construct the proxy path
+      // This avoids hardcoding internal URLs or performing hacky string replacements.
+      const fileName = response.data.file_name;
+      const proxiedUrl = `/media-api/p/${fileName}`;
 
       onChange(proxiedUrl);
       

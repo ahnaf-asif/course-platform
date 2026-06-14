@@ -103,8 +103,9 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
         },
       });
 
-      // but the proxy /media-api/p/ is actually safer for the browser to load without CORS issues
-      const proxiedUrl = response.data.public_url.replace('http://localhost:8081/api/v1', '/media-api');
+      // Get the file name from response and construct the proxy path
+      const fileName = response.data.file_name;
+      const proxiedUrl = `/media-api/p/${fileName}`;
 
       if (editor) {
         editor.chain().focus().setImage({ src: proxiedUrl }).run();
