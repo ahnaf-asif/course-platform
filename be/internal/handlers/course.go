@@ -67,7 +67,7 @@ type CreateCourseRequest struct {
 	Title        string  `json:"title" validate:"required,min=3,max=255"`
 	Slug         *string `json:"slug" validate:"omitempty,lowercase,alphanumhyphen"`
 	Description  string  `json:"description" validate:"required,min=10"`
-	ThumbnailURL *string `json:"thumbnail_url" validate:"omitempty,url"`
+	ThumbnailURL *string `json:"thumbnail_url" validate:"omitempty"`
 	IsPublished  bool    `json:"is_published"`
 }
 
@@ -165,7 +165,7 @@ type UpdateCourseRequest struct {
 	Title        *string `json:"title" validate:"omitempty,min=3,max=255"`
 	Slug         *string `json:"slug" validate:"omitempty,lowercase,alphanumhyphen"`
 	Description  *string `json:"description" validate:"omitempty,min=10"`
-	ThumbnailURL *string `json:"thumbnail_url" validate:"omitempty,url"`
+	ThumbnailURL *string `json:"thumbnail_url" validate:"omitempty"`
 	IsPublished  *bool   `json:"is_published"`
 }
 
