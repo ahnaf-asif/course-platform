@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { RichTextEditor } from '@mantine/tiptap';
 import { useEditor } from '@tiptap/react';
 import Highlight from '@tiptap/extension-highlight';
@@ -11,7 +11,7 @@ import SubScript from '@tiptap/extension-subscript';
 import ImageResize from 'tiptap-extension-resize-image';
 import { MathExtension } from './extensions/MathExtension';
 import { IconMathFunction, IconPhoto } from '@tabler/icons-react';
-import { Stack, Text, Box, FileButton, Tooltip } from '@mantine/core';
+import { Stack, Text, Box, FileButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import axios from 'axios';
 
@@ -24,8 +24,6 @@ interface EditorProps {
 }
 
 export default function CustomRichTextEditor({ content, onChange, label, minHeight = 400, compact }: EditorProps) {
-  const fileInputRef = useRef<() => void>(null);
-  
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -105,10 +103,6 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
         },
       });
 
-      // Get the public URL from response
-      const imageUrl = response.data.public_url;
-      
-      // If we are in local dev outside docker, we might need to point to localhost:8081
       // but the proxy /media-api/p/ is actually safer for the browser to load without CORS issues
       const proxiedUrl = response.data.public_url.replace('http://localhost:8081/api/v1', '/media-api');
 
@@ -124,13 +118,17 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
         loading: false,
         autoClose: 2000,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Image upload error:', error);
+      let message = 'An unknown error occurred';
+      if (axios.isAxiosError(error)) {
+        message = error.response?.data?.message || error.message;
+      }
       notifications.update({
         id,
         color: 'red',
         title: 'Upload failed',
-        message: error.response?.data?.message || error.message,
+        message,
         loading: false,
         autoClose: 5000,
       });

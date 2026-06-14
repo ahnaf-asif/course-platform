@@ -22,7 +22,6 @@ import {
   IconVideo, 
   IconLoader2, 
   IconCheck, 
-  IconPlayerPlay, 
   IconAlertCircle,
   IconKey
 } from '@tabler/icons-react';
@@ -76,9 +75,13 @@ export default function VideoTestPage() {
 
       // Start polling for token/manifest readiness
       pollForReadiness(fileName);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus('error');
-      setError(err.response?.data?.message || err.message);
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message || err.message);
+      } else {
+        setError(String(err));
+      }
     }
   };
 
@@ -106,7 +109,7 @@ export default function VideoTestPage() {
           message: 'Transcoding complete. You can now play the video.',
           color: 'green',
         });
-      } catch (err) {
+      } catch {
         attempts++;
         if (attempts < maxAttempts) {
           setTimeout(check, 2000); // Check every 2 seconds
@@ -130,7 +133,7 @@ export default function VideoTestPage() {
         hls.loadSource(manifestUrl);
         hls.attachMedia(videoRef.current);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          videoRef.current?.play().catch(e => console.log("Autoplay prevented"));
+          videoRef.current?.play().catch(() => console.log("Autoplay prevented"));
         });
       } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
         // For Safari

@@ -22,7 +22,12 @@ import axios from 'axios';
 export default function TestPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadResponse, setUploadResponse] = useState<any>(null);
+  const [uploadResponse, setUploadResponse] = useState<{
+    file_name?: string;
+    public_url?: string;
+    proxied_public_url?: string;
+    [key: string]: unknown;
+  } | null>(null);
 
   const [videoId, setVideoId] = useState('');
   const [tokenLoading, setTokenLoading] = useState(false);
@@ -58,11 +63,15 @@ export default function TestPage() {
         message: 'File uploaded successfully',
         color: 'green',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Upload error:', error);
+      let message = 'An unknown error occurred';
+      if (axios.isAxiosError(error)) {
+        message = error.response?.data?.message || error.message;
+      }
       notifications.show({
         title: 'Upload Failed',
-        message: error.response?.data?.message || error.message,
+        message,
         color: 'red',
         icon: <IconAlertCircle size="1.1rem" />,
       });
@@ -90,11 +99,15 @@ export default function TestPage() {
         message: 'Stream token acquired successfully',
         color: 'blue',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Token error:', error);
+      let message = 'An unknown error occurred';
+      if (axios.isAxiosError(error)) {
+        message = error.response?.data?.message || error.message;
+      }
       notifications.show({
         title: 'Error',
-        message: error.response?.data?.message || error.message,
+        message,
         color: 'red',
       });
     } finally {
@@ -112,7 +125,7 @@ export default function TestPage() {
           <Stack gap="md">
             <Title order={3}>1. Test File Upload</Title>
             <Text size="sm" c="dimmed">
-              Upload a file to the media server. If it's a video, transcoding will start automatically in the background.
+              Upload a file to the media server. If it&apos;s a video, transcoding will start automatically in the background.
             </Text>
 
             <Group align="flex-end">
