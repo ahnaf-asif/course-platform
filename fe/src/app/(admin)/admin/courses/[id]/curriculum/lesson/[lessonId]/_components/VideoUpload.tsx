@@ -39,15 +39,13 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
 
   const checkReadiness = async (id: string) => {
     try {
-      // 1. Get secure token from Go Backend (Authenticated)
       const res = await axiosInstance<{ token: string }>({
         url: `/admin/media/token/${id}`,
         method: 'GET'
       });
       const token = res.token;
 
-      // 2. Check manifest readiness on Media Server (via Next.js proxy)
-      // This is a HEAD request, so we use raw axios to avoid base URL interference
+      // Check manifest readiness on Media Server (via Next.js proxy)
       await axios.head(`/media-api/stream/${id}/index.m3u8?token=${token}`);
       setStatus('ready');
     } catch {
@@ -70,40 +68,35 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
     setProgress(0);
 
     try {
-      // 1. Get a Signed S3 Upload URL from Go Backend (Authenticated)
-      const authRes = await axiosInstance<{ upload_url: string, file_name: string }>({
-        url: '/admin/media/upload-url',
+      // 1. Get a Temporary Upload Token from Go Backend (Authenticated)
+      // This hides the master API_KEY from the browser
+      const authRes = await axiosInstance<{ token: string }>({
+        url: '/admin/media/upload-token',
         method: 'GET',
-        params: { file_name: file.name }
       });
       
-      const { upload_url, file_name } = authRes;
+      const { token } = authRes;
 
-      // 2. Perform DIRECT BINARY UPLOAD to Storage (Zero server-side overhead)
-      // We map the internal URL to the actual public-facing Minio port
-      const directUploadUrl = upload_url.replace(/minio:9000/, 'localhost:9000');
+      const formData = new FormData();
+      formData.append('file', file);
 
-      await axios.put(directUploadUrl, file, {
+      // 2. Perform DIRECT UPLOAD to Media Server (via Next.js proxy)
+      // We pass the temporary upload_token instead of the master API_KEY
+      const response = await axios.post(`/media-api/upload?upload_token=${token}`, formData, {
         headers: {
-          'Content-Type': file.type,
+          'Content-Type': 'multipart/form-data',
         },
         onUploadProgress: (ev) => {
           setProgress(Math.round((ev.loaded * 100) / (ev.total || 1)));
         },
       });
 
-      // 3. Trigger Transcoding on Media Server (via Go API proxy)
-      await axiosInstance({
-        url: '/admin/media/transcode',
-        method: 'POST',
-        data: { file_name: file_name }
-      });
-
-      onChange(file_name);
+      const videoId = response.data.file_name;
+      onChange(videoId);
       setStatus('processing');
       notifications.show({
         title: 'Upload Successful',
-        message: 'Direct upload complete. Video is being transcoded.',
+        message: 'Video is being processed for secure streaming.',
         color: 'green',
       });
     } catch (error: unknown) {
@@ -144,14 +137,14 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
                 </Button>
               )}
             </FileButton>
-            <Text size="xs" c="dimmed">Direct S3 Upload (High Performance)</Text>
+            <Text size="xs" c="dimmed">Direct Upload (Secure)</Text>
           </Group>
         )}
 
         {uploading && (
           <Box>
             <Group justify="space-between" mb={5}>
-              <Text size="xs">Uploading Directly to Storage...</Text>
+              <Text size="xs">Uploading...</Text>
               <Text size="xs">{progress}%</Text>
             </Group>
             <Progress value={progress} size="sm" animated />

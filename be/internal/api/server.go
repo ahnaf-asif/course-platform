@@ -276,7 +276,7 @@ func (s *Server) registerRoutes() {
 
 	// Admin Media routes (Authorization for Media Server)
 	adminMedia := admin.Group("/media")
-	adminMedia.GET("/upload-url", curriculumHandler.GetMediaUploadURL)
+	adminMedia.GET("/upload-token", curriculumHandler.GetMediaUploadToken)
 	adminMedia.GET("/token/:videoId", curriculumHandler.GetMediaStreamToken)
 	adminMedia.POST("/transcode", curriculumHandler.TriggerMediaTranscode)
 }

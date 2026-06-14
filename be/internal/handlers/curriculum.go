@@ -664,24 +664,12 @@ func (h *CurriculumHandler) mapToCourseTreeResponseBySlug(rows []generated.GetCo
 	return resp
 }
 
-func (h *CurriculumHandler) GetMediaUploadURL(c echo.Context) error {
-	fileName := c.QueryParam("file_name")
-	visibility := c.QueryParam("visibility")
-	if fileName == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "file_name is required")
-	}
-
+func (h *CurriculumHandler) GetMediaUploadToken(c echo.Context) error {
 	mediaServerURL := os.Getenv("MEDIA_SERVER_URL")
 	apiKey := os.Getenv("MEDIA_SERVER_API_KEY")
 
-	// Call Media Server to get a signed upload URL
-	req, _ := http.NewRequest("GET", mediaServerURL+"/upload-url", nil)
-	q := req.URL.Query()
-	q.Add("file_name", fileName)
-	if visibility != "" {
-		q.Add("visibility", visibility)
-	}
-	req.URL.RawQuery = q.Encode()
+	// Call Media Server to get a temporary token for the "upload" action
+	req, _ := http.NewRequest("GET", mediaServerURL+"/stream-token/upload", nil)
 	req.Header.Set("X-API-KEY", apiKey)
 
 	client := &http.Client{}

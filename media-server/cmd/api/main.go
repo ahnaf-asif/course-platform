@@ -90,10 +90,9 @@ func SetupRouter(cfg *config.Config, minioService service.IMinioService, transco
 	// HLS Protected routes (Access validation handled inside StreamHandler)
 	api.Match([]string{"GET", "HEAD"}, "/stream/*", sh.ServeStream)
 
-	// Protected routes (require API key)
+	// Protected routes (require API key or upload token)
 	protected := api.Group("")
-	protected.Use(customMiddleware.APIKeyAuth(cfg.APIKey))
-
+	protected.Use(customMiddleware.APIKeyAuth(cfg.APIKey, cfg.StreamSecret))
 	protected.GET("/upload-url", h.GetUploadURL)
 	protected.POST("/upload", h.UploadFile)
 	protected.POST("/transcode", h.TriggerTranscode) // New endpoint
