@@ -44,6 +44,7 @@ import { CourseResponse } from '@/api/model/components-schemas-course/courseResp
 import Link from 'next/link';
 import axios from 'axios';
 import { useState } from 'react';
+import ImageUpload from '@/components/ImageUpload';
 
 export default function CoursesManagement() {
   const { data: courses, isPending, isError, refetch } = useGetAdminCourses();
@@ -68,7 +69,7 @@ export default function CoursesManagement() {
         value && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) ? 'Invalid slug format (lowercase, numbers and hyphens only)' : null,
       description: (value: string) => (value.length < 10 ? 'Description must be at least 10 characters' : null),
       thumbnail_url: (value: string | undefined) =>
-        value && !/^(https?:\/\/)/.test(value) ? 'Must be a valid URL' : null,
+        value && !/^(https?:\/\/|\/media-api\/)/.test(value) ? 'Must be a valid URL or media path' : null,
     },
   });
 
@@ -288,11 +289,14 @@ export default function CoursesManagement() {
               minRows={3}
               {...form.getInputProps('description')}
             />
-            <TextInput
-              label="Thumbnail URL"
-              placeholder="https://example.com/image.png"
-              {...form.getInputProps('thumbnail_url')}
+            
+            <ImageUpload 
+              label="Course Thumbnail"
+              description="A preview image for your course. Recommended size 1200x800."
+              value={form.values.thumbnail_url || ''} 
+              onChange={(val) => form.setFieldValue('thumbnail_url', val)} 
             />
+
             <Switch
               label="Publish immediately"
               {...form.getInputProps('is_published', { type: 'checkbox' })}
