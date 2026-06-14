@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Group,
   Text,
@@ -13,15 +13,20 @@ import {
   ActionIcon,
   Tooltip,
   Box,
+  Modal,
+  AspectRatio,
 } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { 
   IconVideo, 
   IconUpload, 
   IconTrash, 
   IconCheck, 
   IconLoader2,
+  IconPlayerPlay,
 } from '@tabler/icons-react';
 import axios from 'axios';
+import Hls from 'hls.js';
 import { axiosInstance } from '@/lib/axios';
 import { notifications } from '@mantine/notifications';
 
@@ -31,9 +36,11 @@ interface VideoUploadProps {
 }
 
 export default function VideoUpload({ value, onChange }: VideoUploadProps) {
+  const [opened, { open, close }] = useDisclosure(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<'idle' | 'processing' | 'ready'>('idle');
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const isInternalMedia = value && !value.startsWith('http');
 
@@ -60,6 +67,42 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
       });
     }
   }, [value, isInternalMedia]);
+
+  // Handle HLS Player initialization when modal opens
+  useEffect(() => {
+    let hls: Hls | null = null;
+
+    const initPlayer = async () => {
+      if (opened && value && videoRef.current) {
+        try {
+          const res = await axiosInstance<{ token: string }>({
+            url: `/admin/media/token/${value}`,
+            method: 'GET'
+          });
+          const token = res.token;
+          const manifestUrl = `/media-api/stream/${value}/index.m3u8?token=${token}`;
+
+          if (Hls.isSupported()) {
+            hls = new Hls();
+            hls.loadSource(manifestUrl);
+            hls.attachMedia(videoRef.current);
+          } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+            videoRef.current.src = manifestUrl;
+          }
+        } catch (error) {
+          console.error('Failed to get preview token:', error);
+        }
+      }
+    };
+
+    initPlayer();
+
+    return () => {
+      if (hls) {
+        hls.destroy();
+      }
+    };
+  }, [opened, value]);
 
   const handleUpload = async (file: File | null) => {
     if (!file) return;
@@ -153,20 +196,34 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
 
         {value && !uploading && (
           <Stack gap={5}>
-            <Group gap="xs">
-              <Text size="xs" fw={700} style={{ wordBreak: 'break-all' }}>
-                ID: <span style={{ fontWeight: 400 }}>{value}</span>
-              </Text>
-              {status === 'ready' ? (
-                <Badge color="green" variant="light" leftSection={<IconCheck size={10} />}>
-                  Ready
-                </Badge>
-              ) : isInternalMedia ? (
-                <Badge color="blue" variant="light" leftSection={<IconLoader2 size={10} className="animate-spin" />}>
-                  Processing
-                </Badge>
-              ) : (
-                <Badge color="gray" variant="light">External URL</Badge>
+            <Group gap="xs" wrap="nowrap" justify="space-between">
+              <Group gap="xs">
+                <Text size="xs" fw={700} style={{ wordBreak: 'break-all' }}>
+                  ID: <span style={{ fontWeight: 400 }}>{value}</span>
+                </Text>
+                {status === 'ready' ? (
+                  <Badge color="green" variant="light" leftSection={<IconCheck size={10} />}>
+                    Ready
+                  </Badge>
+                ) : isInternalMedia ? (
+                  <Badge color="blue" variant="light" leftSection={<IconLoader2 size={10} className="animate-spin" />}>
+                    Processing
+                  </Badge>
+                ) : (
+                  <Badge color="gray" variant="light">External URL</Badge>
+                )}
+              </Group>
+
+              {status === 'ready' && (
+                <Button 
+                  size="compact-xs" 
+                  variant="filled" 
+                  color="blue" 
+                  leftSection={<IconPlayerPlay size={10} />}
+                  onClick={open}
+                >
+                  Preview
+                </Button>
               )}
             </Group>
             {status === 'processing' && (
@@ -177,6 +234,23 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
           </Stack>
         )}
       </Stack>
+
+      <Modal 
+        opened={opened} 
+        onClose={close} 
+        title="Video Preview" 
+        size="lg"
+        centered
+        overlayProps={{ blur: 3 }}
+      >
+        <AspectRatio ratio={16 / 9}>
+          <video 
+            ref={videoRef} 
+            controls 
+            style={{ width: '100%', height: '100%', backgroundColor: 'black', borderRadius: '4px' }}
+          />
+        </AspectRatio>
+      </Modal>
     </Paper>
   );
 }
