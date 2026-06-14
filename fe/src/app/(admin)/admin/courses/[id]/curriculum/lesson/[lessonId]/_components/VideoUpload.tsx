@@ -58,6 +58,7 @@ function PreviewPlayer({ videoId }: { videoId: string }) {
         });
         
         const token = res.token;
+        // Use relative proxy path for manifest
         const manifestUrl = `/media-api/stream/${videoId}/index.m3u8?token=${token}`;
 
         // 2. Initialize Hls.js
@@ -137,7 +138,7 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
       });
       const token = res.token;
 
-      // Check manifest readiness on Media Server (via Next.js proxy)
+      // Use relative proxy path for polling
       await axios.head(`/media-api/stream/${id}/index.m3u8?token=${token}`);
       setStatus('ready');
     } catch {
@@ -172,6 +173,7 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
       formData.append('file', file);
 
       // 2. Perform DIRECT UPLOAD to Media Server (via Next.js proxy)
+      // This uses relative paths, making it 100% deployment friendly.
       const response = await axios.post(`/media-api/upload?upload_token=${token}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -227,7 +229,7 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
                 </Button>
               )}
             </FileButton>
-            <Text size="xs" c="dimmed">Direct Upload (Secure)</Text>
+            <Text size="xs" c="dimmed">Direct Upload (Secure & High Performance)</Text>
           </Group>
         )}
 

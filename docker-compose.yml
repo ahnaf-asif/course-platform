@@ -71,6 +71,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8081:8081"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
     environment:
       - PORT=8081
       - MINIO_ENDPOINT=minio:9000
