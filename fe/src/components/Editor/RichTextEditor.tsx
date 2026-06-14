@@ -58,7 +58,10 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
   // Handle external content changes (e.g. form reset or initial load)
   useEffect(() => {
     if (editor && content !== undefined && content !== editor.getHTML()) {
-      editor.commands.setContent(content || '');
+      // Use queueMicrotask to avoid React warning: flushSync was called from inside a lifecycle method
+      queueMicrotask(() => {
+        editor.commands.setContent(content || '');
+      });
     }
   }, [content, editor]);
 
