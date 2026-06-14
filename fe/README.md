@@ -195,33 +195,44 @@ The frontend uses Next.js rewrites to proxy requests from `/media-api/*` to the 
 - **Frontend Proxy**: `/media-api/...`
 
 ### 🔓 Public Files (Images, PDFs, etc.)
-Public files are stored in a dedicated S3 bucket and can be accessed directly via a URL.
+Public files are stored in a dedicated bucket and can be accessed directly via a relative proxy path.
 
 #### Uploading Public Files
-To upload a file publicly, append `?visibility=public` to the upload request.
-```typescript
-const formData = new FormData();
-formData.append('file', file);
+1.  **Authorize**: Get a temporary token from the backend.
+2.  **Upload**: Send binary data to `/media-api/upload?visibility=public&upload_token=...`.
 
-const res = await axios.post('/media-api/upload?visibility=public', formData, {
-  headers: { 'X-API-KEY': 'your-secret-key' }
-});
+**Reusable Component:** Use the `<ImageUpload />` component for automatic handling.
+```tsx
+import ImageUpload from '@/components/ImageUpload';
 
-// Access URL
-const publicUrl = res.data.proxied_public_url; // e.g., /media-api/p/filename.jpg
+<ImageUpload 
+  value={thumbnail} 
+  onChange={(url) => setThumbnail(url)} 
+/>
+// Result: /media-api/p/unique_id_name.png
 ```
 
 ### 🔐 Private Files & Secure Streaming (HLS)
-Videos and sensitive documents are stored in private buckets. Access is granted via **Short-lived HMAC Tokens** and **Session Cookies**.
+Videos are split and encrypted using HLS. Access requires a **Session Handshake**.
 
 #### The Secure Pipeline:
-1.  **Upload**: Upload the video (`.mp4`) to `/media-api/upload`. The Media Server automatically triggers an asynchronous transcoding task.
-2.  **Transcoding**: The server splits the video into small chunks (`.ts`), encrypts them with AES-128, and generates a manifest (`index.m3u8`).
-3.  **Token Acquisition**: The frontend requests a playback token for a specific `video_id` from `/media-api/stream-token/:video_id`.
-4.  **Authorization**: 
-    - The first request to the manifest includes the token: `/media-api/stream/:id/index.m3u8?token=...`.
-    - Upon success, the Media Server sets an **HttpOnly Session Cookie** (`stream_token`).
-    - The browser automatically attaches this cookie to all subsequent requests for video segments and the decryption key.
+1.  **Upload**: Use the `<VideoUpload />` component. It handles temporary token acquisition and direct binary upload to the media server via proxy.
+2.  **Transcoding**: The Media Server automatically triggers background processing.
+3.  **Readiness**: The component polls the backend to verify manifest availability.
+4.  **Playback**: 
+    - The player requests `index.m3u8?token=...`.
+    - The Media Server sets a **Session Cookie**.
+    - All segments are automatically authorized via the cookie.
+
+**Reusable Component:**
+```tsx
+import VideoUpload from '@/app/(admin)/admin/courses/[id]/curriculum/lesson/[lessonId]/_components/VideoUpload';
+
+<VideoUpload 
+  value={videoId} 
+  onChange={(id) => setVideoId(id)} 
+/>
+```
 
 #### Implementation Example (HLS.js):
 ```tsx

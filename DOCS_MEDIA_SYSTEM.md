@@ -22,9 +22,16 @@ The system is designed for **High Performance** and **Zero-Trust Security**. It 
 The `MEDIA_SERVER_API_KEY` is **never exposed to the browser**.
 - It is stored in `.env` on the server.
 - The Next.js `next.config.ts` uses the `headers()` rewrite rule to append the `X-API-KEY` header to requests as they pass through the proxy.
-- Developers should never use the `API_KEY` in client-side `fetch` or `axios` calls.
+- **Double-Layer Security**: For direct uploads, the frontend also uses a **Temporary Upload Token** (see below).
 
-### 2. HMAC Stream Tokens
+### 2. Temporary Upload Tokens
+To authorize heavy uploads without exposing the master `API_KEY`:
+1.  Frontend calls Go Backend: `GET /api/v1/admin/media/upload-token` (Authenticated via JWT).
+2.  Backend returns a short-lived HMAC token signed for the `"upload"` action.
+3.  Frontend uploads to `/media-api/upload?upload_token=...`.
+4.  Media Server validates the token using the shared `STREAM_SECRET`.
+
+### 3. HMAC Stream Tokens
 Video streaming is protected by short-lived HMAC signatures.
 - **Algorithm**: SHA-256 HMAC.
 - **Payload**: `Base64(VideoID) + ExpirationTimestamp`.
