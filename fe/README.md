@@ -218,8 +218,9 @@ Videos are split and encrypted using HLS. Access requires a **Session Handshake*
 #### The Secure Pipeline:
 1.  **Upload**: Use the `<VideoUpload />` component. It handles temporary token acquisition and direct binary upload to the media server via proxy.
 2.  **Transcoding**: The Media Server automatically triggers background processing.
-3.  **Readiness**: The component polls the backend to verify manifest availability.
-4.  **Playback**: 
+3.  **Task Polling**: The frontend captures the `task_id` and polls `GET /admin/media/tasks/:id`.
+4.  **Readiness**: Once the task state is `COMPLETED`, the UI automatically updates to show the "Ready" badge and enables the "Preview" button.
+5.  **Playback**: 
     - The player requests `index.m3u8?token=...`.
     - The Media Server sets a **Session Cookie**.
     - All segments are automatically authorized via the cookie.

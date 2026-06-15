@@ -62,7 +62,8 @@ This section outlines the exact steps for various media handling scenarios. All 
 | `/api/v1/upload` | POST | Upload raw file. Supports `upload_token` in query. |
 | `/api/v1/files` | GET | List all files in the storage (Requires X-API-KEY). |
 | `/api/v1/files/:name` | DELETE | Permanently delete a file (Requires X-API-KEY). |
-| `/api/v1/transcode` | POST | Manually trigger transcoding. |
+| `/api/v1/transcode` | POST | Manually trigger transcoding. Returns `task_id`. |
+| `/api/v1/tasks/:task_id` | GET | Query the status of a background job. |
 | `/api/v1/stream-token/:id` | GET | Generates a playback token (Requires X-API-KEY). |
 
 ### Streaming Endpoints (Protected)

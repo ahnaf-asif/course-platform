@@ -40,37 +40,52 @@ This repository is a monorepo containing both the frontend and backend component
 
 ---
 
-## 🚀 Quick Start (Full Stack)
+## 🚀 Development Quick Start
 
-The easiest way to get the entire platform running locally is using Docker Compose.
+The easiest way to set up the platform for local development is using the root **Makefile**. This starts all infrastructure in Docker but runs the frontend and backend locally for better performance and hot-reloading.
 
 ### 1. Prerequisites
 - **Docker & Docker Compose**
-- **Node.js 20+** (for local frontend development)
-- **Go 1.25+** (for local backend development)
+- **Node.js 20+** (for frontend)
+- **Go 1.25+** (for backend)
+- **Air** (`go install github.com/air-verse/air@latest`)
 
-### 2. Environment Setup
-Copy the example environment files in both directories:
+### 2. Setup
 ```bash
-# Backend
-cp be/.env.example be/.env
-
-# Frontend
-cp fe/.env.local.example fe/.env.local
+make setup
 ```
+This initializes all `.env` files from their examples.
 
-### 3. Spin up the Platform
-From the root directory, run:
+### 3. Run Development Environment
 ```bash
-docker compose up -d
+make dev
 ```
-This will start:
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8080
-- **PostgreSQL**: :5432
-- **Redis**: :6379
-- **Grafana**: :3001
-- **Jaeger**: :16686
+This command:
+1. Starts **Postgres, Redis, Minio, Media-Server, Jaeger, Prometheus, Grafana** in Docker.
+2. Runs the **Go API** locally via `air`.
+3. Runs the **Next.js Frontend** locally via `npm run dev`.
+
+### 4. Other Commands
+- `make infra-up`: Start only Docker infrastructure.
+- `make infra-down`: Stop Docker containers.
+- `make clean`: Stop everything and delete all local build caches.
+- `make reset-infra`: **WARNING**: Deletes all Docker volumes (DB & Media data).
+
+---
+
+## 🏗 Project Architecture & Background Jobs
+
+The platform uses a sophisticated background job system for intensive tasks:
+
+### 🎥 Media Processing (HLS)
+When a video is uploaded, it is enqueued into a task queue.
+- **Worker**: FFmpeg splits and encrypts the video into HLS segments.
+- **Real-time Updates**: The frontend polls the **Task Status API** to automatically refresh the UI once transcoding is complete.
+
+### 📝 Bulk Quiz Uploads
+Admins can upload large CSV files for quiz creation.
+- **Worker**: Parses CSV, validates questions, and bulk-inserts into Postgres.
+- **Status**: Tracked via the same task polling mechanism as videos.
 
 ---
 
