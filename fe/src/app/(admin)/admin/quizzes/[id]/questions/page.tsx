@@ -53,9 +53,9 @@ import { useEffect, useState } from 'react';
 import CustomRichTextEditor from '@/components/Editor/RichTextEditor';
 import { MathJaxContent } from '@/components/MathJaxContent';
 import { UseFormReturnType } from '@mantine/form';
-import { FileButton, Modal, List, ThemeIcon, Code, Alert } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
-import { IconUpload, IconLoader2, IconDownload, IconFileDescription } from '@tabler/icons-react';
+import { FileButton, Modal, List, Code, Alert } from '@mantine/core';
+import { useDisclosure, useClipboard } from '@mantine/hooks';
+import { IconUpload, IconLoader2, IconDownload, IconCopy } from '@tabler/icons-react';
 
 interface EditFormValues {
   id: string;
@@ -279,6 +279,7 @@ export default function QuestionManagement() {
   const [uploadTaskId, setUploadTaskId] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'processing' | 'ready'>('idle');
   const [uploadModalOpened, { open: openUploadModal, close: closeUploadModal }] = useDisclosure(false);
+  const clipboard = useClipboard({ timeout: 2000 });
 
   const { data: questions, isLoading: loadingQuestions, refetch } = useGetAdminQuizzesIdQuestions(quizId);
   const { data: allQuizzes, isLoading: loadingQuizzes } = useGetAdminQuizzes();
@@ -346,6 +347,26 @@ export default function QuestionManagement() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleCopyAIPrompt = () => {
+    const prompt = `Please generate a CSV file for a quiz with the following exactly 5 columns:
+1. Question: The text of the question.
+2. Type: Must be exactly "SINGLE" or "MULTIPLE".
+3. Explanation: (Optional) Explanation shown after answering.
+4. Correct Answers: Pipe-separated list (e.g. Option A|Option B).
+5. Incorrect Answers: Pipe-separated list (e.g. Option C|Option D).
+
+Do not include any markdown formatting around the CSV output, just raw CSV. 
+Example:
+Question,Type,Explanation,Correct Answers (Pipe Separated),Incorrect Answers (Pipe Separated)
+What is the capital of France?,SINGLE,Paris is the capital and most populous city of France.,Paris,London|Berlin|Madrid
+Which of the following are primary colors?,MULTIPLE,,Red|Blue|Yellow,Green|Orange|Purple
+Is the Earth flat?,SINGLE,The Earth is an oblate spheroid.,False,True
+
+Please generate 10 questions based on the following topic: [INSERT YOUR TOPIC HERE]`;
+    clipboard.copy(prompt);
+    notifications.show({ title: 'Copied', message: 'AI prompt copied to clipboard!', color: 'green' });
   };
 
   const handleBulkUpload = async (file: File | null) => {
@@ -736,9 +757,20 @@ export default function QuestionManagement() {
             </List>
           </Alert>
 
-          <Button variant="light" color="blue" leftSection={<IconDownload size={16} />} onClick={handleDownloadSample} fullWidth>
-            Download Sample CSV
-          </Button>
+          <Divider my="sm" />
+          <Text size="sm" fw={600}>Generate with AI (ChatGPT, Claude, etc.)</Text>
+          <Text size="xs" c="dimmed">
+            Don&apos;t want to format the CSV manually? Click &quot;Copy AI Prompt&quot; to get a pre-written instruction block. Paste it into your favorite AI tool along with your topic or source material to instantly generate correctly formatted questions!
+          </Text>
+
+          <Group grow>
+            <Button variant="light" color="blue" leftSection={<IconDownload size={16} />} onClick={handleDownloadSample}>
+              Download Sample CSV
+            </Button>
+            <Button variant="light" color="teal" leftSection={<IconCopy size={16} />} onClick={handleCopyAIPrompt}>
+              {clipboard.copied ? 'Prompt Copied!' : 'Copy AI Prompt'}
+            </Button>
+          </Group>
 
           <Divider my="sm" />
 
