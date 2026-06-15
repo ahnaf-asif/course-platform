@@ -582,6 +582,17 @@ func (h *QuizHandler) DetachQuizFromNode(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+func (h *QuizHandler) GetTaskStatus(c echo.Context) error {
+	taskID := c.Param("taskID")
+	status, err := h.taskService.GetTaskStatus(taskID)
+	if err != nil {
+		h.logger.Error("Failed to get task status", "error", err, "task_id", taskID)
+		return echo.NewHTTPError(http.StatusNotFound, "Task not found")
+	}
+
+	return c.JSON(http.StatusOK, status)
+}
+
 func (h *QuizHandler) formatValidationErrors(err error) []map[string]string {
 	errors := make([]map[string]string, 0)
 	for _, err := range err.(validator.ValidationErrors) {

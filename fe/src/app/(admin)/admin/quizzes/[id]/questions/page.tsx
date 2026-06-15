@@ -48,10 +48,14 @@ import { AnswerOption } from '@/api/model/components-schemas-assessment/answerOp
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
+import { axiosInstance } from '@/lib/axios';
 import { useEffect, useState } from 'react';
 import CustomRichTextEditor from '@/components/Editor/RichTextEditor';
 import { MathJaxContent } from '@/components/MathJaxContent';
 import { UseFormReturnType } from '@mantine/form';
+import { FileButton, Modal, List, ThemeIcon, Code, Alert } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { IconUpload, IconLoader2, IconDownload, IconFileDescription } from '@tabler/icons-react';
 
 interface EditFormValues {
   id: string;
@@ -272,6 +276,10 @@ export default function QuestionManagement() {
   const quizId = params.id as string;
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  const [uploadTaskId, setUploadTaskId] = useState<string | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'processing' | 'ready'>('idle');
+  const [uploadModalOpened, { open: openUploadModal, close: closeUploadModal }] = useDisclosure(false);
+
   const { data: questions, isLoading: loadingQuestions, refetch } = useGetAdminQuizzesIdQuestions(quizId);
   const { data: allQuizzes, isLoading: loadingQuizzes } = useGetAdminQuizzes();
   const { mutateAsync: addQuestions, isPending: isAdding } = usePostAdminQuizzesIdQuestions();
@@ -291,6 +299,91 @@ export default function QuestionManagement() {
       router.push('/admin/quizzes');
     }
   }, [isLoading, allQuizzes, currentQuiz, router]);
+
+  // Polling logic for bulk upload
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (uploadStatus === 'processing' && uploadTaskId) {
+      interval = setInterval(async () => {
+        try {
+          const res = await axiosInstance<{ state: string }>({
+            url: `/admin/quizzes/tasks/${uploadTaskId}`,
+            method: 'GET'
+          });
+          
+          if (res.state === 'COMPLETED' || res.state === 'success' || res.state === 'finished') {
+            notifications.show({ title: 'Success', message: 'Bulk upload completed successfully!', color: 'green' });
+            setUploadStatus('ready');
+            setUploadTaskId(null);
+            refetch();
+          } else if (res.state === 'FAILED') {
+            notifications.show({ title: 'Failed', message: 'Bulk upload failed. Please check the file format.', color: 'red' });
+            setUploadStatus('idle');
+            setUploadTaskId(null);
+          }
+        } catch (err) {
+          console.error('Polling task failed:', err);
+        }
+      }, 3000);
+    }
+
+    return () => clearInterval(interval);
+  }, [uploadStatus, uploadTaskId, refetch]);
+
+  const handleDownloadSample = () => {
+    const csvContent = 
+      "Question,Type,Explanation,Correct Answers (Pipe Separated),Incorrect Answers (Pipe Separated)\n" +
+      "What is the capital of France?,SINGLE,Paris is the capital and most populous city of France.,Paris,London|Berlin|Madrid\n" +
+      "Which of the following are primary colors?,MULTIPLE,,Red|Blue|Yellow,Green|Orange|Purple\n" +
+      "Is the Earth flat?,SINGLE,The Earth is an oblate spheroid.,False,True";
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'sample_questions.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleBulkUpload = async (file: File | null) => {
+    if (!file) return;
+
+    setUploadStatus('processing');
+    closeUploadModal();
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await axiosInstance<{ task_id: string }>({
+        url: `/admin/quizzes/${quizId}/questions/csv`,
+        method: 'POST',
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (res.task_id) {
+        setUploadTaskId(res.task_id);
+        notifications.show({
+          title: 'Upload Started',
+          message: 'Your CSV is being processed in the background. We will notify you when it is done.',
+          color: 'blue'
+        });
+      }
+    } catch (error) {
+      console.error('Bulk upload failed', error);
+      notifications.show({
+        title: 'Upload Failed',
+        message: 'Failed to start bulk upload.',
+        color: 'red'
+      });
+      setUploadStatus('idle');
+    }
+  };
 
   const form = useForm({
     initialValues: {
@@ -478,20 +571,35 @@ export default function QuestionManagement() {
 
       {currentQuiz && (
         <Card withBorder radius="md" p="md">
-          <Group gap="xl">
-            <Group gap="xs">
-              <IconChecklist size={20} color="var(--mantine-color-blue-6)" />
-              <div>
-                <Text size="xs" c="dimmed" lh={1}>Passing Score</Text>
-                <Text fw={600}>{currentQuiz.passing_score}%</Text>
-              </div>
+          <Group justify="space-between" align="center">
+            <Group gap="xl">
+              <Group gap="xs">
+                <IconChecklist size={20} color="var(--mantine-color-blue-6)" />
+                <div>
+                  <Text size="xs" c="dimmed" lh={1}>Passing Score</Text>
+                  <Text fw={600}>{currentQuiz.passing_score}%</Text>
+                </div>
+              </Group>
+              <Group gap="xs">
+                <IconInfoCircle size={20} color="var(--mantine-color-blue-6)" />
+                <div>
+                  <Text size="xs" c="dimmed" lh={1}>Questions Count</Text>
+                  <Text fw={600}>{questions?.length || 0}</Text>
+                </div>
+              </Group>
             </Group>
-            <Group gap="xs">
-              <IconInfoCircle size={20} color="var(--mantine-color-blue-6)" />
-              <div>
-                <Text size="xs" c="dimmed" lh={1}>Questions Count</Text>
-                <Text fw={600}>{questions?.length || 0}</Text>
-              </div>
+
+            <Group>
+              {uploadStatus === 'processing' ? (
+                <Group gap="xs">
+                  <IconLoader2 size={16} className="animate-spin" color="var(--mantine-color-blue-6)" />
+                  <Text size="sm" fw={500} c="blue">Processing CSV Upload...</Text>
+                </Group>
+              ) : (
+                <Button variant="light" color="grape" leftSection={<IconUpload size={16} />} onClick={openUploadModal}>
+                  Bulk Upload CSV
+                </Button>
+              )}
             </Group>
           </Group>
         </Card>
@@ -614,6 +722,36 @@ export default function QuestionManagement() {
           </Group>
         </Stack>
       </form>
+
+      <Modal opened={uploadModalOpened} onClose={closeUploadModal} title="Bulk Upload Questions (CSV)" size="lg" centered>
+        <Stack gap="md">
+          <Alert icon={<IconInfoCircle size={16} />} title="CSV Format Requirements" color="blue">
+            Your CSV file must have exactly 5 columns in the following order:
+            <List type="ordered" size="sm" mt="xs" spacing="xs">
+              <List.Item><b>Question Content:</b> The text of the question.</List.Item>
+              <List.Item><b>Question Type:</b> Must be exactly <Code>SINGLE</Code> or <Code>MULTIPLE</Code>.</List.Item>
+              <List.Item><b>Explanation:</b> (Optional) Explanation shown after answering.</List.Item>
+              <List.Item><b>Correct Answers:</b> Pipe-separated list (e.g. <Code>Option A|Option B</Code>).</List.Item>
+              <List.Item><b>Incorrect Answers:</b> Pipe-separated list (e.g. <Code>Option C|Option D</Code>).</List.Item>
+            </List>
+          </Alert>
+
+          <Button variant="light" color="blue" leftSection={<IconDownload size={16} />} onClick={handleDownloadSample} fullWidth>
+            Download Sample CSV
+          </Button>
+
+          <Divider my="sm" />
+
+          <Text size="sm" fw={500}>Upload your completed CSV file:</Text>
+          <FileButton onChange={handleBulkUpload} accept=".csv">
+            {(props) => (
+              <Button {...props} color="grape" leftSection={<IconUpload size={16} />} fullWidth>
+                Select & Upload CSV
+              </Button>
+            )}
+          </FileButton>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

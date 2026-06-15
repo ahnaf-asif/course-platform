@@ -257,6 +257,7 @@ func (s *Server) registerRoutes() {
 	adminQuizzes.DELETE("/:id", quizHandler.DeleteQuiz)
 	adminQuizzes.POST("/:id/questions", quizHandler.AddBulkQuestions)
 	adminQuizzes.POST("/:id/questions/csv", quizHandler.BulkUploadCSV)
+	adminQuizzes.GET("/tasks/:taskID", quizHandler.GetTaskStatus)
 	adminQuizzes.GET("/:id/questions", quizHandler.ListQuestions)
 	adminQuizzes.DELETE("/:id/questions/:qId", quizHandler.DeleteQuestion)
 	adminQuizzes.PATCH("/:id/questions/:qId", quizHandler.UpdateQuestion)
