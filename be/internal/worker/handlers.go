@@ -56,7 +56,7 @@ func (w *QuizWorker) ProcessQuizBulkUpload(ctx context.Context, t *asynq.Task) e
 	// 3. Process Rows in a Transaction
 	err = w.store.WithTx(ctx, func(q generated.Querier) error {
 		sequenceOrder := int32(0)
-		
+
 		// Get current max sequence order for this quiz to append
 		existingQuestions, err := q.ListQuestionsByQuiz(ctx, quizID)
 		if err == nil {

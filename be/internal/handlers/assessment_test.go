@@ -18,19 +18,19 @@ func TestBulkUploadCSV(t *testing.T) {
 	mockStore := new(MockStore)
 	mockMinio := new(MockMinio)
 	mockTask := new(MockTaskService)
-	
+
 	h := &QuizHandler{
 		store:        mockStore,
 		minioService: mockMinio,
-		// We'll wrap TaskService if we need to mock it fully, 
-		// but since it's a field in QuizHandler, let's just bypass the enqueue logic for this unit test 
+		// We'll wrap TaskService if we need to mock it fully,
+		// but since it's a field in QuizHandler, let's just bypass the enqueue logic for this unit test
 		// or provide a real one with local redis if needed.
 		// Actually, I'll update QuizHandler to use an interface for TaskService if needed.
 	}
 	_ = mockTask
 
 	quizID := uuid.New().String()
-	
+
 	// Create a mock CSV file
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
@@ -47,7 +47,7 @@ func TestBulkUploadCSV(t *testing.T) {
 
 	// Mock Minio Upload
 	mockMinio.On("UploadFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, "text/csv").Return(nil)
-	
+
 	// Verify basic setup
 	assert.NotNil(t, h)
 }

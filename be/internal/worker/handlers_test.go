@@ -41,7 +41,7 @@ type MockStore struct {
 	generated.Querier // Embed to implement interface
 }
 
-func (m *MockStore) WithTx(ctx context.Context, fn func(generated.Querier) error) error {
+func (m *MockStore) WithTx(_ context.Context, fn func(generated.Querier) error) error {
 	return fn(m)
 }
 
@@ -93,9 +93,9 @@ func TestProcessQuizBulkUpload(t *testing.T) {
 	mockStore.On("CreateQuestion", mock.Anything, mock.MatchedBy(func(p generated.CreateQuestionParams) bool {
 		return p.QuizID == quizID
 	})).Return(generated.Question{ID: uuid.New()}, nil).Times(2)
-	
+
 	mockStore.On("CreateAnswer", mock.Anything, mock.Anything).Return(generated.Answer{}, nil).Times(6)
-	
+
 	// Mock Minio DeleteObject
 	mockMinio.On("DeleteObject", mock.Anything, "test-bucket", "test.csv").Return(nil)
 
