@@ -150,7 +150,9 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
 
   useEffect(() => {
     if (isInternalMedia) {
-      checkReadiness(value);
+      queueMicrotask(() => {
+        checkReadiness(value);
+      });
     }
   }, [value, isInternalMedia]);
 
