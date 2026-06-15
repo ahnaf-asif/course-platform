@@ -16,6 +16,7 @@ import (
 	"github.com/shafins-course/backend/internal/api"
 	"github.com/shafins-course/backend/internal/db"
 	"github.com/shafins-course/backend/internal/services"
+	"github.com/shafins-course/backend/internal/worker"
 )
 
 func main() {
@@ -80,6 +81,29 @@ func main() {
 		logger.Warn("Redis is unreachable, caching will be disabled", "error", err)
 	}
 
+	// Task Service initialization
+	taskService := services.NewTaskService(redisURL)
+
+	// Minio initialization
+	minioCfg := &services.MinioConfig{
+		Endpoint:     os.Getenv("MINIO_ENDPOINT"),
+		AccessKey:    os.Getenv("MINIO_ACCESS_KEY"),
+		SecretKey:    os.Getenv("MINIO_SECRET_KEY"),
+		UseSSL:       os.Getenv("MINIO_USE_SSL") == "true",
+		ImportBucket: os.Getenv("MINIO_BUCKET_TEMP"),
+	}
+	if minioCfg.ImportBucket == "" {
+		minioCfg.ImportBucket = "temp-imports"
+	}
+	if minioCfg.Endpoint == "" {
+		minioCfg.Endpoint = "localhost:9000"
+	}
+	minioService, err := services.NewMinioService(minioCfg)
+	if err != nil {
+		logger.Error("Failed to initialize Minio service", "error", err)
+		os.Exit(1)
+	}
+
 	// Dependencies
 	store := db.NewStore(conn)
 
@@ -90,13 +114,24 @@ func main() {
 	}
 	tokenService := services.NewTokenService(jwtSecret, 15*time.Minute, 7*24*time.Hour)
 
+	// Background Worker initialization
+	quizWorker := worker.NewQuizWorker(store, minioService)
+	backgroundWorker := worker.NewWorker(redisURL, quizWorker)
+
 	// Server initialization
-	server := api.NewServer(store, tokenService, cacheService, logger)
+	server := api.NewServer(store, tokenService, cacheService, minioService, taskService, logger)
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
+
+	// Start Background Worker
+	go func() {
+		if err := backgroundWorker.Start(); err != nil {
+			logger.Error("Background worker failed", "error", err)
+		}
+	}()
 
 	// Channel to listen for errors coming from the listener.
 	serverErrors := make(chan error, 1)
@@ -133,8 +168,13 @@ func main() {
 			// If shutdown fails, we force close resources and exit.
 			_ = conn.Close()
 			_ = cacheService.Close()
+			backgroundWorker.Shutdown()
+			_ = taskService.Close()
 			os.Exit(1)
 		}
+
+		backgroundWorker.Shutdown()
+		_ = taskService.Close()
 
 		// Close resources.
 		if err := conn.Close(); err != nil {

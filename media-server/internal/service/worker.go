@@ -39,13 +39,15 @@ type TranscodePayload struct {
 }
 
 type ITaskProcessor interface {
-	EnqueueTranscode(videoID string, inputPath string, opts *TranscodeOptions) error
+	EnqueueTranscode(videoID string, inputPath string, opts *TranscodeOptions) (string, error)
+	GetTaskStatus(taskID string) (string, error)
 	Start() error
 	Stop()
 }
 
 type TaskProcessor struct {
 	client     AsynqClient
+	inspector  *asynq.Inspector
 	server     AsynqServer
 	transcoder ITranscodeService
 }
@@ -54,6 +56,7 @@ func NewTaskProcessor(cfg *config.Config, transcoder ITranscodeService) *TaskPro
 	redisOpt := asynq.RedisClientOpt{Addr: cfg.RedisAddress}
 
 	client := asynq.NewClient(redisOpt)
+	inspector := asynq.NewInspector(redisOpt)
 	server := asynq.NewServer(redisOpt, asynq.Config{
 		Concurrency: 2, // Process max 2 videos at a time to protect CPU
 		Queues: map[string]int{
@@ -65,32 +68,36 @@ func NewTaskProcessor(cfg *config.Config, transcoder ITranscodeService) *TaskPro
 
 	return &TaskProcessor{
 		client:     &RealAsynqClient{Client: client},
+		inspector:  inspector,
 		server:     &RealAsynqServer{Server: server},
 		transcoder: transcoder,
 	}
 }
 
-func NewTaskProcessorWithClients(client AsynqClient, server AsynqServer, transcoder ITranscodeService) *TaskProcessor {
-	return &TaskProcessor{
-		client:     client,
-		server:     server,
-		transcoder: transcoder,
-	}
-}
-
-func (p *TaskProcessor) EnqueueTranscode(videoID string, inputPath string, opts *TranscodeOptions) error {
+func (p *TaskProcessor) EnqueueTranscode(videoID string, inputPath string, opts *TranscodeOptions) (string, error) {
 	payload, err := json.Marshal(TranscodePayload{
 		VideoID:   videoID,
 		InputPath: inputPath,
 		Options:   opts,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	task := asynq.NewTask(TypeTranscode, payload)
-	_, err = p.client.Enqueue(task)
-	return err
+	info, err := p.client.Enqueue(task)
+	if err != nil {
+		return "", err
+	}
+	return info.ID, nil
+}
+
+func (p *TaskProcessor) GetTaskStatus(taskID string) (string, error) {
+	info, err := p.inspector.GetTaskInfo("default", taskID)
+	if err != nil {
+		return "", err
+	}
+	return info.State.String(), nil
 }
 
 func (p *TaskProcessor) Start() error {
@@ -101,8 +108,15 @@ func (p *TaskProcessor) Start() error {
 }
 
 func (p *TaskProcessor) Stop() {
-	p.client.Close()
-	p.server.Shutdown()
+	if p.client != nil {
+		p.client.Close()
+	}
+	if p.inspector != nil {
+		p.inspector.Close()
+	}
+	if p.server != nil {
+		p.server.Shutdown()
+	}
 }
 
 func (p *TaskProcessor) HandleTranscodeTask(ctx context.Context, t *asynq.Task) error {
@@ -113,9 +127,6 @@ func (p *TaskProcessor) HandleTranscodeTask(ctx context.Context, t *asynq.Task) 
 
 	log.Printf(" [*] Processing transcode task for video: %s", payload.VideoID)
 
-	// If InputPath is provided (Direct upload), process from disk
-	// If InputPath is empty (Presigned upload), we need to modify ProcessVideo to download from Minio first
-	// For now, we'll assume the local path or add logic to download.
 	p.transcoder.ProcessVideo(payload.VideoID, payload.InputPath, payload.Options)
 
 	return nil

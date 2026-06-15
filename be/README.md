@@ -172,12 +172,19 @@ admin.Use(internalMiddleware.RequireAdmin()) // Only users with role 'ADMIN'
 
 Available roles: `USER`, `ADMIN`.
 
-### 🎥 Media Authorization
-The backend serves as the secure gatekeeper for the Media Server.
-- **Upload Tokens**: Issues short-lived signatures for authorized uploads.
-- **Stream Tokens**: Generates HMAC tokens for secure video playback.
-- **Transcode Triggers**: Proxies manual transcoding requests.
-- **Environment**: Requires `MEDIA_SERVER_URL` and `MEDIA_SERVER_API_KEY`.
+## 🚀 Background Tasks (Asynq)
+
+We use **Asynq** (Redis-backed) for asynchronous processing.
+
+### Task Types
+- **`quiz:bulk-upload`**: Triggered via `POST /api/v1/admin/quizzes/:id/questions/csv`. 
+- **Task Status**: Tracked via the generic `TaskService` which interacts with the Asynq Inspector.
+
+### Media Server Integration
+The backend acts as a secure proxy/orchestrator for the `media-server`:
+- `GET /admin/media/tasks/:taskID`: Checks status of transcoding jobs.
+- `GET /admin/media/upload-token`: Issues temporary signatures for direct-to-S3 uploads.
+- `GET /admin/media/token/:videoId`: Generates HMAC playback tokens.
 
 ---
 

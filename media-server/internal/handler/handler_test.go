@@ -81,9 +81,13 @@ type MockTaskProcessor struct {
 	mock.Mock
 }
 
-func (m *MockTaskProcessor) EnqueueTranscode(videoID string, inputPath string, opts *service.TranscodeOptions) error {
+func (m *MockTaskProcessor) EnqueueTranscode(videoID string, inputPath string, opts *service.TranscodeOptions) (string, error) {
 	args := m.Called(videoID, inputPath, opts)
-	return args.Error(0)
+	return args.String(0), args.Error(1)
+}
+func (m *MockTaskProcessor) GetTaskStatus(taskID string) (string, error) {
+	args := m.Called(taskID)
+	return args.String(0), args.Error(1)
 }
 func (m *MockTaskProcessor) Start() error { return nil }
 func (m *MockTaskProcessor) Stop()        {}
@@ -205,7 +209,7 @@ func TestHandler(t *testing.T) {
 		writer.Close()
 
 		m.On("UploadFile", mock.Anything, "raw", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tp.On("EnqueueTranscode", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tp.On("EnqueueTranscode", mock.Anything, mock.Anything, mock.Anything).Return("task-123", nil)
 
 		req := httptest.NewRequest(http.MethodPost, "/upload", body)
 		req.Header.Set(echo.HeaderContentType, writer.FormDataContentType())
@@ -220,7 +224,7 @@ func TestHandler(t *testing.T) {
 	t.Run("TriggerTranscode Success", func(t *testing.T) {
 		tp := new(MockTaskProcessor)
 		h := NewHandler(nil, nil, tp, cfg)
-		tp.On("EnqueueTranscode", "test.mp4", "", mock.Anything).Return(nil)
+		tp.On("EnqueueTranscode", "test.mp4", "", mock.Anything).Return("task-456", nil)
 
 		jsonBody := `{"file_name": "test.mp4", "options": {"video_bitrate": "1M"}}`
 		req := httptest.NewRequest(http.MethodPost, "/transcode", strings.NewReader(jsonBody))

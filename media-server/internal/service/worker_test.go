@@ -53,6 +53,14 @@ func (m *MockTranscoderForWorker) GetStreamObject(ctx context.Context, videoID, 
 	return nil, 0, "", nil
 }
 
+func NewTaskProcessorWithClients(client AsynqClient, server AsynqServer, transcoder ITranscodeService) *TaskProcessor {
+	return &TaskProcessor{
+		client:     client,
+		server:     server,
+		transcoder: transcoder,
+	}
+}
+
 func TestTaskProcessor(t *testing.T) {
 	cfg := &config.Config{RedisAddress: "localhost:6379"}
 
@@ -70,10 +78,11 @@ func TestTaskProcessor(t *testing.T) {
 		mockTranscoder := new(MockTranscoderForWorker)
 		tp := NewTaskProcessorWithClients(mockClient, mockServer, mockTranscoder)
 
-		mockClient.On("Enqueue", mock.Anything, mock.Anything).Return(&asynq.TaskInfo{}, nil)
+		mockClient.On("Enqueue", mock.Anything, mock.Anything).Return(&asynq.TaskInfo{ID: "task-1"}, nil)
 
-		err := tp.EnqueueTranscode("v1", "/tmp/in.mp4", nil)
+		id, err := tp.EnqueueTranscode("v1", "/tmp/in.mp4", nil)
 		assert.NoError(t, err)
+		assert.Equal(t, "task-1", id)
 		mockClient.AssertExpectations(t)
 	})
 

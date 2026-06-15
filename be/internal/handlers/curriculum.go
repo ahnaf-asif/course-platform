@@ -718,6 +718,24 @@ func (h *CurriculumHandler) TriggerMediaTranscode(c echo.Context) error {
 	return c.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
 }
 
+func (h *CurriculumHandler) GetMediaTaskStatus(c echo.Context) error {
+	taskID := c.Param("taskID")
+	mediaServerURL := os.Getenv("MEDIA_SERVER_URL")
+	apiKey := os.Getenv("MEDIA_SERVER_API_KEY")
+
+	req, _ := http.NewRequest("GET", mediaServerURL+"/tasks/"+taskID, nil)
+	req.Header.Set("X-API-KEY", apiKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadGateway, "Media server unreachable")
+	}
+	defer resp.Body.Close()
+
+	return c.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
+}
+
 func (h *CurriculumHandler) formatValidationErrors(err error) []map[string]string {
 	errors := make([]map[string]string, 0)
 	for _, err := range err.(validator.ValidationErrors) {

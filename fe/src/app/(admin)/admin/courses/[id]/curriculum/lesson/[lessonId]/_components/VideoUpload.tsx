@@ -127,6 +127,7 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<'idle' | 'processing' | 'ready'>('idle');
+  const [taskId, setTaskId] = useState<string | null>(null);
 
   const isInternalMedia = value && !value.startsWith('http');
 
@@ -141,6 +142,7 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
       // Use relative proxy path for polling
       await axios.head(`/media-api/stream/${id}/index.m3u8?token=${token}`);
       setStatus('ready');
+      setTaskId(null);
     } catch {
       setStatus('processing');
     }
@@ -153,6 +155,38 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
       });
     }
   }, [value, isInternalMedia]);
+
+  // Polling logic
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (status === 'processing' && (taskId || isInternalMedia)) {
+      interval = setInterval(async () => {
+        if (taskId) {
+          try {
+            const res = await axiosInstance<{ state: string }>({
+              url: `/admin/media/tasks/${taskId}`,
+              method: 'GET'
+            });
+            if (res.state === 'COMPLETED' || res.state === 'success' || res.state === 'finished') {
+              checkReadiness(value);
+            } else if (res.state === 'FAILED') {
+              notifications.show({ title: 'Processing Failed', message: 'Video transcoding failed.', color: 'red' });
+              setStatus('idle');
+              setTaskId(null);
+            }
+          } catch (err) {
+            console.error('Polling task failed:', err);
+          }
+        } else {
+          // Fallback to head request polling if no task ID
+          checkReadiness(value);
+        }
+      }, 5000);
+    }
+
+    return () => clearInterval(interval);
+  }, [status, taskId, value, isInternalMedia]);
 
   const handleUpload = async (file: File | null) => {
     if (!file) return;
@@ -173,7 +207,6 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
       formData.append('file', file);
 
       // 2. Perform DIRECT UPLOAD to Media Server (via Next.js proxy)
-      // This uses relative paths, making it 100% deployment friendly.
       const response = await axios.post(`/media-api/upload?upload_token=${token}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -184,7 +217,12 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
       });
 
       const videoId = response.data.file_name;
+      const uploadTaskId = response.data.task_id;
+      
       onChange(videoId);
+      if (uploadTaskId) {
+        setTaskId(uploadTaskId);
+      }
       setStatus('processing');
       notifications.show({
         title: 'Upload Successful',

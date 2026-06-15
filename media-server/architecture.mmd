@@ -39,7 +39,9 @@ graph TD
 
     %% File Management Flow
     FileHandler -- "Presign /upload-url" --> MinioSvc
-    FileHandler -- "Trigger Transcode" --> TaskProc
+    FileHandler -- "Trigger Transcode / Get task_id" --> TaskProc
+    Router -- "GET /tasks/:id" --> FileHandler
+    FileHandler -- "Inspect Status" --> TaskProc
     MinioSvc -- "S3 API" --> Minio
 
     %% Transcoding Pipeline (Async)

@@ -106,6 +106,7 @@ func (h *Handler) UploadFile(c echo.Context) error {
 	}
 
 	// 2. Trigger HLS transcoding ONLY IF it's private and a video
+	var taskID string
 	if visibility != "public" {
 		ext := filepath.Ext(file.Filename)
 		if ext == ".mp4" || ext == ".mov" || ext == ".avi" {
@@ -115,7 +116,7 @@ func (h *Handler) UploadFile(c echo.Context) error {
 				if _, err := src.Seek(0, io.SeekStart); err == nil {
 					if _, err := io.Copy(dst, src); err == nil {
 						dst.Close()
-						_ = h.taskProcessor.EnqueueTranscode(uniqueName, tempPath, nil)
+						taskID, _ = h.taskProcessor.EnqueueTranscode(uniqueName, tempPath, nil)
 					} else {
 						dst.Close()
 					}
@@ -129,6 +130,7 @@ func (h *Handler) UploadFile(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"message":    "File uploaded successfully",
 		"file_name":  uniqueName,
+		"task_id":    taskID,
 		"public_url": fmt.Sprintf("%s/api/v1/p/%s", h.cfg.PublicBaseURL, uniqueName),
 	})
 }
@@ -181,12 +183,40 @@ func (h *Handler) TriggerTranscode(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"message": "file_name required"})
 	}
 
-	err := h.taskProcessor.EnqueueTranscode(req.FileName, "", req.Options)
+	taskID, err := h.taskProcessor.EnqueueTranscode(req.FileName, "", req.Options)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to queue task"})
 	}
 
-	return c.JSON(http.StatusAccepted, map[string]string{"message": "Transcoding job accepted"})
+	return c.JSON(http.StatusAccepted, map[string]string{
+		"message": "Transcoding job accepted",
+		"task_id": taskID,
+	})
+}
+
+// GetTaskStatus godoc
+// @Summary Get task status
+// @Description Returns the current status of a background task
+// @Tags Management
+// @Param task_id path string true "ID of the task"
+// @Security ApiKeyAuth
+// @Success 200 {object} map[string]string
+// @Router /tasks/{task_id} [get]
+func (h *Handler) GetTaskStatus(c echo.Context) error {
+	taskID := c.Param("task_id")
+	if taskID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "task_id required"})
+	}
+
+	state, err := h.taskProcessor.GetTaskStatus(taskID)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"message": "Task not found"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"task_id": taskID,
+		"state":   state,
+	})
 }
 
 // GetDownloadURL godoc

@@ -30,7 +30,7 @@ func TestAssessmentIntegration(t *testing.T) {
 
 	store := db.NewStore(conn)
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	quizHandler := handlers.NewQuizHandler(store, nil, logger)
+	quizHandler := handlers.NewQuizHandler(store, nil, nil, nil, logger)
 
 	e := echo.New()
 

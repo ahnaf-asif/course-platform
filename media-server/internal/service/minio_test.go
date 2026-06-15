@@ -92,7 +92,7 @@ func TestMinioService(t *testing.T) {
 		m.On("BucketExists", mock.Anything, "public").Return(false, nil)
 		m.On("MakeBucket", mock.Anything, "public", mock.Anything).Return(nil)
 
-		svc, err := NewMinioServiceWithClient(m, cfg)
+		svc, err := NewMinioServiceWithClients(m, m, cfg)
 		assert.NoError(t, err)
 		assert.NotNil(t, svc)
 		m.AssertExpectations(t)
@@ -102,7 +102,7 @@ func TestMinioService(t *testing.T) {
 		m := new(MockMinioClient)
 		m.On("BucketExists", mock.Anything, "raw").Return(false, io.EOF)
 
-		svc, err := NewMinioServiceWithClient(m, cfg)
+		svc, err := NewMinioServiceWithClients(m, m, cfg)
 		assert.Error(t, err)
 		assert.Nil(t, svc)
 	})
@@ -112,13 +112,14 @@ func TestMinioService(t *testing.T) {
 		m.On("BucketExists", mock.Anything, "raw").Return(false, nil)
 		m.On("MakeBucket", mock.Anything, "raw", mock.Anything).Return(io.EOF)
 
-		svc, err := NewMinioServiceWithClient(m, cfg)
+		svc, err := NewMinioServiceWithClients(m, m, cfg)
 		assert.Error(t, err)
 		assert.Nil(t, svc)
 	})
 
 	svc := &MinioService{
 		client: mockClient,
+		signer: mockClient,
 		cfg:    cfg,
 	}
 
