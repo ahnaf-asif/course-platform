@@ -81,7 +81,7 @@ func (h *QuizHandler) BulkUploadCSV(c echo.Context) error {
 	}
 
 	// 2. Enqueue Task for Background Processing
-	err = h.taskService.EnqueueQuizBulkUpload(quizID, objectName, bucket)
+	taskID, err := h.taskService.EnqueueQuizBulkUpload(quizID, objectName, bucket)
 	if err != nil {
 		h.logger.Error("Failed to enqueue bulk upload task", "error", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to start background import")
@@ -89,7 +89,7 @@ func (h *QuizHandler) BulkUploadCSV(c echo.Context) error {
 
 	return c.JSON(http.StatusAccepted, map[string]string{
 		"message": "Bulk upload started in background",
-		"task_id": objectName,
+		"task_id": taskID,
 	})
 }
 

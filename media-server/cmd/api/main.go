@@ -96,6 +96,7 @@ func SetupRouter(cfg *config.Config, minioService service.IMinioService, transco
 	protected.GET("/upload-url", h.GetUploadURL)
 	protected.POST("/upload", h.UploadFile)
 	protected.POST("/transcode", h.TriggerTranscode) // New endpoint
+	protected.GET("/tasks/:task_id", h.GetTaskStatus)
 	protected.GET("/files", h.ListFiles)
 	protected.DELETE("/files/:file_name", h.DeleteFile)
 	protected.GET("/stream-token/:video_id", sh.GetToken)

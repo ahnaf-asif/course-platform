@@ -284,6 +284,7 @@ func (s *Server) registerRoutes() {
 	adminMedia.GET("/upload-token", curriculumHandler.GetMediaUploadToken)
 	adminMedia.GET("/token/:videoId", curriculumHandler.GetMediaStreamToken)
 	adminMedia.POST("/transcode", curriculumHandler.TriggerMediaTranscode)
+	adminMedia.GET("/tasks/:taskID", curriculumHandler.GetMediaTaskStatus)
 }
 
 func (s *Server) GetEcho() *echo.Echo {

@@ -12,8 +12,9 @@ import (
 func TestAPIKeyAuthMiddleware(t *testing.T) {
 	e := echo.New()
 	apiKey := "test-api-key"
+	streamSecret := "test-stream-secret"
 
-	mw := APIKeyAuth(apiKey)
+	mw := APIKeyAuth(apiKey, streamSecret)
 	h := mw(func(c echo.Context) error {
 		return c.String(http.StatusOK, "success")
 	})
