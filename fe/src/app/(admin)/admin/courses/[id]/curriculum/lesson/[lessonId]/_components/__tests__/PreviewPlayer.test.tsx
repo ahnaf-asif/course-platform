@@ -3,6 +3,8 @@ import { render, screen, waitFor } from '@/test/test-utils';
 import { PreviewPlayer } from '../PreviewPlayer';
 import React from 'react';
 
+import { AxiosRequestConfig } from 'axios';
+
 const mockHls = {
   loadSource: vi.fn(),
   attachMedia: vi.fn(),
@@ -11,11 +13,11 @@ const mockHls = {
 };
 
 vi.mock('hls.js', () => {
-  const HlsMock = vi.fn().mockImplementation(function (this: any) {
+  const HlsMock = vi.fn().mockImplementation(function (this: unknown) {
     return mockHls;
   });
-  (HlsMock as any).isSupported = () => true;
-  (HlsMock as any).Events = {
+  (HlsMock as unknown as Record<string, unknown>).isSupported = () => true;
+  (HlsMock as unknown as Record<string, unknown>).Events = {
     MANIFEST_PARSED: 'manifestParsed',
     ERROR: 'error',
   };
@@ -27,7 +29,7 @@ vi.mock('hls.js', () => {
 const mockAxiosInstance = vi.fn();
 
 vi.mock('@/lib/axios', () => ({
-  axiosInstance: (args: any) => mockAxiosInstance(args),
+  axiosInstance: (args: AxiosRequestConfig) => mockAxiosInstance(args),
   setAuthHandlers: vi.fn(),
   updateAccessToken: vi.fn(),
 }));

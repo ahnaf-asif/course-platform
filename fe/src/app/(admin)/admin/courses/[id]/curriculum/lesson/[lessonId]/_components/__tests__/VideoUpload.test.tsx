@@ -3,10 +3,12 @@ import { render, screen } from '@/test/test-utils';
 import VideoUpload from '../VideoUpload';
 import React from 'react';
 
+import { AxiosRequestConfig } from 'axios';
+
 const mockAxiosInstance = vi.fn();
 
 vi.mock('@/lib/axios', () => ({
-  axiosInstance: (args: any) => mockAxiosInstance(args),
+  axiosInstance: (args: AxiosRequestConfig) => mockAxiosInstance(args),
   setAuthHandlers: vi.fn(),
   updateAccessToken: vi.fn(),
 }));
