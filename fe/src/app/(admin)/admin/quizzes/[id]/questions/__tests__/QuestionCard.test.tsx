@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@/test/test-utils';
-import { QuestionCard, EditFormValues } from '../QuestionCard';
+import { QuestionCard } from '../QuestionCard';
+import { EditFormValues } from '../types';
 import { useForm } from '@mantine/form';
 import React from 'react';
 import { QuestionResponse } from '@/api/model/components-schemas-assessment/questionResponse';

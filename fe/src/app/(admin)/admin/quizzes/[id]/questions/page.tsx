@@ -30,7 +30,6 @@ export default function QuestionManagement() {
   const {
     quizId,
     questions,
-    isLoading,
     currentQuiz,
     editingId,
     setEditingId,

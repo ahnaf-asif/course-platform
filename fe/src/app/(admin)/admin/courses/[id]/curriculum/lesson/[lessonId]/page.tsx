@@ -63,7 +63,8 @@ export default function LessonEditPage() {
         text_content: lesson.text_content || '',
       });
     }
-  }, [lesson, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson]);
 
   const handleSubmit = async (values: typeof form.values) => {
     try {
