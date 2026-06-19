@@ -63,7 +63,7 @@ export default function LessonEditPage() {
         text_content: lesson.text_content || '',
       });
     }
-  }, [lesson]);
+  }, [lesson, form]);
 
   const handleSubmit = async (values: typeof form.values) => {
     try {

@@ -7,25 +7,14 @@ import {
   Group,
   Button,
   Select,
-  Table,
-  ActionIcon,
   LoadingOverlay,
   Divider,
   TextInput,
   Collapse,
 } from '@mantine/core';
-import {
-  useGetAdminQuizzes,
-  useGetAdminNodesIdQuizzes,
-  usePostAdminNodesIdQuizzes,
-  useDeleteAdminNodesIdQuizzesQuizId,
-  usePostAdminQuizzes,
-} from '@/api/generated/admin-assessment/admin-assessment';
-import { IconPlus, IconTrash, IconLink, IconAlertCircle, IconChevronDown, IconChevronUp, IconEdit } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
-import { useState } from 'react';
-import axios from 'axios';
-import Link from 'next/link';
+import { IconPlus, IconAlertCircle, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { LinkedQuizzesTable } from './LinkedQuizzesTable';
+import { useNodeQuizzes } from './useNodeQuizzes';
 
 interface NodeQuizModalProps {
   opened: boolean;
@@ -35,81 +24,24 @@ interface NodeQuizModalProps {
 }
 
 export function NodeQuizModal({ opened, onClose, nodeId, nodeTitle }: NodeQuizModalProps) {
-  const { data: allQuizzes, isLoading: loadingAll, refetch: refetchAll } = useGetAdminQuizzes();
-  const { data: linkedQuizzes, isLoading: loadingLinked, refetch: refetchLinked } = useGetAdminNodesIdQuizzes(nodeId);
-  const { mutateAsync: attachQuiz, isPending: isAttaching } = usePostAdminNodesIdQuizzes();
-  const { mutateAsync: detachQuiz, isPending: isDetaching } = useDeleteAdminNodesIdQuizzesQuizId();
-  const { mutateAsync: createQuiz, isPending: isCreating } = usePostAdminQuizzes();
-
-  const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [newQuizTitle, setNewQuizTitle] = useState('');
-
-  const handleAttach = async () => {
-    if (!selectedQuizId) return;
-
-    try {
-      await attachQuiz({ id: nodeId, data: { quiz_id: selectedQuizId } });
-      notifications.show({ title: 'Success', message: 'Quiz linked successfully', color: 'green' });
-      setSelectedQuizId(null);
-      refetchLinked();
-    } catch (error) {
-      let message = 'Failed to link quiz';
-      if (axios.isAxiosError(error)) {
-        message = error.response?.data?.message || message;
-      }
-      notifications.show({ title: 'Error', message, color: 'red' });
-    }
-  };
-
-  const handleCreateAndAttach = async () => {
-    if (!newQuizTitle.trim()) return;
-
-    try {
-      // 1. Create the quiz
-      const quiz = await createQuiz({ 
-        data: { 
-          title: newQuizTitle.trim(),
-          passing_score: 80 // Default passing score
-        } 
-      });
-
-      // 2. Attach it to the node
-      await attachQuiz({ id: nodeId, data: { quiz_id: quiz.id } });
-      
-      notifications.show({ 
-        title: 'Success', 
-        message: 'Quiz created and linked successfully', 
-        color: 'green' 
-      });
-
-      // Cleanup
-      setNewQuizTitle('');
-      setShowCreate(false);
-      refetchAll();
-      refetchLinked();
-    } catch (error) {
-      let message = 'Failed to create and link quiz';
-      if (axios.isAxiosError(error)) {
-        message = error.response?.data?.message || message;
-      }
-      notifications.show({ title: 'Error', message, color: 'red' });
-    }
-  };
-
-  const handleDetach = async (quizId: string) => {
-    try {
-      await detachQuiz({ id: nodeId, quizId });
-      notifications.show({ title: 'Success', message: 'Quiz unlinked successfully', color: 'blue' });
-      refetchLinked();
-    } catch {
-      notifications.show({ title: 'Error', message: 'Failed to unlink quiz', color: 'red' });
-    }
-  };
-
-  const quizOptions = allQuizzes
-    ?.filter(q => !linkedQuizzes?.some(l => l.id === q.id))
-    ?.map(q => ({ value: q.id, label: q.title })) || [];
+  const {
+    linkedQuizzes,
+    loadingAll,
+    loadingLinked,
+    isAttaching,
+    isDetaching,
+    isCreating,
+    selectedQuizId,
+    setSelectedQuizId,
+    showCreate,
+    setShowCreate,
+    newQuizTitle,
+    setNewQuizTitle,
+    handleAttach,
+    handleCreateAndAttach,
+    handleDetach,
+    quizOptions,
+  } = useNodeQuizzes(nodeId);
 
   return (
     <Modal
@@ -129,7 +61,7 @@ export function NodeQuizModal({ opened, onClose, nodeId, nodeTitle }: NodeQuizMo
         <Stack gap="xs">
           <Group align="flex-end">
             <Select
-              label="Select Existing Quiz"
+              aria-label="Select Existing Quiz"
               placeholder="Search quizzes..."
               data={quizOptions}
               searchable
@@ -184,42 +116,11 @@ export function NodeQuizModal({ opened, onClose, nodeId, nodeTitle }: NodeQuizMo
         <Divider my="sm" label="Linked Quizzes" labelPosition="center" />
 
         {linkedQuizzes && linkedQuizzes.length > 0 ? (
-          <Table verticalSpacing="xs">
-            <Table.Tbody>
-              {linkedQuizzes.map((quiz) => (
-                <Table.Tr key={quiz.id}>
-                  <Table.Td>
-                    <Group gap="xs">
-                      <IconLink size={14} color="blue" />
-                      <Text size="sm" fw={500}>{quiz.title}</Text>
-                    </Group>
-                  </Table.Td>
-                  <Table.Td align="right">
-                    <Group gap="xs" justify="flex-end">
-                      <ActionIcon 
-                        variant="subtle" 
-                        color="blue" 
-                        component={Link}
-                        href={`/admin/quizzes/${quiz.id}/questions`}
-                        title="Edit questions"
-                      >
-                        <IconEdit size={16} />
-                      </ActionIcon>
-                      <ActionIcon 
-                        color="red" 
-                        variant="subtle" 
-                        onClick={() => handleDetach(quiz.id)}
-                        loading={isDetaching}
-                        title="Unlink quiz"
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Group>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+          <LinkedQuizzesTable
+            quizzes={linkedQuizzes}
+            onDetach={handleDetach}
+            isDetaching={isDetaching}
+          />
         ) : (
           <Group gap="xs" justify="center" py="md">
             <IconAlertCircle size={16} color="gray" />
