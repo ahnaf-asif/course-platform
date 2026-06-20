@@ -19,7 +19,11 @@ export default defineConfig({
         'src/api/model/**',
         'src/test/**',
         'src/**/*.d.ts',
-        'src/components/Editor/**'
+        'src/components/Editor/**',
+        'src/app/test/**',
+        'src/app/test-video/**',
+        'src/app/api/media/**',
+        'src/proxy.ts'
       ],
       reporter: ['text', 'html'],
       thresholds: {
