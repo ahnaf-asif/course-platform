@@ -118,6 +118,9 @@ func (s *Server) registerRoutes() {
 	quizHandler := handlers.NewQuizHandler(s.store, s.cacheService, s.minioService, s.taskService, s.logger)
 	tagHandler := handlers.NewTagHandler(s.store, s.cacheService, s.logger)
 
+	sslcommerzService := services.NewSSLCommerzService()
+	commerceHandler := handlers.NewCommerceHandler(s.store, sslcommerzService)
+
 	// API v1 Group
 	v1 := s.echo.Group("/api/v1")
 
@@ -200,6 +203,12 @@ func (s *Server) registerRoutes() {
 	auth.POST("/login", authHandler.Login, loginRateLimit)
 	auth.POST("/refresh", authHandler.Refresh)
 
+	// SSLCommerz public callbacks
+	v1.POST("/payments/sslcommerz/success", commerceHandler.HandleSuccess)
+	v1.POST("/payments/sslcommerz/fail", commerceHandler.HandleFail)
+	v1.POST("/payments/sslcommerz/cancel", commerceHandler.HandleCancel)
+	v1.POST("/payments/sslcommerz/ipn", commerceHandler.HandleIPN)
+
 	// Protected routes
 	protected := v1.Group("")
 	protected.Use(internalMiddleware.JWTMiddleware(jwtSecret))
@@ -212,8 +221,16 @@ func (s *Server) registerRoutes() {
 	users.PATCH("/me", userHandler.UpdateMe)
 	users.PUT("/me/password", userHandler.UpdatePassword)
 
+	// Commerce protected routes
+	protected.POST("/orders/checkout", commerceHandler.Checkout)
+	protected.GET("/courses/s/:slug/access", commerceHandler.CheckAccess)
+	protected.GET("/courses/enrolled", commerceHandler.GetEnrolledCourses)
+	protected.GET("/lessons/:id", curriculumHandler.GetUserLesson)
+	protected.GET("/media/token/:videoId", curriculumHandler.GetMediaStreamToken)
+
 	// Curriculum Public routes
 	// Public Course Routes
+	v1.GET("/courses", courseHandler.ListPublishedCourses)
 	v1.GET("/courses/s/:slug", courseHandler.GetCourseBySlug)
 	v1.GET("/courses/s/:slug/tree", curriculumHandler.GetCourseTreeBySlug)
 	v1.GET("/courses/:id/tree", curriculumHandler.GetCourseTree)

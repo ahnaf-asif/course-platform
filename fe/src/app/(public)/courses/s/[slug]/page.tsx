@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Container,
   Title,
@@ -14,11 +14,14 @@ import {
   Button,
   Box,
   Divider,
+  TextInput,
 } from '@mantine/core';
 import { useGetCourseBySlug, useGetCourseTreeBySlug } from '@/api/generated/course/course';
+import { useCheckAccess, useCheckout } from '@/api/generated/commerce/commerce';
+import { useGetMe } from '@/api/generated/user/user';
 import { IconClock, IconUsers, IconCertificate, IconArrowLeft, IconBooks, IconFolder, IconFileText } from '@tabler/icons-react';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { CourseTreeResponse } from '@/api/model/components-schemas-curriculum/courseTreeResponse';
 
 interface ExtendedNode extends CourseTreeResponse {
@@ -27,10 +30,24 @@ interface ExtendedNode extends CourseTreeResponse {
 
 export default function PublicCoursePage() {
   const params = useParams();
+  const router = useRouter();
   const slug = params.slug as string;
 
+  const [couponCode, setCouponCode] = useState('');
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  const { data: user } = useGetMe();
   const { data: course, isLoading: isLoadingCourse, isError: isCourseError } = useGetCourseBySlug(slug);
   
+  // Only fetch access status if user is logged in and course is loaded
+  const { data: accessData } = useCheckAccess(slug, {
+    query: {
+      enabled: !!user && !!course?.id,
+    }
+  });
+
+  const hasAccess = accessData?.has_access ?? false;
+
   // Only fetch tree if course is loaded
   const { data: tree } = useGetCourseTreeBySlug(slug, {
     query: {
@@ -50,6 +67,34 @@ export default function PublicCoursePage() {
     });
     return roots.sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
   }, [tree]);
+
+  const { mutateAsync: checkout, isPending: isCheckingOut } = useCheckout();
+
+  const handleEnroll = async () => {
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+    if (!course?.id) return;
+
+    try {
+      const res = await checkout({
+        data: {
+          node_id: course.id,
+          coupon_code: couponCode,
+        }
+      });
+
+      if (res.enrolled) {
+        router.push(`/courses/s/${slug}/learn`);
+      } else if (res.checkout_url) {
+        setIsRedirecting(true);
+        window.location.href = res.checkout_url;
+      }
+    } catch (err) {
+      console.error('Checkout failed:', err);
+    }
+  };
 
   if (isLoadingCourse) {
     return (
@@ -79,6 +124,8 @@ export default function PublicCoursePage() {
     );
   }
 
+  const isPaid = course.price && course.price !== '0.00';
+
   return (
     <Container size="lg" py="xl">
       <Stack gap="xl">
@@ -102,9 +149,50 @@ export default function PublicCoursePage() {
               </Group>
             </Group>
 
-            <Button size="lg" mt="xl" radius="md" style={{ width: 'fit-content' }}>
-              Enroll in Course
-            </Button>
+            {isPaid ? (
+              <Group gap="sm" mt="md">
+                <Text fw={700} size="xl" c="blue">
+                  Price: {course.price} {course.currency || 'BDT'}
+                </Text>
+              </Group>
+            ) : (
+              <Group gap="sm" mt="md">
+                <Badge color="green" size="lg">FREE</Badge>
+              </Group>
+            )}
+
+            {!hasAccess && isPaid && user && (
+              <TextInput
+                placeholder="Promo Code"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.currentTarget.value)}
+                style={{ maxWidth: 220 }}
+                mt="md"
+              />
+            )}
+
+            <Group gap="md" mt="xl">
+              {hasAccess ? (
+                <Button
+                  size="lg"
+                  radius="md"
+                  component={Link}
+                  href={`/courses/s/${slug}/learn`}
+                  color="green"
+                >
+                  Go to Course Player
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  radius="md"
+                  onClick={handleEnroll}
+                  loading={isCheckingOut || isRedirecting}
+                >
+                  {isPaid ? 'Enroll in Course' : 'Enroll for Free'}
+                </Button>
+              )}
+            </Group>
           </Stack>
 
           <Card shadow="md" p={0} radius="md" style={{ width: 400 }} visibleFrom="md">

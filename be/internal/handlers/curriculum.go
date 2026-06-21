@@ -13,6 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/shafins-course/backend/internal/db"
 	"github.com/shafins-course/backend/internal/db/generated"
+	internalMiddleware "github.com/shafins-course/backend/internal/middleware"
 	"github.com/shafins-course/backend/internal/services"
 )
 
@@ -537,7 +538,8 @@ func (h *CurriculumHandler) GetCourseTree(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid course ID")
 	}
 
-	rows, err := h.store.GetCourseTreeHydrated(c.Request().Context(), id)
+	ctx := c.Request().Context()
+	rows, err := h.store.GetCourseTreeHydrated(ctx, id)
 	if err != nil {
 		h.logger.Error("Failed to get hydrated course tree", "error", err, "course_id", id)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
@@ -547,13 +549,37 @@ func (h *CurriculumHandler) GetCourseTree(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "Course not found")
 	}
 
-	return c.JSON(http.StatusOK, h.mapToCourseTreeResponse(rows))
+	// Access control check
+	hasAccess := false
+	pg, pgErr := h.store.GetPaymentGateByNode(ctx, id)
+	isPaid := pgErr == nil && pg.Price != "0.00"
+
+	if !isPaid {
+		hasAccess = true
+	} else {
+		authUser := internalMiddleware.GetAuthUser(c)
+		if authUser.Role == "ADMIN" {
+			hasAccess = true
+		} else if authUser.ID != "" {
+			userID, err := uuid.Parse(authUser.ID)
+			if err == nil {
+				ok, _ := h.store.CheckUserAccessToNode(ctx, generated.CheckUserAccessToNodeParams{
+					ID:     id,
+					UserID: userID,
+				})
+				hasAccess = ok
+			}
+		}
+	}
+
+	return c.JSON(http.StatusOK, h.mapToCourseTreeResponse(rows, hasAccess))
 }
 
 func (h *CurriculumHandler) GetCourseTreeBySlug(c echo.Context) error {
 	slug := c.Param("slug")
+	ctx := c.Request().Context()
 
-	rows, err := h.store.GetCourseTreeHydratedBySlug(c.Request().Context(), slug)
+	rows, err := h.store.GetCourseTreeHydratedBySlug(ctx, slug)
 	if err != nil {
 		h.logger.Error("Failed to get hydrated course tree by slug", "error", err, "slug", slug)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
@@ -563,10 +589,115 @@ func (h *CurriculumHandler) GetCourseTreeBySlug(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "Course not found")
 	}
 
-	return c.JSON(http.StatusOK, h.mapToCourseTreeResponseBySlug(rows))
+	courseID := rows[0].ID
+
+	// Access control check
+	hasAccess := false
+	pg, pgErr := h.store.GetPaymentGateByNode(ctx, courseID)
+	isPaid := pgErr == nil && pg.Price != "0.00"
+
+	if !isPaid {
+		hasAccess = true
+	} else {
+		authUser := internalMiddleware.GetAuthUser(c)
+		if authUser.Role == "ADMIN" {
+			hasAccess = true
+		} else if authUser.ID != "" {
+			userID, err := uuid.Parse(authUser.ID)
+			if err == nil {
+				ok, _ := h.store.CheckUserAccessToNode(ctx, generated.CheckUserAccessToNodeParams{
+					ID:     courseID,
+					UserID: userID,
+				})
+				hasAccess = ok
+			}
+		}
+	}
+
+	return c.JSON(http.StatusOK, h.mapToCourseTreeResponseBySlug(rows, hasAccess))
 }
 
-func (h *CurriculumHandler) mapToCourseTreeResponse(rows []generated.GetCourseTreeHydratedRow) []CourseTreeResponse {
+func (h *CurriculumHandler) GetUserLesson(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid lesson ID")
+	}
+
+	ctx := c.Request().Context()
+	authUser := internalMiddleware.GetAuthUser(c)
+	if authUser.ID == "" {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	userID, err := uuid.Parse(authUser.ID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid user ID in token")
+	}
+
+	// Fetch Lesson info to find parent chapter and course
+	row, err := h.store.GetLesson(ctx, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusNotFound, "Lesson not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	// Check access
+	hasAccess := false
+	if authUser.Role == "ADMIN" {
+		hasAccess = true
+	} else {
+		ok, err := h.store.CheckUserAccessToNode(ctx, generated.CheckUserAccessToNodeParams{
+			ID:     id,
+			UserID: userID,
+		})
+		if err == nil && ok {
+			hasAccess = true
+		}
+	}
+
+	// If no explicit order, check if parent course is free (no price or price == 0)
+	if !hasAccess {
+		ancestors, err := h.store.GetCourseTree(ctx, id)
+		if err == nil {
+			var courseID uuid.UUID
+			for _, a := range ancestors {
+				if a.NodeType == generated.NodeTypeCOURSE {
+					courseID = a.ID
+					break
+				}
+			}
+			pg, pgErr := h.store.GetPaymentGateByNode(ctx, courseID)
+			if pgErr == sql.ErrNoRows || (pgErr == nil && pg.Price == "0.00") {
+				hasAccess = true
+			}
+		}
+	}
+
+	if !hasAccess {
+		return echo.NewHTTPError(http.StatusForbidden, "Course purchase required to access this content")
+	}
+
+	resp := LessonResponse{
+		ID:            row.ID.String(),
+		ParentID:      row.ParentID.UUID.String(),
+		NodeType:      string(row.NodeType),
+		Title:         row.Title,
+		SequenceOrder: row.SequenceOrder,
+		CreatedAt:     row.CreatedAt.String(),
+	}
+	if row.TextContent.Valid {
+		resp.TextContent = &row.TextContent.String
+	}
+	if row.VideoUrl.Valid {
+		resp.VideoURL = &row.VideoUrl.String
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
+func (h *CurriculumHandler) mapToCourseTreeResponse(rows []generated.GetCourseTreeHydratedRow, hasAccess bool) []CourseTreeResponse {
 	resp := make([]CourseTreeResponse, 0, len(rows))
 	for _, row := range rows {
 		item := CourseTreeResponse{
@@ -600,11 +731,11 @@ func (h *CurriculumHandler) mapToCourseTreeResponse(rows []generated.GetCourseTr
 			if row.LessonOrder.Valid {
 				item.SequenceOrder = &row.LessonOrder.Int32
 			}
-			if row.LessonVideoUrl.Valid {
+			if hasAccess && row.LessonVideoUrl.Valid {
 				vURL := row.LessonVideoUrl.String
 				item.VideoURL = &vURL
 			}
-			if row.LessonTextContent.Valid {
+			if hasAccess && row.LessonTextContent.Valid {
 				tContent := row.LessonTextContent.String
 				item.TextContent = &tContent
 			}
@@ -615,7 +746,7 @@ func (h *CurriculumHandler) mapToCourseTreeResponse(rows []generated.GetCourseTr
 	return resp
 }
 
-func (h *CurriculumHandler) mapToCourseTreeResponseBySlug(rows []generated.GetCourseTreeHydratedBySlugRow) []CourseTreeResponse {
+func (h *CurriculumHandler) mapToCourseTreeResponseBySlug(rows []generated.GetCourseTreeHydratedBySlugRow, hasAccess bool) []CourseTreeResponse {
 	resp := make([]CourseTreeResponse, 0, len(rows))
 	for _, row := range rows {
 		item := CourseTreeResponse{
@@ -649,11 +780,11 @@ func (h *CurriculumHandler) mapToCourseTreeResponseBySlug(rows []generated.GetCo
 			if row.LessonOrder.Valid {
 				item.SequenceOrder = &row.LessonOrder.Int32
 			}
-			if row.LessonVideoUrl.Valid {
+			if hasAccess && row.LessonVideoUrl.Valid {
 				vURL := row.LessonVideoUrl.String
 				item.VideoURL = &vURL
 			}
-			if row.LessonTextContent.Valid {
+			if hasAccess && row.LessonTextContent.Valid {
 				tContent := row.LessonTextContent.String
 				item.TextContent = &tContent
 			}

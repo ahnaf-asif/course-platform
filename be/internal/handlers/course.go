@@ -60,6 +60,8 @@ type CourseResponse struct {
 	Description  string  `json:"description"`
 	ThumbnailURL *string `json:"thumbnail_url"`
 	IsPublished  bool    `json:"is_published"`
+	Price        *string `json:"price,omitempty"`
+	Currency     *string `json:"currency,omitempty"`
 	CreatedAt    string  `json:"created_at"`
 }
 
@@ -69,6 +71,8 @@ type CreateCourseRequest struct {
 	Description  string  `json:"description" validate:"required,min=10"`
 	ThumbnailURL *string `json:"thumbnail_url" validate:"omitempty"`
 	IsPublished  bool    `json:"is_published"`
+	Price        *string `json:"price" validate:"omitempty"`
+	Currency     *string `json:"currency" validate:"omitempty"`
 }
 
 func (h *CourseHandler) CreateCourse(c echo.Context) error {
@@ -117,6 +121,22 @@ func (h *CourseHandler) CreateCourse(c echo.Context) error {
 			return err
 		}
 
+		// Upsert Payment Gate if price and currency are provided
+		if req.Price != nil && *req.Price != "" {
+			currency := "BDT"
+			if req.Currency != nil && *req.Currency != "" {
+				currency = *req.Currency
+			}
+			_, err = q.UpsertPaymentGate(c.Request().Context(), generated.UpsertPaymentGateParams{
+				NodeID:   node.ID,
+				Price:    *req.Price,
+				Currency: currency,
+			})
+			if err != nil {
+				return err
+			}
+		}
+
 		// 3. Get Full Course Data
 		courseRow, err = q.GetCourse(c.Request().Context(), node.ID)
 		return err
@@ -162,12 +182,30 @@ func (h *CourseHandler) ListCourses(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
+func (h *CourseHandler) ListPublishedCourses(c echo.Context) error {
+	courses, err := h.store.ListPublishedCourses(c.Request().Context())
+	if err != nil {
+		h.logger.Error("Failed to list published courses", "error", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	resp := make([]CourseResponse, 0, len(courses))
+	for _, row := range courses {
+		resp = append(resp, h.mapToCourseResponse(generated.GetCourseRow(row)))
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
+
 type UpdateCourseRequest struct {
 	Title        *string `json:"title" validate:"omitempty,min=3,max=255"`
 	Slug         *string `json:"slug" validate:"omitempty,lowercase,alphanumhyphen"`
 	Description  *string `json:"description" validate:"omitempty,min=10"`
 	ThumbnailURL *string `json:"thumbnail_url" validate:"omitempty"`
 	IsPublished  *bool   `json:"is_published"`
+	Price        *string `json:"price" validate:"omitempty"`
+	Currency     *string `json:"currency" validate:"omitempty"`
 }
 
 func (h *CourseHandler) UpdateCourse(c echo.Context) error {
@@ -207,7 +245,53 @@ func (h *CourseHandler) UpdateCourse(c echo.Context) error {
 		params.IsPublished = sql.NullBool{Bool: *req.IsPublished, Valid: true}
 	}
 
-	_, err = h.store.UpdateCourse(c.Request().Context(), params)
+	err = h.store.WithTx(c.Request().Context(), func(q generated.Querier) error {
+		_, err = q.UpdateCourse(c.Request().Context(), params)
+		if err != nil {
+			return err
+		}
+
+		if req.Price != nil {
+			if *req.Price == "" {
+				err = q.DeletePaymentGate(c.Request().Context(), id)
+				if err != nil && err != sql.ErrNoRows {
+					return err
+				}
+			} else {
+				currency := "BDT"
+				if req.Currency != nil && *req.Currency != "" {
+					currency = *req.Currency
+				} else {
+					existing, err := q.GetPaymentGateByNode(c.Request().Context(), id)
+					if err == nil {
+						currency = existing.Currency
+					}
+				}
+				_, err = q.UpsertPaymentGate(c.Request().Context(), generated.UpsertPaymentGateParams{
+					NodeID:   id,
+					Price:    *req.Price,
+					Currency: currency,
+				})
+				if err != nil {
+					return err
+				}
+			}
+		} else if req.Currency != nil && *req.Currency != "" {
+			existing, err := q.GetPaymentGateByNode(c.Request().Context(), id)
+			if err == nil {
+				_, err = q.UpsertPaymentGate(c.Request().Context(), generated.UpsertPaymentGateParams{
+					NodeID:   id,
+					Price:    existing.Price,
+					Currency: *req.Currency,
+				})
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return echo.NewHTTPError(http.StatusNotFound, "Course not found")
@@ -269,6 +353,14 @@ func (h *CourseHandler) mapToCourseResponse(row generated.GetCourseRow) CourseRe
 
 	if row.ThumbnailUrl.Valid {
 		resp.ThumbnailURL = &row.ThumbnailUrl.String
+	}
+
+	if row.Price.Valid {
+		resp.Price = &row.Price.String
+	}
+
+	if row.Currency.Valid {
+		resp.Currency = &row.Currency.String
 	}
 
 	return resp

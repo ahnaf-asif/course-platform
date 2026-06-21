@@ -194,6 +194,79 @@ func TestCourseIntegration(t *testing.T) {
 		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	})
 
+	t.Run("Create Course with Pricing", func(t *testing.T) {
+		priceVal := "1500.00"
+		currencyVal := "BDT"
+		reqBody := handlers.CreateCourseRequest{
+			Title:       "Paid Course Integration",
+			Description: "Paid course integration test description.",
+			Price:       &priceVal,
+			Currency:    &currencyVal,
+		}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/courses", bytes.NewBuffer(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := courseHandler.CreateCourse(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, rec.Code)
+
+		var resp handlers.CourseResponse
+		json.Unmarshal(rec.Body.Bytes(), &resp)
+		assert.Equal(t, "1500.00", *resp.Price)
+		assert.Equal(t, "BDT", *resp.Currency)
+	})
+
+	t.Run("Update Course with Pricing", func(t *testing.T) {
+		priceVal := "2500.00"
+		currencyVal := "USD"
+		reqBody := handlers.UpdateCourseRequest{
+			Price:    &priceVal,
+			Currency: &currencyVal,
+		}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPatch, "/api/v1/admin/courses/"+courseID, bytes.NewBuffer(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues(courseID)
+
+		err := courseHandler.UpdateCourse(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var resp handlers.CourseResponse
+		json.Unmarshal(rec.Body.Bytes(), &resp)
+		assert.Equal(t, "2500.00", *resp.Price)
+		assert.Equal(t, "USD", *resp.Currency)
+	})
+
+	t.Run("Update Course to make it Free", func(t *testing.T) {
+		priceVal := ""
+		reqBody := handlers.UpdateCourseRequest{
+			Price: &priceVal,
+		}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPatch, "/api/v1/admin/courses/"+courseID, bytes.NewBuffer(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues(courseID)
+
+		err := courseHandler.UpdateCourse(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var resp handlers.CourseResponse
+		json.Unmarshal(rec.Body.Bytes(), &resp)
+		assert.Nil(t, resp.Price)
+		assert.Nil(t, resp.Currency)
+	})
+
 	t.Run("Delete Course - Invalid UUID", func(t *testing.T) {
 		invalidID := "not-a-uuid"
 		req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/courses/"+invalidID, nil)

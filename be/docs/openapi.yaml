@@ -63,12 +63,24 @@ paths:
     $ref: './paths/admin_users.yaml#/~1admin~1users'
   /admin/users/{id}/role:
     $ref: './paths/admin_users.yaml#/~1admin~1users~1{id}~1role'
+  /courses:
+    $ref: './paths/courses.yaml'
   /courses/{id}/tree:
     $ref: './paths/admin_curriculum.yaml#/~1courses~1{id}~1tree'
   /courses/s/{slug}:
     $ref: './paths/course_by_slug.yaml'
   /courses/s/{slug}/tree:
     $ref: './paths/course_tree_by_slug.yaml'
+  /orders/checkout:
+    $ref: './paths/commerce.yaml#/~1orders~1checkout'
+  /courses/s/{slug}/access:
+    $ref: './paths/commerce.yaml#/~1courses~1s~1{slug}~1access'
+  /courses/enrolled:
+    $ref: './paths/commerce.yaml#/~1courses~1enrolled'
+  /lessons/{id}:
+    $ref: './paths/commerce.yaml#/~1lessons~1{id}'
+  /media/token/{videoId}:
+    $ref: './paths/commerce.yaml#/~1media~1token~1{videoId}'
 components:
   securitySchemes:
     bearerAuth:

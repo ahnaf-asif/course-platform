@@ -295,9 +295,11 @@ func (q *Queries) GetChildNodes(ctx context.Context, parentID uuid.NullUUID) ([]
 }
 
 const getCourse = `-- name: GetCourse :one
-SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.slug, c.description, c.thumbnail_url, c.is_published
+SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.slug, c.description, c.thumbnail_url, c.is_published,
+       pg.price, pg.currency
 FROM nodes n
 JOIN courses c ON n.id = c.node_id
+LEFT JOIN payment_gates pg ON n.id = pg.node_id
 WHERE n.id = $1 LIMIT 1
 `
 
@@ -311,6 +313,8 @@ type GetCourseRow struct {
 	Description  sql.NullString `json:"description"`
 	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
 	IsPublished  bool           `json:"is_published"`
+	Price        sql.NullString `json:"price"`
+	Currency     sql.NullString `json:"currency"`
 }
 
 func (q *Queries) GetCourse(ctx context.Context, id uuid.UUID) (GetCourseRow, error) {
@@ -326,14 +330,18 @@ func (q *Queries) GetCourse(ctx context.Context, id uuid.UUID) (GetCourseRow, er
 		&i.Description,
 		&i.ThumbnailUrl,
 		&i.IsPublished,
+		&i.Price,
+		&i.Currency,
 	)
 	return i, err
 }
 
 const getCourseBySlug = `-- name: GetCourseBySlug :one
-SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.slug, c.description, c.thumbnail_url, c.is_published
+SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.slug, c.description, c.thumbnail_url, c.is_published,
+       pg.price, pg.currency
 FROM nodes n
 JOIN courses c ON n.id = c.node_id
+LEFT JOIN payment_gates pg ON n.id = pg.node_id
 WHERE c.slug = $1 OR (CASE WHEN $1 ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN n.id = $1::uuid ELSE FALSE END) LIMIT 1
 `
 
@@ -347,6 +355,8 @@ type GetCourseBySlugRow struct {
 	Description  sql.NullString `json:"description"`
 	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
 	IsPublished  bool           `json:"is_published"`
+	Price        sql.NullString `json:"price"`
+	Currency     sql.NullString `json:"currency"`
 }
 
 func (q *Queries) GetCourseBySlug(ctx context.Context, slug string) (GetCourseBySlugRow, error) {
@@ -362,6 +372,8 @@ func (q *Queries) GetCourseBySlug(ctx context.Context, slug string) (GetCourseBy
 		&i.Description,
 		&i.ThumbnailUrl,
 		&i.IsPublished,
+		&i.Price,
+		&i.Currency,
 	)
 	return i, err
 }
@@ -707,9 +719,11 @@ func (q *Queries) GetSubject(ctx context.Context, id uuid.UUID) (GetSubjectRow, 
 }
 
 const listCourses = `-- name: ListCourses :many
-SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.slug, c.description, c.thumbnail_url, c.is_published
+SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.slug, c.description, c.thumbnail_url, c.is_published,
+       pg.price, pg.currency
 FROM nodes n
 JOIN courses c ON n.id = c.node_id
+LEFT JOIN payment_gates pg ON n.id = pg.node_id
 ORDER BY n.created_at DESC
 `
 
@@ -723,6 +737,8 @@ type ListCoursesRow struct {
 	Description  sql.NullString `json:"description"`
 	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
 	IsPublished  bool           `json:"is_published"`
+	Price        sql.NullString `json:"price"`
+	Currency     sql.NullString `json:"currency"`
 }
 
 func (q *Queries) ListCourses(ctx context.Context) ([]ListCoursesRow, error) {
@@ -744,6 +760,67 @@ func (q *Queries) ListCourses(ctx context.Context) ([]ListCoursesRow, error) {
 			&i.Description,
 			&i.ThumbnailUrl,
 			&i.IsPublished,
+			&i.Price,
+			&i.Currency,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedCourses = `-- name: ListPublishedCourses :many
+SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.slug, c.description, c.thumbnail_url, c.is_published,
+       pg.price, pg.currency
+FROM nodes n
+JOIN courses c ON n.id = c.node_id
+LEFT JOIN payment_gates pg ON n.id = pg.node_id
+WHERE c.is_published = TRUE
+ORDER BY n.created_at DESC
+`
+
+type ListPublishedCoursesRow struct {
+	ID           uuid.UUID      `json:"id"`
+	ParentID     uuid.NullUUID  `json:"parent_id"`
+	NodeType     NodeType       `json:"node_type"`
+	CreatedAt    time.Time      `json:"created_at"`
+	Title        string         `json:"title"`
+	Slug         string         `json:"slug"`
+	Description  sql.NullString `json:"description"`
+	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
+	IsPublished  bool           `json:"is_published"`
+	Price        sql.NullString `json:"price"`
+	Currency     sql.NullString `json:"currency"`
+}
+
+func (q *Queries) ListPublishedCourses(ctx context.Context) ([]ListPublishedCoursesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedCourses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedCoursesRow
+	for rows.Next() {
+		var i ListPublishedCoursesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ParentID,
+			&i.NodeType,
+			&i.CreatedAt,
+			&i.Title,
+			&i.Slug,
+			&i.Description,
+			&i.ThumbnailUrl,
+			&i.IsPublished,
+			&i.Price,
+			&i.Currency,
 		); err != nil {
 			return nil, err
 		}

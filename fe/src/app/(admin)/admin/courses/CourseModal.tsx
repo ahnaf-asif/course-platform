@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Modal, Stack, TextInput, Textarea, Switch, Group, Button } from '@mantine/core';
+import { Modal, Stack, TextInput, Textarea, Switch, Group, Button, Select } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import ImageUpload from '@/components/ImageUpload';
 import { CreateCourseRequest } from '@/api/model/components-schemas-course/createCourseRequest';
@@ -23,6 +23,8 @@ export function CourseModal({ opened, onClose, course, onSubmit, loading }: Cour
       description: '',
       thumbnail_url: '',
       is_published: false,
+      price: '',
+      currency: 'BDT',
     },
     validate: {
       title: (value: string) => (value.length < 3 ? 'Title must be at least 3 characters' : null),
@@ -31,6 +33,8 @@ export function CourseModal({ opened, onClose, course, onSubmit, loading }: Cour
       description: (value: string) => (value.length < 10 ? 'Description must be at least 10 characters' : null),
       thumbnail_url: (value: string | undefined) =>
         value && !/^(https?:\/\/|\/media-api\/)/.test(value) ? 'Must be a valid URL or media path' : null,
+      price: (value: string | undefined) =>
+        value && isNaN(Number(value)) ? 'Price must be a valid number' : null,
     },
   });
 
@@ -43,6 +47,8 @@ export function CourseModal({ opened, onClose, course, onSubmit, loading }: Cour
           description: course.description,
           thumbnail_url: course.thumbnail_url || '',
           is_published: course.is_published,
+          price: course.price || '',
+          currency: course.currency || 'BDT',
         });
       } else {
         form.reset();
@@ -87,6 +93,22 @@ export function CourseModal({ opened, onClose, course, onSubmit, loading }: Cour
             value={form.values.thumbnail_url || ''}
             onChange={(val) => form.setFieldValue('thumbnail_url', val)}
           />
+
+          <Group grow>
+            <TextInput
+              label="Price"
+              placeholder="e.g. 1500.00 (leave empty for free)"
+              {...form.getInputProps('price')}
+            />
+            <Select
+              label="Currency"
+              data={[
+                { value: 'BDT', label: 'BDT' },
+                { value: 'USD', label: 'USD' },
+              ]}
+              {...form.getInputProps('currency')}
+            />
+          </Group>
 
           <Switch
             label="Publish immediately"

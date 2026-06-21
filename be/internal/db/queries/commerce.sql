@@ -69,3 +69,52 @@ RETURNING *;
 -- name: GetPaymentGateByNode :one
 SELECT * FROM payment_gates
 WHERE node_id = $1 LIMIT 1;
+
+-- name: CheckUserAccessToNode :one
+WITH RECURSIVE ancestors AS (
+    -- Anchor: start from the specific node
+    SELECT n_anchor.id, n_anchor.parent_id, n_anchor.node_type
+    FROM nodes n_anchor
+    WHERE n_anchor.id = $1
+    UNION ALL
+    -- Recursive step: traverse up to the parent
+    SELECT n_child.id, n_child.parent_id, n_child.node_type
+    FROM nodes n_child
+    JOIN ancestors a ON n_child.id = a.parent_id
+)
+SELECT EXISTS (
+    SELECT 1 FROM orders o
+    WHERE o.user_id = $2
+      AND o.status = 'COMPLETED'
+      AND o.node_id IN (SELECT a_out.id FROM ancestors a_out)
+) as has_access;
+
+-- name: GetOrderByTranID :one
+SELECT * FROM orders
+WHERE id = $1 LIMIT 1;
+
+-- name: GetActiveOrderByUserAndNode :one
+SELECT * FROM orders
+WHERE user_id = $1 AND node_id = $2 AND status = 'COMPLETED'
+LIMIT 1;
+
+-- name: UpdateOrderReferenceAndStatus :one
+UPDATE orders
+SET status = $2, provider_reference = $3
+WHERE id = $1
+RETURNING *;
+
+-- name: DeletePaymentGate :exec
+DELETE FROM payment_gates
+WHERE node_id = $1;
+
+-- name: GetEnrolledCoursesByUser :many
+SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.slug, c.description, c.thumbnail_url, c.is_published,
+       pg.price, pg.currency, o.created_at as enrolled_at
+FROM orders o
+JOIN nodes n ON o.node_id = n.id
+JOIN courses c ON n.id = c.node_id
+LEFT JOIN payment_gates pg ON n.id = pg.node_id
+WHERE o.user_id = $1 AND o.status = 'COMPLETED'
+ORDER BY o.created_at DESC;
+

@@ -1,0 +1,75 @@
+CheckoutRequest:
+  type: object
+  required:
+    - node_id
+  properties:
+    node_id:
+      type: string
+      format: uuid
+    coupon_code:
+      type: string
+
+CheckoutResponse:
+  type: object
+  required:
+    - enrolled
+  properties:
+    enrolled:
+      type: boolean
+    checkout_url:
+      type: string
+    order_id:
+      type: string
+      format: uuid
+
+AccessResponse:
+  type: object
+  required:
+    - has_access
+  properties:
+    has_access:
+      type: boolean
+
+EnrolledCourseResponse:
+  type: object
+  required:
+    - id
+    - node_type
+    - title
+    - slug
+    - description
+    - is_published
+    - created_at
+    - enrolled_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    parent_id:
+      type: string
+      format: uuid
+      nullable: true
+    node_type:
+      type: string
+    title:
+      type: string
+    slug:
+      type: string
+    description:
+      type: string
+    thumbnail_url:
+      type: string
+      nullable: true
+    is_published:
+      type: boolean
+    price:
+      type: string
+    currency:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    enrolled_at:
+      type: string
+      format: date-time
+
