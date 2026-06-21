@@ -18,11 +18,24 @@ import {
   Alert,
   Loader,
   Center,
+  Drawer,
+  ScrollArea,
+  Progress,
 } from '@mantine/core';
 import { useGetCourseBySlug, useGetCourseTreeBySlug } from '@/api/generated/course/course';
 import { useCheckAccess, useGetUserLesson } from '@/api/generated/commerce/commerce';
 import { useGetMe } from '@/api/generated/user/user';
-import { IconArrowLeft, IconAlertCircle, IconVideo, IconFileText, IconChevronRight } from '@tabler/icons-react';
+import {
+  IconArrowLeft,
+  IconAlertCircle,
+  IconVideo,
+  IconFileText,
+  IconChevronRight,
+  IconChevronLeft,
+  IconMenu2,
+  IconBook,
+  IconCheck,
+} from '@tabler/icons-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import Hls from 'hls.js';
@@ -140,6 +153,7 @@ export default function CoursePlayerPage() {
   const slug = params.slug as string;
 
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const { data: user, isLoading: isLoadingUser } = useGetMe();
   const { data: course, isLoading: isLoadingCourse } = useGetCourseBySlug(slug);
@@ -175,23 +189,51 @@ export default function CoursePlayerPage() {
     return roots.sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
   }, [tree]);
 
-  // Set default selected lesson
-  useEffect(() => {
-    if (organizedTree.length > 0 && !selectedLessonId) {
-      // Find the first lesson in the tree
-      for (const subject of organizedTree) {
-        for (const chapter of subject.children) {
-          if (chapter.children.length > 0) {
-            const firstLessonId = chapter.children[0].id;
-            setTimeout(() => {
-              setSelectedLessonId(firstLessonId);
-            }, 0);
-            return;
-          }
+  // Flatten lessons for slideshow/prev/next controls
+  const flatLessons = useMemo(() => {
+    const list: { id: string; title: string }[] = [];
+    const traverse = (nodes: ExtendedNode[]) => {
+      const sorted = [...nodes].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
+      for (const node of sorted) {
+        if (node.node_type === 'LESSON') {
+          list.push({ id: node.id, title: node.title || '' });
+        }
+        if (node.children && node.children.length > 0) {
+          traverse(node.children);
         }
       }
+    };
+    traverse(organizedTree);
+    return list;
+  }, [organizedTree]);
+
+  const currentLessonIndex = useMemo(() => {
+    return flatLessons.findIndex((l) => l.id === selectedLessonId);
+  }, [flatLessons, selectedLessonId]);
+
+  const prevLesson = currentLessonIndex > 0 ? flatLessons[currentLessonIndex - 1] : null;
+  const nextLesson = currentLessonIndex < flatLessons.length - 1 ? flatLessons[currentLessonIndex + 1] : null;
+
+  const handlePrev = () => {
+    if (prevLesson) {
+      setSelectedLessonId(prevLesson.id);
     }
-  }, [organizedTree, selectedLessonId]);
+  };
+
+  const handleNext = () => {
+    if (nextLesson) {
+      setSelectedLessonId(nextLesson.id);
+    }
+  };
+
+  // Set default selected lesson
+  useEffect(() => {
+    if (flatLessons.length > 0 && !selectedLessonId) {
+      setTimeout(() => {
+        setSelectedLessonId(flatLessons[0].id);
+      }, 0);
+    }
+  }, [flatLessons, selectedLessonId]);
 
   // Redirect if no access
   useEffect(() => {
@@ -199,6 +241,63 @@ export default function CoursePlayerPage() {
       router.push(`/courses/s/${slug}`);
     }
   }, [isLoadingAccess, accessData, slug, router]);
+
+  const renderSyllabusContent = () => (
+    <Stack gap="md">
+      {organizedTree.map((subject) => (
+        <Box key={subject.id}>
+          <Text size="xs" fw={700} c="blue.6" style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }} mb={8}>
+            {subject.title}
+          </Text>
+          <Stack gap="xs">
+            {subject.children.map((chapter) => (
+              <Box key={chapter.id}>
+                <Text size="xs" fw={600} c="dimmed" mb={6}>
+                  {chapter.title}
+                </Text>
+                <div style={{ borderLeft: '1px solid var(--mantine-color-default-border)', paddingLeft: '8px', marginLeft: '4px' }}>
+                  <Stack gap={4}>
+                    {chapter.children.map((lesson) => {
+                      const isActive = selectedLessonId === lesson.id;
+                      return (
+                        <NavLink
+                          key={lesson.id}
+                          active={isActive}
+                          label={lesson.title}
+                          leftSection={lesson.video_url ? <IconVideo size={14} /> : <IconFileText size={14} />}
+                          rightSection={isActive ? <IconChevronRight size={12} /> : null}
+                          onClick={() => {
+                            setSelectedLessonId(lesson.id);
+                            setMobileSidebarOpen(false);
+                          }}
+                          styles={{
+                            root: {
+                              borderRadius: '6px',
+                              padding: '8px 10px',
+                              fontSize: '13px',
+                              transition: 'all 0.2s ease',
+                              backgroundColor: isActive ? 'var(--mantine-color-blue-light)' : 'transparent',
+                              color: isActive ? 'var(--mantine-color-blue-filled)' : 'inherit',
+                              fontWeight: isActive ? 600 : 400,
+                            },
+                            label: {
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-word',
+                            }
+                          }}
+                        />
+                      );
+                    })}
+                  </Stack>
+                </div>
+              </Box>
+            ))}
+          </Stack>
+          <Divider my="sm" />
+        </Box>
+      ))}
+    </Stack>
+  );
 
   if (isLoadingUser || isLoadingCourse || isLoadingAccess || isLoadingTree) {
     return (
@@ -220,121 +319,350 @@ export default function CoursePlayerPage() {
     );
   }
 
-  if (!accessData?.has_access) {
-    return (
-      <Container size="sm" py={100}>
-        <Alert icon={<IconAlertCircle size={16} />} title="Access Denied" color="red">
-          You must purchase this course to access the content. Redirecting...
-        </Alert>
-      </Container>
-    );
-  }
-
   return (
-    <Container size="xl" py="xl">
-      <Stack gap="lg">
-        <Group>
-          <Button component={Link} href={`/courses/s/${slug}`} variant="subtle" leftSection={<IconArrowLeft size={16} />}>
-            Back to Course Landing Page
-          </Button>
-        </Group>
+    <Box style={{
+      display: 'flex',
+      height: 'calc(100vh - 60px)',
+      margin: 'calc(-1 * var(--mantine-spacing-md))',
+      overflow: 'hidden',
+      backgroundColor: 'var(--mantine-color-body)',
+    }}>
+      {/* Desktop Navigation Sidebar */}
+      <Box
+        visibleFrom="md"
+        style={{
+          width: '320px',
+          height: '100%',
+          backgroundColor: 'var(--mantine-color-default)',
+          borderRight: '1px solid var(--mantine-color-default-border)',
+          display: 'flex',
+          flexDirection: 'column',
+          flexShrink: 0,
+        }}
+      >
+        <Box p="md" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+          <Stack gap="xs">
+            <Button
+              component={Link}
+              href={`/courses/s/${slug}`}
+              variant="subtle"
+              color="gray"
+              leftSection={<IconArrowLeft size={16} />}
+              size="xs"
+              styles={{ root: { paddingLeft: 0, justifyContent: 'flex-start' } }}
+            >
+              Back to Course Landing Page
+            </Button>
+            
+            <Group justify="space-between" align="center" mt="xs">
+              <Title order={4} size="h5" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <IconBook size={18} color="var(--mantine-color-blue-filled)" />
+                Syllabus
+              </Title>
+              <Text size="xs" c="dimmed" fw={500}>
+                {currentLessonIndex >= 0 ? `${currentLessonIndex + 1} / ${flatLessons.length}` : `0 / ${flatLessons.length}`}
+              </Text>
+            </Group>
 
-        <Grid gap="xl">
-          {/* Main Content Pane */}
-          <Grid.Col span={{ base: 12, md: 8 }}>
-            <Stack gap="lg">
-              {selectedLessonId ? (
-                isLoadingLesson ? (
-                  <Stack gap="md">
-                    <Skeleton height={350} radius="md" />
-                    <Skeleton height={30} width="70%" />
-                    <Skeleton height={100} />
-                  </Stack>
-                ) : lessonDetails ? (
-                  <Stack gap="md">
-                     {lessonDetails.video_url ? (
-                      <Card p={0} radius="md" withBorder style={{ overflow: 'hidden' }}>
-                        <LessonPlayer videoId={lessonDetails.video_url} />
-                      </Card>
-                    ) : (
-                      <Card withBorder radius="md" p="xl" bg="var(--mantine-color-blue-0)">
-                        <Group justify="center" gap="xs">
-                          <IconFileText size={40} color="var(--mantine-color-blue-6)" />
-                          <Text fw={500}>Text-only Lesson</Text>
-                        </Group>
-                      </Card>
-                    )}
+            {/* Course Title */}
+            <Text size="sm" fw={600} lineClamp={1}>
+              {course?.title}
+            </Text>
 
-                    <Title order={2}>{lessonDetails.title}</Title>
-                    <Divider />
-                     {lessonDetails.text_content ? (
+            {/* Progress Bar */}
+            <Progress
+              value={flatLessons.length > 0 ? ((currentLessonIndex + 1) / flatLessons.length) * 100 : 0}
+              size="xs"
+              radius="xl"
+              color="blue"
+              animated
+            />
+          </Stack>
+        </Box>
+
+        <ScrollArea style={{ flex: 1 }} p="md">
+          {renderSyllabusContent()}
+        </ScrollArea>
+      </Box>
+
+      {/* Mobile Syllabus Drawer */}
+      <Drawer
+        opened={mobileSidebarOpen}
+        onClose={() => setMobileSidebarOpen(false)}
+        size="320px"
+        padding={0}
+        withCloseButton={false}
+      >
+        <Box style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Box p="md" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+            <Group justify="space-between" align="center" mb="xs">
+              <Title order={4} size="h5" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <IconBook size={18} color="var(--mantine-color-blue-filled)" />
+                Curriculum
+              </Title>
+              <Button variant="subtle" color="gray" size="xs" onClick={() => setMobileSidebarOpen(false)}>
+                Close
+              </Button>
+            </Group>
+            
+            <Group justify="space-between" mb={6}>
+              <Text size="xs" fw={500} c="dimmed">
+                Course Progress
+              </Text>
+              <Text size="xs" c="dimmed" fw={500}>
+                {currentLessonIndex >= 0 ? `${currentLessonIndex + 1} / ${flatLessons.length}` : `0 / ${flatLessons.length}`}
+              </Text>
+            </Group>
+            <Progress
+              value={flatLessons.length > 0 ? ((currentLessonIndex + 1) / flatLessons.length) * 100 : 0}
+              size="xs"
+              radius="xl"
+              color="blue"
+              animated
+            />
+          </Box>
+
+          <ScrollArea style={{ flex: 1 }} p="md">
+            {renderSyllabusContent()}
+          </ScrollArea>
+        </Box>
+      </Drawer>
+
+      {/* Main Content Area */}
+      <Box
+        style={{
+          flex: 1,
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          overflow: 'hidden',
+          backgroundColor: 'var(--mantine-color-body)',
+        }}
+      >
+        {/* Mobile Header */}
+        <Box
+          hiddenFrom="md"
+          p="md"
+          style={{
+            borderBottom: '1px solid var(--mantine-color-default-border)',
+            backgroundColor: 'var(--mantine-color-default)',
+          }}
+        >
+          <Group justify="space-between" align="center">
+            <Group gap="xs">
+              <Button
+                variant="subtle"
+                color="gray"
+                p={4}
+                onClick={() => setMobileSidebarOpen(true)}
+                leftSection={<IconMenu2 size={20} />}
+              >
+                Menu
+              </Button>
+            </Group>
+            <Text size="sm" fw={600} lineClamp={1} style={{ maxWidth: '180px' }}>
+              {course?.title}
+            </Text>
+            <Button
+              component={Link}
+              href={`/courses/s/${slug}`}
+              variant="subtle"
+              size="xs"
+              leftSection={<IconArrowLeft size={14} />}
+            >
+              Back
+            </Button>
+          </Group>
+        </Box>
+
+        {/* Scrollable upper portion containing content */}
+        <Box style={{ flex: 1, overflowY: 'auto', padding: '32px 16px 120px 16px' }}>
+          <Container size="md" style={{ maxWidth: '840px' }}>
+            {selectedLessonId ? (
+              isLoadingLesson ? (
+                <Stack gap="xl">
+                  <Skeleton height={400} radius="md" />
+                  <Skeleton height={40} width="60%" />
+                  <Skeleton height={20} />
+                  <Skeleton height={20} />
+                  <Skeleton height={20} width="80%" />
+                </Stack>
+              ) : lessonDetails ? (
+                <Stack gap="xl">
+                  {/* Video Section if exists */}
+                  {lessonDetails.video_url ? (
+                    <Card p={0} radius="lg" withBorder shadow="md" style={{ overflow: 'hidden', border: '1px solid var(--mantine-color-default-border)' }}>
+                      <LessonPlayer videoId={lessonDetails.video_url} />
+                    </Card>
+                  ) : (
+                    <Card withBorder radius="lg" p="xl" bg="var(--mantine-color-blue-light)" shadow="sm" style={{ border: '1px dashed var(--mantine-color-blue-outline)' }}>
+                      <Group justify="center" gap="md">
+                        <IconFileText size={48} color="var(--mantine-color-blue-filled)" />
+                        <div>
+                          <Text fw={600} size="lg">Text-Only Lesson</Text>
+                          <Text size="sm" c="dimmed">No video streaming is associated with this lesson. Please read the content below.</Text>
+                        </div>
+                      </Group>
+                    </Card>
+                  )}
+
+                  {/* Lesson Heading Info */}
+                  <Box>
+                    <Text size="xs" fw={700} c="blue.6" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
+                      Active Lesson
+                    </Text>
+                    <Title order={1} size="h2" mt={4} style={{ fontWeight: 800 }}>
+                      {lessonDetails.title}
+                    </Title>
+                  </Box>
+                  
+                  <Divider />
+
+                  {/* Text Content Section if exists */}
+                  <Box style={{ minHeight: '200px' }}>
+                    {lessonDetails.text_content ? (
                       <MathJaxContent html={parseHTMLContent(lessonDetails.text_content)} />
                     ) : (
-                      <Text c="dimmed">No written content for this lesson.</Text>
+                      <Text c="dimmed" style={{ fontStyle: 'italic' }}>No written content for this lesson.</Text>
                     )}
-                  </Stack>
-                ) : (
-                  <Alert title="Error" color="red">
-                    Failed to load lesson details.
-                  </Alert>
-                )
-              ) : (
-                <Card withBorder radius="md" p="xl">
-                  <Text c="dimmed" ta="center">Select a lesson from the sidebar to start learning.</Text>
-                </Card>
-              )}
-            </Stack>
-          </Grid.Col>
-
-          {/* Navigation Sidebar */}
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Card withBorder radius="md" p="md">
-              <Title order={3} mb="md">Syllabus</Title>
-              <Divider mb="md" />
-              <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                <Stack gap="xs">
-                  {organizedTree.map((subject) => (
-                    <Box key={subject.id}>
-                      <Text size="sm" fw={700} c="dimmed" mb={5}>
-                        {subject.title}
-                      </Text>
-                      <Stack gap={5} pl="xs">
-                        {subject.children.map((chapter) => (
-                          <Box key={chapter.id}>
-                            <Text size="xs" fw={600} mb={3}>
-                              {chapter.title}
-                            </Text>
-                            <div style={{ borderLeft: '1px solid var(--mantine-color-gray-3)', paddingLeft: '8px' }}>
-                              {chapter.children.map((lesson) => (
-                                <NavLink
-                                  key={lesson.id}
-                                  active={selectedLessonId === lesson.id}
-                                  label={lesson.title}
-                                  leftSection={lesson.video_url ? <IconVideo size={14} /> : <IconFileText size={14} />}
-                                  rightSection={<IconChevronRight size={12} />}
-                                  onClick={() => setSelectedLessonId(lesson.id)}
-                                  styles={{
-                                    root: {
-                                      borderRadius: '4px',
-                                      padding: '6px 8px',
-                                      fontSize: '12px',
-                                    }
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          </Box>
-                        ))}
-                      </Stack>
-                      <Divider my="sm" />
-                    </Box>
-                  ))}
+                  </Box>
                 </Stack>
-              </div>
-            </Card>
-          </Grid.Col>
-        </Grid>
-      </Stack>
-    </Container>
+              ) : (
+                <Alert title="Error" color="red" icon={<IconAlertCircle size={16} />}>
+                  Failed to load lesson details. Please select another lesson from the syllabus.
+                </Alert>
+              )
+            ) : (
+              <Card withBorder radius="lg" p="xl" ta="center" shadow="sm">
+                <Stack align="center" gap="md">
+                  <IconBook size={48} color="var(--mantine-color-blue-filled)" />
+                  <Text fw={600} size="lg">Ready to start learning?</Text>
+                  <Text c="dimmed">Select a lesson from the syllabus sidebar to begin.</Text>
+                </Stack>
+              </Card>
+            )}
+          </Container>
+        </Box>
+
+        {/* Slideshow Bottom Navigation Bar */}
+        <Box
+          style={{
+            position: 'absolute',
+            bottom: '24px',
+            left: '24px',
+            right: '24px',
+            zIndex: 10,
+          }}
+        >
+          <Card
+            withBorder
+            shadow="xl"
+            radius="md"
+            p="md"
+            style={{
+              backgroundColor: 'var(--mantine-color-body)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid var(--mantine-color-default-border)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+            }}
+          >
+            <Group justify="space-between" align="center">
+              {/* Left Side: Previous Lesson Button */}
+              <Box style={{ flex: 1 }}>
+                {prevLesson ? (
+                  <Button
+                    variant="light"
+                    onClick={handlePrev}
+                    leftSection={<IconChevronLeft size={16} />}
+                    styles={{
+                      root: {
+                        transition: 'transform 0.2s ease',
+                        '&:hover': {
+                          transform: 'translateX(-4px)',
+                        }
+                      }
+                    }}
+                  >
+                    <Box ta="left" visibleFrom="xs">
+                      <Text size="xs" c="dimmed" style={{ textTransform: 'uppercase', fontSize: '9px', fontWeight: 700 }}>
+                        Previous Lesson
+                      </Text>
+                      <Text size="sm" fw={600} lineClamp={1} style={{ maxWidth: '200px' }}>
+                        {prevLesson.title}
+                      </Text>
+                    </Box>
+                    <Text hiddenFrom="xs" size="sm">Prev</Text>
+                  </Button>
+                ) : (
+                  <Button variant="light" disabled leftSection={<IconChevronLeft size={16} />}>
+                    <Text size="sm">Start</Text>
+                  </Button>
+                )}
+              </Box>
+
+              {/* Center: Slide Position indicator */}
+              <Box style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                <Text size="sm" fw={700}>
+                  {currentLessonIndex >= 0 ? `Lesson ${currentLessonIndex + 1} of ${flatLessons.length}` : 'No lesson selected'}
+                </Text>
+                <Text size="xs" c="dimmed" visibleFrom="sm">
+                  {flatLessons.length > 0 && currentLessonIndex >= 0 
+                    ? `${Math.round(((currentLessonIndex + 1) / flatLessons.length) * 100)}% complete` 
+                    : '0% complete'}
+                </Text>
+              </Box>
+
+              {/* Right Side: Next Lesson Button */}
+              <Box style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                {nextLesson ? (
+                  <Button
+                    variant="filled"
+                    onClick={handleNext}
+                    rightSection={<IconChevronRight size={16} />}
+                    styles={{
+                      root: {
+                        transition: 'transform 0.2s ease',
+                        '&:hover': {
+                          transform: 'translateX(4px)',
+                        }
+                      }
+                    }}
+                  >
+                    <Box ta="right" visibleFrom="xs">
+                      <Text size="xs" style={{ textTransform: 'uppercase', fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>
+                        Next Lesson
+                      </Text>
+                      <Text size="sm" fw={600} lineClamp={1} style={{ maxWidth: '200px' }}>
+                        {nextLesson.title}
+                      </Text>
+                    </Box>
+                    <Text hiddenFrom="xs" size="sm">Next</Text>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="filled"
+                    color="green"
+                    component={Link}
+                    href={`/courses/s/${slug}`}
+                    rightSection={<IconCheck size={16} />}
+                  >
+                    <Box ta="right" visibleFrom="xs">
+                      <Text size="xs" style={{ textTransform: 'uppercase', fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>
+                        Course
+                      </Text>
+                      <Text size="sm" fw={600}>
+                        Finish Course
+                      </Text>
+                    </Box>
+                    <Text hiddenFrom="xs" size="sm">Finish</Text>
+                  </Button>
+                )}
+              </Box>
+            </Group>
+          </Card>
+        </Box>
+      </Box>
+    </Box>
   );
 }

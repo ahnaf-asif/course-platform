@@ -26,7 +26,7 @@ vi.mock('@/api/generated/user/user', () => ({
 }));
 
 vi.mock('@/lib/axios', () => ({
-  axiosInstance: (args: any) => mockAxiosInstance(args),
+  axiosInstance: (args: unknown) => mockAxiosInstance(args),
   setAuthHandlers: vi.fn(),
   updateAccessToken: vi.fn(),
 }));
