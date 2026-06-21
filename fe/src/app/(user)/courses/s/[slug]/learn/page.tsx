@@ -152,7 +152,8 @@ export default function CoursePlayerPage() {
   const router = useRouter();
   const slug = params.slug as string;
 
-  const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [currentSubSlideIndex, setCurrentSubSlideIndex] = useState<number>(0);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const { data: user, isLoading: isLoadingUser } = useGetMe();
@@ -169,6 +170,13 @@ export default function CoursePlayerPage() {
     }
   });
 
+  // Fetch full lesson details when selected
+  const { data: lessonDetails, isLoading: isLoadingLesson } = useGetUserLesson(selectedLessonId || '', {
+    query: {
+      enabled: !!selectedLessonId,
+    }
+  });
+
   const organizedTree = useMemo(() => {
     if (!tree) return [];
     const map: Record<string, ExtendedNode> = {};
@@ -182,55 +190,19 @@ export default function CoursePlayerPage() {
     return roots.sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
   }, [tree]);
 
-  // Flatten lessons into slides. If a lesson has both video and text content, it creates two slides!
-  const flatSlides = useMemo(() => {
-    const list: {
-      id: string;
-      title: string;
-      type: 'video' | 'text';
-      video_url?: string | null;
-      text_content?: string | null;
-    }[] = [];
-
+  // Flat lessons list
+  const flatLessons = useMemo(() => {
+    const list: { id: string; title: string; video_url?: string | null; text_content?: string | null }[] = [];
     const traverse = (nodes: ExtendedNode[]) => {
       const sorted = [...nodes].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
       for (const node of sorted) {
         if (node.node_type === 'LESSON') {
-          const hasVideo = !!node.video_url;
-          const hasText = !!node.text_content;
-
-          if (hasVideo && hasText) {
-            list.push({
-              id: node.id,
-              title: `${node.title} - Video`,
-              type: 'video',
-              video_url: node.video_url,
-              text_content: node.text_content,
-            });
-            list.push({
-              id: node.id,
-              title: `${node.title} - Reading`,
-              type: 'text',
-              video_url: node.video_url,
-              text_content: node.text_content,
-            });
-          } else if (hasVideo) {
-            list.push({
-              id: node.id,
-              title: node.title,
-              type: 'video',
-              video_url: node.video_url,
-              text_content: node.text_content,
-            });
-          } else {
-            list.push({
-              id: node.id,
-              title: node.title,
-              type: 'text',
-              video_url: node.video_url,
-              text_content: node.text_content,
-            });
-          }
+          list.push({
+            id: node.id,
+            title: node.title,
+            video_url: node.video_url,
+            text_content: node.text_content,
+          });
         }
         if (node.children && node.children.length > 0) {
           traverse(node.children);
@@ -241,40 +213,96 @@ export default function CoursePlayerPage() {
     return list;
   }, [organizedTree]);
 
-  const activeSlide = useMemo(() => {
-    return flatSlides[currentSlideIndex] || null;
-  }, [flatSlides, currentSlideIndex]);
+  const currentLessonIndex = useMemo(() => {
+    return flatLessons.findIndex((l) => l.id === selectedLessonId);
+  }, [flatLessons, selectedLessonId]);
 
-  const selectedLessonId = activeSlide?.id || null;
+  const prevLesson = currentLessonIndex > 0 ? flatLessons[currentLessonIndex - 1] : null;
+  const nextLesson = currentLessonIndex < flatLessons.length - 1 ? flatLessons[currentLessonIndex + 1] : null;
 
-  // Fetch full lesson details when selected
-  const { data: lessonDetails, isLoading: isLoadingLesson } = useGetUserLesson(selectedLessonId || '', {
-    query: {
-      enabled: !!selectedLessonId,
+  // Dynamically compute active sub-slides based on the fetched lesson details
+  const activeSubSlides = useMemo(() => {
+    if (!lessonDetails) return ['text']; // default fallback
+    const slides: ('video' | 'text')[] = [];
+    if (lessonDetails.video_url) slides.push('video');
+    if (lessonDetails.text_content) slides.push('text');
+    if (slides.length === 0) slides.push('text');
+    return slides;
+  }, [lessonDetails]);
+
+  const activeSlideType = activeSubSlides[currentSubSlideIndex] || 'text';
+  const isVideoSlide = activeSlideType === 'video';
+
+  // Compute slide counts for progress bar
+  const totalSlidesCount = useMemo(() => {
+    let count = 0;
+    for (const l of flatLessons) {
+      const hasVideo = !!l.video_url;
+      const hasText = !!l.text_content;
+      if (hasVideo && hasText) {
+        count += 2;
+      } else {
+        count += 1;
+      }
     }
-  });
+    return count || 1;
+  }, [flatLessons]);
 
-  const prevSlide = currentSlideIndex > 0 ? flatSlides[currentSlideIndex - 1] : null;
-  const nextSlide = currentSlideIndex < flatSlides.length - 1 ? flatSlides[currentSlideIndex + 1] : null;
+  const currentSlideProgressIndex = useMemo(() => {
+    if (currentLessonIndex === -1) return 0;
+    let count = 0;
+    for (let i = 0; i < currentLessonIndex; i++) {
+      const l = flatLessons[i];
+      const hasVideo = !!l.video_url;
+      const hasText = !!l.text_content;
+      if (hasVideo && hasText) {
+        count += 2;
+      } else {
+        count += 1;
+      }
+    }
+    return count + currentSubSlideIndex + 1;
+  }, [flatLessons, currentLessonIndex, currentSubSlideIndex]);
 
   const handlePrev = () => {
-    if (currentSlideIndex > 0) {
-      setCurrentSlideIndex(currentSlideIndex - 1);
+    if (currentSubSlideIndex > 0) {
+      setCurrentSubSlideIndex(currentSubSlideIndex - 1);
+    } else if (prevLesson) {
+      setSelectedLessonId(prevLesson.id);
+      // Determine if previous lesson has both
+      const prevHasVideo = !!prevLesson.video_url;
+      const prevHasText = !!prevLesson.text_content;
+      if (prevHasVideo && prevHasText) {
+        setCurrentSubSlideIndex(1);
+      } else {
+        setCurrentSubSlideIndex(0);
+      }
     }
   };
 
   const handleNext = () => {
-    if (currentSlideIndex < flatSlides.length - 1) {
-      setCurrentSlideIndex(currentSlideIndex + 1);
+    if (currentSubSlideIndex < activeSubSlides.length - 1) {
+      setCurrentSubSlideIndex(currentSubSlideIndex + 1);
+    } else if (nextLesson) {
+      setSelectedLessonId(nextLesson.id);
+      setCurrentSubSlideIndex(0);
     }
   };
 
   const handleSelectLesson = (lessonId: string) => {
-    const idx = flatSlides.findIndex((s) => s.id === lessonId);
-    if (idx !== -1) {
-      setCurrentSlideIndex(idx);
-    }
+    setSelectedLessonId(lessonId);
+    setCurrentSubSlideIndex(0);
   };
+
+  // Set default selected lesson
+  useEffect(() => {
+    if (flatLessons.length > 0 && !selectedLessonId) {
+      setTimeout(() => {
+        setSelectedLessonId(flatLessons[0].id);
+        setCurrentSubSlideIndex(0);
+      }, 0);
+    }
+  }, [flatLessons, selectedLessonId]);
 
   // Redirect if no access
   useEffect(() => {
@@ -282,8 +310,6 @@ export default function CoursePlayerPage() {
       router.push(`/courses/s/${slug}`);
     }
   }, [isLoadingAccess, accessData, slug, router]);
-
-  const isVideoSlide = activeSlide?.type === 'video';
 
   const renderSyllabusContent = () => (
     <Stack gap="md">
@@ -403,7 +429,7 @@ export default function CoursePlayerPage() {
                 Syllabus
               </Title>
               <Text size="xs" c="dimmed" fw={500}>
-                {currentSlideIndex >= 0 ? `${currentSlideIndex + 1} / ${flatSlides.length}` : `0 / ${flatSlides.length}`}
+                {currentSlideProgressIndex > 0 ? `${currentSlideProgressIndex} / ${totalSlidesCount}` : `0 / ${totalSlidesCount}`}
               </Text>
             </Group>
 
@@ -414,7 +440,7 @@ export default function CoursePlayerPage() {
 
             {/* Progress Bar */}
             <Progress
-              value={flatSlides.length > 0 ? ((currentSlideIndex + 1) / flatSlides.length) * 100 : 0}
+              value={totalSlidesCount > 0 ? (currentSlideProgressIndex / totalSlidesCount) * 100 : 0}
               size="xs"
               radius="xl"
               color="blue"
@@ -453,11 +479,11 @@ export default function CoursePlayerPage() {
                 Course Progress
               </Text>
               <Text size="xs" c="dimmed" fw={500}>
-                {currentSlideIndex >= 0 ? `${currentSlideIndex + 1} / ${flatSlides.length}` : `0 / ${flatSlides.length}`}
+                {currentSlideProgressIndex > 0 ? `${currentSlideProgressIndex} / ${totalSlidesCount}` : `0 / ${totalSlidesCount}`}
               </Text>
             </Group>
             <Progress
-              value={flatSlides.length > 0 ? ((currentSlideIndex + 1) / flatSlides.length) * 100 : 0}
+              value={totalSlidesCount > 0 ? (currentSlideProgressIndex / totalSlidesCount) * 100 : 0}
               size="xs"
               radius="xl"
               color="blue"
@@ -607,7 +633,7 @@ export default function CoursePlayerPage() {
           <Group justify="space-between" align="center" gap="xs">
             {/* Left Side: Previous Slide Button */}
             <Box style={{ flex: 1 }}>
-              {prevSlide ? (
+              {(currentSubSlideIndex > 0 || currentLessonIndex > 0) ? (
                 <Button
                   variant="light"
                   onClick={handlePrev}
@@ -627,7 +653,9 @@ export default function CoursePlayerPage() {
                       Previous
                     </Text>
                     <Text size="sm" fw={600} lineClamp={1} style={{ maxWidth: '150px' }}>
-                      {prevSlide.title}
+                      {currentSubSlideIndex > 0 
+                        ? `${lessonDetails?.title || ''} - Video`
+                        : (prevLesson?.title || '')}
                     </Text>
                   </Box>
                   <Text hiddenFrom="xs" size="sm">Prev</Text>
@@ -642,18 +670,18 @@ export default function CoursePlayerPage() {
             {/* Center: Slide Count and Info */}
             <Box style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flex: 1, maxWidth: '320px' }}>
               <Text size="sm" fw={700} lineClamp={1}>
-                {lessonDetails ? lessonDetails.title : (activeSlide?.title || '')}
+                {lessonDetails ? lessonDetails.title : ''}
               </Text>
               <Text size="xs" c="dimmed">
-                {flatSlides.length > 0 && currentSlideIndex >= 0 
-                  ? `Slide ${currentSlideIndex + 1} of ${flatSlides.length} (${Math.round(((currentSlideIndex + 1) / flatSlides.length) * 100)}%)` 
+                {totalSlidesCount > 0 && currentSlideProgressIndex >= 0 
+                  ? `Slide ${currentSlideProgressIndex} of ${totalSlidesCount} (${Math.round((currentSlideProgressIndex / totalSlidesCount) * 100)}%)` 
                   : '0%'}
               </Text>
             </Box>
 
             {/* Right Side: Next Slide Button */}
             <Box style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-              {nextSlide ? (
+              {(currentSubSlideIndex < activeSubSlides.length - 1 || currentLessonIndex < flatLessons.length - 1) ? (
                 <Button
                   variant="filled"
                   onClick={handleNext}
@@ -673,7 +701,9 @@ export default function CoursePlayerPage() {
                       Next
                     </Text>
                     <Text size="sm" fw={600} lineClamp={1} style={{ maxWidth: '150px' }}>
-                      {nextSlide.title}
+                      {currentSubSlideIndex < activeSubSlides.length - 1
+                        ? `${lessonDetails?.title || ''} - Reading`
+                        : (nextLesson?.title || '')}
                     </Text>
                   </Box>
                   <Text hiddenFrom="xs" size="sm">Next</Text>
