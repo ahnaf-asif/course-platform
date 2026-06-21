@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@/test/test-utils';
+import { render, screen, waitFor, fireEvent } from '@/test/test-utils';
 import CoursePlayerPage from '../page';
 import React from 'react';
 
@@ -47,7 +47,7 @@ describe('CoursePlayerPage Component', () => {
       data: [
         { id: 'sub-1', title: 'Subject 1', level: 1, node_type: 'SUBJECT' },
         { id: 'chap-1', title: 'Chapter 1', level: 2, parent_id: 'sub-1', node_type: 'CHAPTER' },
-        { id: 'les-1', title: 'Lesson 1', level: 3, parent_id: 'chap-1', node_type: 'LESSON', video_url: 'https://video.com/1' }
+        { id: 'les-1', title: 'Lesson 1', level: 3, parent_id: 'chap-1', node_type: 'LESSON', video_url: 'https://video.com/1', text_content: 'Written content about Go.' }
       ],
       isLoading: false
     });
@@ -83,9 +83,17 @@ describe('CoursePlayerPage Component', () => {
     expect(screen.getByText('Back to Course Landing Page')).toBeInTheDocument();
     expect(screen.getByText('Syllabus')).toBeInTheDocument();
 
-    // Verifies lesson detail headers/texts
+    // Verifies lesson details title is shown on the video slide
     await waitFor(() => {
       expect(screen.getByText('Lesson 1 Details')).toBeInTheDocument();
+    });
+
+    // Find and click the 'Next' slide navigation button to go to the reading material slide
+    const nextBtn = screen.getByRole('button', { name: /next/i });
+    fireEvent.click(nextBtn);
+
+    // Verifies reading material content renders on the next slide
+    await waitFor(() => {
       expect(screen.getByText('Written content about Go.')).toBeInTheDocument();
     });
   });
