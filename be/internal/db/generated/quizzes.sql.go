@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const attachQuizToNode = `-- name: AttachQuizToNode :exec
@@ -346,6 +347,58 @@ func (q *Queries) GetAttemptsByUserAndQuiz(ctx context.Context, arg GetAttemptsB
 	return items, nil
 }
 
+const getQuizAttempt = `-- name: GetQuizAttempt :one
+SELECT id, user_id, quiz_id, score, is_passed, completed_at FROM quiz_attempts
+WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetQuizAttempt(ctx context.Context, id uuid.UUID) (QuizAttempt, error) {
+	row := q.db.QueryRowContext(ctx, getQuizAttempt, id)
+	var i QuizAttempt
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.QuizID,
+		&i.Score,
+		&i.IsPassed,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
+const getQuizAttemptAnswers = `-- name: GetQuizAttemptAnswers :many
+SELECT id, attempt_id, question_id, answer_id FROM quiz_attempt_answers
+WHERE attempt_id = $1
+`
+
+func (q *Queries) GetQuizAttemptAnswers(ctx context.Context, attemptID uuid.UUID) ([]QuizAttemptAnswer, error) {
+	rows, err := q.db.QueryContext(ctx, getQuizAttemptAnswers, attemptID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuizAttemptAnswer
+	for rows.Next() {
+		var i QuizAttemptAnswer
+		if err := rows.Scan(
+			&i.ID,
+			&i.AttemptID,
+			&i.QuestionID,
+			&i.AnswerID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getQuizByID = `-- name: GetQuizByID :one
 SELECT id, title, passing_score, created_at FROM quizzes
 WHERE id = $1 LIMIT 1
@@ -384,6 +437,88 @@ func (q *Queries) GetQuizzesByNode(ctx context.Context, nodeID uuid.UUID) ([]Qui
 			&i.PassingScore,
 			&i.CreatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getQuizzesByNodes = `-- name: GetQuizzesByNodes :many
+SELECT nq.node_id, q.id as quiz_id, q.title, q.passing_score
+FROM quizzes q
+JOIN node_quiz nq ON q.id = nq.quiz_id
+WHERE nq.node_id = ANY($1::uuid[])
+`
+
+type GetQuizzesByNodesRow struct {
+	NodeID       uuid.UUID `json:"node_id"`
+	QuizID       uuid.UUID `json:"quiz_id"`
+	Title        string    `json:"title"`
+	PassingScore int32     `json:"passing_score"`
+}
+
+func (q *Queries) GetQuizzesByNodes(ctx context.Context, dollar_1 []uuid.UUID) ([]GetQuizzesByNodesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getQuizzesByNodes, pq.Array(dollar_1))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetQuizzesByNodesRow
+	for rows.Next() {
+		var i GetQuizzesByNodesRow
+		if err := rows.Scan(
+			&i.NodeID,
+			&i.QuizID,
+			&i.Title,
+			&i.PassingScore,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserQuizAttemptsForQuizzes = `-- name: GetUserQuizAttemptsForQuizzes :many
+SELECT quiz_id, score, is_passed
+FROM quiz_attempts
+WHERE user_id = $1 AND quiz_id = ANY($2::uuid[])
+`
+
+type GetUserQuizAttemptsForQuizzesParams struct {
+	UserID  uuid.UUID   `json:"user_id"`
+	QuizIds []uuid.UUID `json:"quiz_ids"`
+}
+
+type GetUserQuizAttemptsForQuizzesRow struct {
+	QuizID   uuid.UUID `json:"quiz_id"`
+	Score    int32     `json:"score"`
+	IsPassed bool      `json:"is_passed"`
+}
+
+func (q *Queries) GetUserQuizAttemptsForQuizzes(ctx context.Context, arg GetUserQuizAttemptsForQuizzesParams) ([]GetUserQuizAttemptsForQuizzesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUserQuizAttemptsForQuizzes, arg.UserID, pq.Array(arg.QuizIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserQuizAttemptsForQuizzesRow
+	for rows.Next() {
+		var i GetUserQuizAttemptsForQuizzesRow
+		if err := rows.Scan(&i.QuizID, &i.Score, &i.IsPassed); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

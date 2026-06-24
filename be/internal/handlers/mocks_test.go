@@ -186,3 +186,94 @@ func (m *MockTaskService) EnqueueQuizBulkUpload(quizID, filePath, bucket string)
 	args := m.Called(quizID, filePath, bucket)
 	return args.Error(0)
 }
+
+func (m *MockStore) GetQuizAttempt(ctx context.Context, id uuid.UUID) (generated.QuizAttempt, error) {
+	args := m.Called(ctx, id)
+	return args.Get(0).(generated.QuizAttempt), args.Error(1)
+}
+
+func (m *MockStore) GetQuizAttemptAnswers(ctx context.Context, attemptID uuid.UUID) ([]generated.QuizAttemptAnswer, error) {
+	args := m.Called(ctx, attemptID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]generated.QuizAttemptAnswer), args.Error(1)
+}
+
+func (m *MockStore) ListQuestionsByQuiz(ctx context.Context, quizID uuid.UUID) ([]generated.Question, error) {
+	args := m.Called(ctx, quizID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]generated.Question), args.Error(1)
+}
+
+func (m *MockStore) ListAnswersByQuestion(ctx context.Context, questionID uuid.UUID) ([]generated.Answer, error) {
+	args := m.Called(ctx, questionID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]generated.Answer), args.Error(1)
+}
+
+func (m *MockStore) CreateQuizAttempt(ctx context.Context, arg generated.CreateQuizAttemptParams) (generated.QuizAttempt, error) {
+	args := m.Called(ctx, arg)
+	return args.Get(0).(generated.QuizAttempt), args.Error(1)
+}
+
+func (m *MockStore) CreateQuizAttemptAnswer(ctx context.Context, arg generated.CreateQuizAttemptAnswerParams) (generated.QuizAttemptAnswer, error) {
+	args := m.Called(ctx, arg)
+	return args.Get(0).(generated.QuizAttemptAnswer), args.Error(1)
+}
+
+func (m *MockStore) GetAttemptsByUserAndQuiz(ctx context.Context, arg generated.GetAttemptsByUserAndQuizParams) ([]generated.QuizAttempt, error) {
+	args := m.Called(ctx, arg)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]generated.QuizAttempt), args.Error(1)
+}
+
+func (m *MockStore) GetQuizzesByNodes(ctx context.Context, nodeIDs []uuid.UUID) ([]generated.GetQuizzesByNodesRow, error) {
+	args := m.Called(ctx, nodeIDs)
+	if len(args) == 0 {
+		return nil, nil
+	}
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]generated.GetQuizzesByNodesRow), args.Error(1)
+}
+
+func (m *MockStore) GetUserQuizAttemptsForQuizzes(ctx context.Context, arg generated.GetUserQuizAttemptsForQuizzesParams) ([]generated.GetUserQuizAttemptsForQuizzesRow, error) {
+	args := m.Called(ctx, arg)
+	if len(args) == 0 {
+		return nil, nil
+	}
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]generated.GetUserQuizAttemptsForQuizzesRow), args.Error(1)
+}
+
+func (m *MockStore) UpsertProgress(ctx context.Context, arg generated.UpsertProgressParams) (generated.Progress, error) {
+	args := m.Called(ctx, arg)
+	if len(args) == 0 {
+		return generated.Progress{}, nil
+	}
+	return args.Get(0).(generated.Progress), args.Error(1)
+}
+
+func (m *MockStore) ListProgressByUser(ctx context.Context, userID uuid.UUID) ([]generated.Progress, error) {
+	args := m.Called(ctx, userID)
+	if len(args) == 0 {
+		return nil, nil
+	}
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]generated.Progress), args.Error(1)
+}
+
+
+

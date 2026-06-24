@@ -108,6 +108,8 @@ func TestCurriculumHandler_GetCourseTree(t *testing.T) {
 		// GetPaymentGateByNode returns sql.ErrNoRows -> Free course
 		mockStore.On("GetPaymentGateByNode", mock.Anything, courseID).Return(generated.PaymentGate{}, sql.ErrNoRows)
 
+		mockStore.On("GetQuizzesByNodes", mock.Anything, mock.Anything).Return([]generated.GetQuizzesByNodesRow{}, nil).Once()
+
 		err := h.GetCourseTree(c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -148,6 +150,8 @@ func TestCurriculumHandler_GetCourseTree(t *testing.T) {
 		mockStore.On("GetPaymentGateByNode", mock.Anything, courseID).Return(generated.PaymentGate{
 			Price: "99.00",
 		}, nil)
+
+		mockStore.On("GetQuizzesByNodes", mock.Anything, mock.Anything).Return([]generated.GetQuizzesByNodesRow{}, nil).Once()
 
 		err := h.GetCourseTree(c)
 		assert.NoError(t, err)
@@ -200,6 +204,9 @@ func TestCurriculumHandler_GetCourseTreeBySlug(t *testing.T) {
 		mockStore.On("GetPaymentGateByNode", mock.Anything, courseID).Return(generated.PaymentGate{
 			Price: "99.00",
 		}, nil)
+
+		mockStore.On("GetQuizzesByNodes", mock.Anything, mock.Anything).Return([]generated.GetQuizzesByNodesRow{}, nil).Once()
+		mockStore.On("ListProgressByUser", mock.Anything, mock.Anything).Return([]generated.Progress{}, nil).Once()
 
 		err := h.GetCourseTreeBySlug(c)
 		assert.NoError(t, err)

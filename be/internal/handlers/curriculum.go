@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -521,16 +522,38 @@ func (h *CurriculumHandler) DeleteLesson(c echo.Context) error {
 // Tree
 
 type CourseTreeResponse struct {
-	ID            string  `json:"id"`
-	ParentID      *string `json:"parent_id"`
-	NodeType      string  `json:"node_type"`
-	Level         int32   `json:"level"`
-	Title         string  `json:"title"`
-	SequenceOrder *int32  `json:"sequence_order,omitempty"`
-	VideoURL      *string `json:"video_url,omitempty"`
-	TextContent   *string `json:"text_content,omitempty"`
-	HasQuizzes    bool    `json:"has_quizzes"`
+	ID             string               `json:"id"`
+	ParentID       *string              `json:"parent_id"`
+	NodeType       string               `json:"node_type"`
+	Level          int32                `json:"level"`
+	Title          string               `json:"title"`
+	SequenceOrder  *int32               `json:"sequence_order,omitempty"`
+	VideoURL       *string              `json:"video_url,omitempty"`
+	TextContent    *string              `json:"text_content,omitempty"`
+	HasQuizzes     bool                 `json:"has_quizzes"`
+	Quizzes        []CourseQuizResponse `json:"quizzes,omitempty"`
+	ProgressStatus *string              `json:"progress_status,omitempty"`
 }
+
+type CourseQuizResponse struct {
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	PassingScore int32  `json:"passing_score"`
+	IsPassed     bool   `json:"is_passed"`
+}
+
+type UpsertProgressRequest struct {
+	Status string `json:"status" validate:"required,oneof=STARTED COMPLETED"`
+}
+
+type ProgressResponse struct {
+	UserID    string    `json:"user_id"`
+	NodeID    string    `json:"node_id"`
+	Status    string    `json:"status"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+
 
 func (h *CurriculumHandler) GetCourseTree(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))
@@ -549,30 +572,91 @@ func (h *CurriculumHandler) GetCourseTree(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "Course not found")
 	}
 
-	// Access control check
+	// Access control check and auth extraction
 	hasAccess := false
+	var userID uuid.UUID
+	var isUserLoggedIn bool
+	authUser := internalMiddleware.GetAuthUser(c)
+	if authUser.ID != "" {
+		if uID, err := uuid.Parse(authUser.ID); err == nil {
+			userID = uID
+			isUserLoggedIn = true
+		}
+	}
+
 	pg, pgErr := h.store.GetPaymentGateByNode(ctx, id)
 	isPaid := pgErr == nil && pg.Price != "0.00"
 
 	if !isPaid {
 		hasAccess = true
 	} else {
-		authUser := internalMiddleware.GetAuthUser(c)
 		if authUser.Role == "ADMIN" {
 			hasAccess = true
-		} else if authUser.ID != "" {
-			userID, err := uuid.Parse(authUser.ID)
-			if err == nil {
-				ok, _ := h.store.CheckUserAccessToNode(ctx, generated.CheckUserAccessToNodeParams{
-					ID:     id,
-					UserID: userID,
-				})
-				hasAccess = ok
+		} else if isUserLoggedIn {
+			ok, _ := h.store.CheckUserAccessToNode(ctx, generated.CheckUserAccessToNodeParams{
+				ID:     id,
+				UserID: userID,
+			})
+			hasAccess = ok
+		}
+	}
+
+	// Fetch all quizzes for the lesson nodes
+	lessonIDs := make([]uuid.UUID, 0)
+	for _, row := range rows {
+		if row.NodeType == generated.NodeTypeLESSON {
+			lessonIDs = append(lessonIDs, row.ID)
+		}
+	}
+
+	progressMap := make(map[uuid.UUID]string)
+	if isUserLoggedIn {
+		progressList, err := h.store.ListProgressByUser(ctx, userID)
+		if err == nil {
+			for _, p := range progressList {
+				progressMap[p.NodeID] = string(p.Status)
 			}
 		}
 	}
 
-	return c.JSON(http.StatusOK, h.mapToCourseTreeResponse(rows, hasAccess))
+	quizzesMap := make(map[uuid.UUID][]CourseQuizResponse)
+	if len(lessonIDs) > 0 {
+		quizzes, err := h.store.GetQuizzesByNodes(ctx, lessonIDs)
+		if err == nil {
+			quizIDs := make([]uuid.UUID, 0)
+			for _, q := range quizzes {
+				quizIDs = append(quizIDs, q.QuizID)
+			}
+
+			passedQuizzesMap := make(map[uuid.UUID]bool)
+			if isUserLoggedIn && len(quizIDs) > 0 {
+				attempts, err := h.store.GetUserQuizAttemptsForQuizzes(ctx, generated.GetUserQuizAttemptsForQuizzesParams{
+					UserID:  userID,
+					QuizIds: quizIDs,
+				})
+				if err == nil {
+					for _, a := range attempts {
+						if a.IsPassed {
+							passedQuizzesMap[a.QuizID] = true
+						}
+					}
+				}
+			}
+
+			for _, q := range quizzes {
+				quizzesMap[q.NodeID] = append(quizzesMap[q.NodeID], CourseQuizResponse{
+					ID:           q.QuizID.String(),
+					Title:        q.Title,
+					PassingScore: q.PassingScore,
+					IsPassed:     passedQuizzesMap[q.QuizID],
+				})
+			}
+		} else {
+			h.logger.Error("Failed to get quizzes for nodes in course tree", "error", err)
+		}
+	}
+
+	return c.JSON(http.StatusOK, h.mapToCourseTreeResponse(rows, hasAccess, quizzesMap, progressMap))
 }
 
 func (h *CurriculumHandler) GetCourseTreeBySlug(c echo.Context) error {
@@ -591,31 +675,93 @@ func (h *CurriculumHandler) GetCourseTreeBySlug(c echo.Context) error {
 
 	courseID := rows[0].ID
 
-	// Access control check
+	// Access control check and auth extraction
 	hasAccess := false
+	var userID uuid.UUID
+	var isUserLoggedIn bool
+	authUser := internalMiddleware.GetAuthUser(c)
+	if authUser.ID != "" {
+		if uID, err := uuid.Parse(authUser.ID); err == nil {
+			userID = uID
+			isUserLoggedIn = true
+		}
+	}
+
 	pg, pgErr := h.store.GetPaymentGateByNode(ctx, courseID)
 	isPaid := pgErr == nil && pg.Price != "0.00"
 
 	if !isPaid {
 		hasAccess = true
 	} else {
-		authUser := internalMiddleware.GetAuthUser(c)
 		if authUser.Role == "ADMIN" {
 			hasAccess = true
-		} else if authUser.ID != "" {
-			userID, err := uuid.Parse(authUser.ID)
-			if err == nil {
-				ok, _ := h.store.CheckUserAccessToNode(ctx, generated.CheckUserAccessToNodeParams{
-					ID:     courseID,
-					UserID: userID,
-				})
-				hasAccess = ok
+		} else if isUserLoggedIn {
+			ok, _ := h.store.CheckUserAccessToNode(ctx, generated.CheckUserAccessToNodeParams{
+				ID:     courseID,
+				UserID: userID,
+			})
+			hasAccess = ok
+		}
+	}
+
+	// Fetch all quizzes for the lesson nodes
+	lessonIDs := make([]uuid.UUID, 0)
+	for _, row := range rows {
+		if row.NodeType == generated.NodeTypeLESSON {
+			lessonIDs = append(lessonIDs, row.ID)
+		}
+	}
+
+	progressMap := make(map[uuid.UUID]string)
+	if isUserLoggedIn {
+		progressList, err := h.store.ListProgressByUser(ctx, userID)
+		if err == nil {
+			for _, p := range progressList {
+				progressMap[p.NodeID] = string(p.Status)
 			}
 		}
 	}
 
-	return c.JSON(http.StatusOK, h.mapToCourseTreeResponseBySlug(rows, hasAccess))
+	quizzesMap := make(map[uuid.UUID][]CourseQuizResponse)
+	if len(lessonIDs) > 0 {
+		quizzes, err := h.store.GetQuizzesByNodes(ctx, lessonIDs)
+		if err == nil {
+			quizIDs := make([]uuid.UUID, 0)
+			for _, q := range quizzes {
+				quizIDs = append(quizIDs, q.QuizID)
+			}
+
+			passedQuizzesMap := make(map[uuid.UUID]bool)
+			if isUserLoggedIn && len(quizIDs) > 0 {
+				attempts, err := h.store.GetUserQuizAttemptsForQuizzes(ctx, generated.GetUserQuizAttemptsForQuizzesParams{
+					UserID:  userID,
+					QuizIds: quizIDs,
+				})
+				if err == nil {
+					for _, a := range attempts {
+						if a.IsPassed {
+							passedQuizzesMap[a.QuizID] = true
+						}
+					}
+				}
+			}
+
+			for _, q := range quizzes {
+				quizzesMap[q.NodeID] = append(quizzesMap[q.NodeID], CourseQuizResponse{
+					ID:           q.QuizID.String(),
+					Title:        q.Title,
+					PassingScore: q.PassingScore,
+					IsPassed:     passedQuizzesMap[q.QuizID],
+				})
+			}
+		} else {
+			h.logger.Error("Failed to get quizzes for nodes in course tree", "error", err)
+		}
+	}
+
+	return c.JSON(http.StatusOK, h.mapToCourseTreeResponseBySlug(rows, hasAccess, quizzesMap, progressMap))
 }
+
 
 func (h *CurriculumHandler) GetUserLesson(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))
@@ -697,7 +843,7 @@ func (h *CurriculumHandler) GetUserLesson(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
-func (h *CurriculumHandler) mapToCourseTreeResponse(rows []generated.GetCourseTreeHydratedRow, hasAccess bool) []CourseTreeResponse {
+func (h *CurriculumHandler) mapToCourseTreeResponse(rows []generated.GetCourseTreeHydratedRow, hasAccess bool, quizzesMap map[uuid.UUID][]CourseQuizResponse, progressMap map[uuid.UUID]string) []CourseTreeResponse {
 	resp := make([]CourseTreeResponse, 0, len(rows))
 	for _, row := range rows {
 		item := CourseTreeResponse{
@@ -710,6 +856,11 @@ func (h *CurriculumHandler) mapToCourseTreeResponse(rows []generated.GetCourseTr
 		if row.ParentID.Valid {
 			pID := row.ParentID.UUID.String()
 			item.ParentID = &pID
+		}
+
+		if status, ok := progressMap[row.ID]; ok {
+			statusStr := status
+			item.ProgressStatus = &statusStr
 		}
 
 		// Hydrate title and sequence order based on type
@@ -738,6 +889,11 @@ func (h *CurriculumHandler) mapToCourseTreeResponse(rows []generated.GetCourseTr
 			if hasAccess && row.LessonTextContent.Valid {
 				tContent := row.LessonTextContent.String
 				item.TextContent = &tContent
+			}
+			if qList, ok := quizzesMap[row.ID]; ok {
+				item.Quizzes = qList
+			} else {
+				item.Quizzes = make([]CourseQuizResponse, 0)
 			}
 		}
 
@@ -746,7 +902,7 @@ func (h *CurriculumHandler) mapToCourseTreeResponse(rows []generated.GetCourseTr
 	return resp
 }
 
-func (h *CurriculumHandler) mapToCourseTreeResponseBySlug(rows []generated.GetCourseTreeHydratedBySlugRow, hasAccess bool) []CourseTreeResponse {
+func (h *CurriculumHandler) mapToCourseTreeResponseBySlug(rows []generated.GetCourseTreeHydratedBySlugRow, hasAccess bool, quizzesMap map[uuid.UUID][]CourseQuizResponse, progressMap map[uuid.UUID]string) []CourseTreeResponse {
 	resp := make([]CourseTreeResponse, 0, len(rows))
 	for _, row := range rows {
 		item := CourseTreeResponse{
@@ -759,6 +915,11 @@ func (h *CurriculumHandler) mapToCourseTreeResponseBySlug(rows []generated.GetCo
 		if row.ParentID.Valid {
 			pID := row.ParentID.UUID.String()
 			item.ParentID = &pID
+		}
+
+		if status, ok := progressMap[row.ID]; ok {
+			statusStr := status
+			item.ProgressStatus = &statusStr
 		}
 
 		// Hydrate title and sequence order based on type
@@ -787,6 +948,11 @@ func (h *CurriculumHandler) mapToCourseTreeResponseBySlug(rows []generated.GetCo
 			if hasAccess && row.LessonTextContent.Valid {
 				tContent := row.LessonTextContent.String
 				item.TextContent = &tContent
+			}
+			if qList, ok := quizzesMap[row.ID]; ok {
+				item.Quizzes = qList
+			} else {
+				item.Quizzes = make([]CourseQuizResponse, 0)
 			}
 		}
 
@@ -865,6 +1031,51 @@ func (h *CurriculumHandler) GetMediaTaskStatus(c echo.Context) error {
 	defer resp.Body.Close()
 
 	return c.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
+}
+
+// StudentUpsertProgress upserts progress status (STARTED or COMPLETED) for a node (lesson, course, etc.)
+func (h *CurriculumHandler) StudentUpsertProgress(c echo.Context) error {
+	nodeID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid node ID")
+	}
+
+	var req UpsertProgressRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{"errors": h.formatValidationErrors(err)})
+	}
+
+	ctx := c.Request().Context()
+	authUser := internalMiddleware.GetAuthUser(c)
+	if authUser.ID == "" {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	userID, err := uuid.Parse(authUser.ID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	progress, err := h.store.UpsertProgress(ctx, generated.UpsertProgressParams{
+		UserID: userID,
+		NodeID: nodeID,
+		Status: generated.ProgressStatus(req.Status),
+	})
+	if err != nil {
+		h.logger.Error("Failed to upsert progress", "error", err, "node_id", nodeID, "user_id", userID)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	return c.JSON(http.StatusOK, ProgressResponse{
+		UserID:    progress.UserID.String(),
+		NodeID:    progress.NodeID.String(),
+		Status:    string(progress.Status),
+		UpdatedAt: progress.UpdatedAt,
+	})
 }
 
 func (h *CurriculumHandler) formatValidationErrors(err error) []map[string]string {

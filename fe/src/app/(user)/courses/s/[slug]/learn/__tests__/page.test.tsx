@@ -92,6 +92,8 @@ describe('CoursePlayerPage Component', () => {
     const nextBtn = screen.getByRole('button', { name: /next/i });
     fireEvent.click(nextBtn);
 
+    screen.debug();
+
     // Verifies reading material content renders on the next slide
     await waitFor(() => {
       expect(screen.getByText('Written content about Go.')).toBeInTheDocument();

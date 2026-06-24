@@ -140,12 +140,39 @@ CourseTreeResponse:
       nullable: true
     has_quizzes:
       type: boolean
+    quizzes:
+      type: array
+      items:
+        $ref: '#/CourseQuizResponse'
+    progress_status:
+      type: string
+      enum: [STARTED, COMPLETED]
+      nullable: true
   required:
     - id
     - node_type
     - level
     - title
     - has_quizzes
+
+CourseQuizResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    title:
+      type: string
+    passing_score:
+      type: integer
+    is_passed:
+      type: boolean
+  required:
+    - id
+    - title
+    - passing_score
+    - is_passed
+
 
 LessonResponse:
   type: object
@@ -219,3 +246,33 @@ UpdateLessonRequest:
       type: integer
       minimum: 0
   minProperties: 1
+
+UpsertProgressRequest:
+  type: object
+  properties:
+    status:
+      type: string
+      enum: [STARTED, COMPLETED]
+  required:
+    - status
+
+ProgressResponse:
+  type: object
+  properties:
+    user_id:
+      type: string
+      format: uuid
+    node_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [STARTED, COMPLETED]
+    updated_at:
+      type: string
+      format: date-time
+  required:
+    - user_id
+    - node_id
+    - status
+    - updated_at

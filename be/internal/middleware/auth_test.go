@@ -95,3 +95,70 @@ func TestJWTMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
 }
+
+func TestOptionalJWTMiddleware(t *testing.T) {
+	secret := "testsecret"
+	mw := OptionalJWTMiddleware(secret)
+
+	h := func(c echo.Context) error {
+		user := GetAuthUser(c)
+		return c.JSON(http.StatusOK, user)
+	}
+
+	t.Run("Valid Token", func(t *testing.T) {
+		e := echo.New()
+		claims := &services.AuthClaims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				Subject:   "user-123",
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			},
+			Email: "test@example.com",
+			Role:  "USER",
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		tokenString, _ := token.SignedString([]byte(secret))
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("Authorization", "Bearer "+tokenString)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		if assert.NoError(t, mw(h)(c)) {
+			assert.Equal(t, http.StatusOK, rec.Code)
+			var user AuthUser
+			json.Unmarshal(rec.Body.Bytes(), &user)
+			assert.Equal(t, "user-123", user.ID)
+			assert.Equal(t, "test@example.com", user.Email)
+			assert.Equal(t, "USER", user.Role)
+		}
+	})
+
+	t.Run("Missing Token", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		if assert.NoError(t, mw(h)(c)) {
+			assert.Equal(t, http.StatusOK, rec.Code)
+			var user AuthUser
+			json.Unmarshal(rec.Body.Bytes(), &user)
+			assert.Empty(t, user.ID)
+		}
+	})
+
+	t.Run("Malformed Token", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("Authorization", "Bearer invalid-token")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		if assert.NoError(t, mw(h)(c)) {
+			assert.Equal(t, http.StatusOK, rec.Code)
+			var user AuthUser
+			json.Unmarshal(rec.Body.Bytes(), &user)
+			assert.Empty(t, user.ID)
+		}
+	})
+}

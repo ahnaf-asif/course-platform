@@ -124,3 +124,154 @@ QuestionResponse:
     - question_type
     - sequence_order
     - answers
+
+StudentAnswerOption:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    content:
+      type: string
+  required:
+    - id
+    - content
+
+StudentQuestionResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    quiz_id:
+      type: string
+      format: uuid
+    content:
+      type: string
+    question_type:
+      type: string
+    answers:
+      type: array
+      items:
+        $ref: '#/StudentAnswerOption'
+  required:
+    - id
+    - quiz_id
+    - content
+    - question_type
+    - answers
+
+SubmitAnswerItem:
+  type: object
+  properties:
+    question_id:
+      type: string
+      format: uuid
+    answer_id:
+      type: string
+      format: uuid
+  required:
+    - question_id
+
+SubmitQuizRequest:
+  type: object
+  properties:
+    answers:
+      type: array
+      items:
+        $ref: '#/SubmitAnswerItem'
+  required:
+    - answers
+
+AttemptAnswerOption:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    content:
+      type: string
+    is_correct:
+      type: boolean
+  required:
+    - id
+    - content
+    - is_correct
+
+AttemptDetailQuestion:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    content:
+      type: string
+    question_type:
+      type: string
+    explanation:
+      type: string
+    is_correct:
+      type: boolean
+    user_answers:
+      type: array
+      items:
+        type: string
+        format: uuid
+    answer_options:
+      type: array
+      items:
+        $ref: '#/AttemptAnswerOption'
+  required:
+    - id
+    - content
+    - question_type
+    - explanation
+    - is_correct
+    - user_answers
+    - answer_options
+
+SubmitQuizResponse:
+  type: object
+  properties:
+    attempt_id:
+      type: string
+      format: uuid
+    score:
+      type: integer
+    is_passed:
+      type: boolean
+    passing_score:
+      type: integer
+    completed_at:
+      type: string
+      format: date-time
+    questions:
+      type: array
+      items:
+        $ref: '#/AttemptDetailQuestion'
+  required:
+    - attempt_id
+    - score
+    - is_passed
+    - passing_score
+    - completed_at
+    - questions
+
+StudentQuizAttemptSummary:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    score:
+      type: integer
+    is_passed:
+      type: boolean
+    completed_at:
+      type: string
+      format: date-time
+  required:
+    - id
+    - score
+    - is_passed
+    - completed_at

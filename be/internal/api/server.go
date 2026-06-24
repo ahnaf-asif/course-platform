@@ -226,14 +226,22 @@ func (s *Server) registerRoutes() {
 	protected.GET("/courses/s/:slug/access", commerceHandler.CheckAccess)
 	protected.GET("/courses/enrolled", commerceHandler.GetEnrolledCourses)
 	protected.GET("/lessons/:id", curriculumHandler.GetUserLesson)
+	protected.POST("/nodes/:id/progress", curriculumHandler.StudentUpsertProgress)
 	protected.GET("/media/token/:videoId", curriculumHandler.GetMediaStreamToken)
+
+	// Student Quiz routes
+	protected.GET("/nodes/:id/quizzes", quizHandler.StudentListQuizzesByNode)
+	protected.GET("/quizzes/:id/questions", quizHandler.StudentGetQuizQuestions)
+	protected.POST("/quizzes/:id/attempts", quizHandler.StudentSubmitQuizAttempt)
+	protected.GET("/quizzes/:id/attempts", quizHandler.StudentListQuizAttempts)
+	protected.GET("/attempts/:id", quizHandler.StudentGetAttemptDetails)
 
 	// Curriculum Public routes
 	// Public Course Routes
 	v1.GET("/courses", courseHandler.ListPublishedCourses)
 	v1.GET("/courses/s/:slug", courseHandler.GetCourseBySlug)
-	v1.GET("/courses/s/:slug/tree", curriculumHandler.GetCourseTreeBySlug)
-	v1.GET("/courses/:id/tree", curriculumHandler.GetCourseTree)
+	v1.GET("/courses/s/:slug/tree", curriculumHandler.GetCourseTreeBySlug, internalMiddleware.OptionalJWTMiddleware(jwtSecret))
+	v1.GET("/courses/:id/tree", curriculumHandler.GetCourseTree, internalMiddleware.OptionalJWTMiddleware(jwtSecret))
 
 	// Admin Routes
 	admin := v1.Group("/admin")

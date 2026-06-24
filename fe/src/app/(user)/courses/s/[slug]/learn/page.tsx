@@ -1,11 +1,8 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
 import {
   Container,
   Grid,
-  Title,
   Text,
   Stack,
   Group,
@@ -13,360 +10,81 @@ import {
   Skeleton,
   Button,
   Box,
-  Divider,
-  NavLink,
+  Drawer,
+  Center,
   Alert,
   Loader,
-  Center,
-  Drawer,
-  ScrollArea,
-  Progress,
+  Title,
 } from '@mantine/core';
-import { useGetCourseBySlug, useGetCourseTreeBySlug } from '@/api/generated/course/course';
-import { useCheckAccess, useGetUserLesson } from '@/api/generated/commerce/commerce';
-import { useGetMe } from '@/api/generated/user/user';
 import {
   IconArrowLeft,
   IconAlertCircle,
-  IconVideo,
-  IconFileText,
-  IconChevronRight,
-  IconChevronLeft,
   IconMenu2,
   IconBook,
-  IconCheck,
 } from '@tabler/icons-react';
 import Link from 'next/link';
-import { useEffect, useMemo, useState, useRef } from 'react';
-import Hls from 'hls.js';
-import { CourseTreeResponse } from '@/api/model/components-schemas-curriculum/courseTreeResponse';
-import { axiosInstance } from '@/lib/axios';
-import { MathJaxContent } from '@/components/MathJaxContent';
 
-interface ExtendedNode extends CourseTreeResponse {
-  children: ExtendedNode[];
-}
-
-function LessonPlayer({ videoId }: { videoId: string }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let hls: Hls | null = null;
-    setLoading(true);
-    setError(null);
-
-    const initPlayer = async () => {
-      if (!videoRef.current) return;
-
-      try {
-        const res = await axiosInstance<{ token: string }>({
-          url: `/media/token/${videoId}`,
-          method: 'GET',
-        });
-
-        const token = res.token;
-        const manifestUrl = `/media-api/stream/${videoId}/index.m3u8?token=${token}`;
-
-        if (Hls.isSupported()) {
-          hls = new Hls({
-            xhrSetup: (xhr) => {
-              xhr.withCredentials = true;
-            }
-          });
-          hls.loadSource(manifestUrl);
-          hls.attachMedia(videoRef.current);
-          hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            setLoading(false);
-          });
-          hls.on(Hls.Events.ERROR, (_, data) => {
-            if (data.fatal) {
-              setError("Failed to load video stream");
-            }
-          });
-        } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-          videoRef.current.src = manifestUrl;
-          videoRef.current.addEventListener('loadedmetadata', () => {
-            setLoading(false);
-          });
-          videoRef.current.addEventListener('error', () => {
-            setError("Failed to load video stream");
-          });
-        } else {
-          setError("Your browser does not support HLS streaming");
-        }
-      } catch (err) {
-        console.error('Failed to init video:', err);
-        setError("Could not acquire secure playback token");
-      }
-    };
-
-    initPlayer();
-
-    return () => {
-      if (hls) {
-        hls.destroy();
-      }
-    };
-  }, [videoId]);
-
-  if (error) {
-    return (
-      <Center w="100%" h="100%" bg="dark.9" p="md">
-        <Text c="red" size="sm" ta="center">
-          {error}
-        </Text>
-      </Center>
-    );
-  }
-
-  return (
-    <Box pos="relative" w="100%" h="100%" style={{ backgroundColor: 'black', overflow: 'hidden' }}>
-      {loading && (
-        <Center pos="absolute" inset={0} bg="dark.9" style={{ zIndex: 1 }}>
-          <Loader size="md" color="blue" />
-        </Center>
-      )}
-      <video 
-        ref={videoRef} 
-        controls 
-        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-      />
-    </Box>
-  );
-}
-
-function parseHTMLContent(content: string): string {
-  if (typeof window === 'undefined') return content;
-  if (content.includes('&lt;') || content.includes('&gt;') || content.includes('&quot;') || content.includes('&#39;')) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(content, 'text/html');
-    return doc.documentElement.textContent || content;
-  }
-  return content;
-}
+// Refactored Sub-Components & Hooks
+import { LessonPlayer } from './_components/LessonPlayer';
+import { LessonTextView } from './_components/LessonTextView';
+import { SyllabusSidebar } from './_components/SyllabusSidebar';
+import { FooterNavBar } from './_components/FooterNavBar';
+import { QuizArea } from './_components/QuizArea';
+import { useCoursePlayer } from './_components/useCoursePlayer';
 
 export default function CoursePlayerPage() {
-  const params = useParams();
-  const router = useRouter();
-  const slug = params.slug as string;
-
-  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
-  const [currentSubSlideIndex, setCurrentSubSlideIndex] = useState<number>(0);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-
-  const { data: user, isLoading: isLoadingUser } = useGetMe();
-  const { data: course, isLoading: isLoadingCourse } = useGetCourseBySlug(slug);
-  const { data: accessData, isLoading: isLoadingAccess } = useCheckAccess(slug, {
-    query: {
-      enabled: !!user && !!course?.id,
-    }
-  });
-
-  const { data: tree, isLoading: isLoadingTree } = useGetCourseTreeBySlug(slug, {
-    query: {
-      enabled: !!course?.slug
-    }
-  });
-
-  // Fetch full lesson details when selected
-  const { data: lessonDetails, isLoading: isLoadingLesson } = useGetUserLesson(selectedLessonId || '', {
-    query: {
-      enabled: !!selectedLessonId,
-    }
-  });
-
-  const organizedTree = useMemo(() => {
-    if (!tree) return [];
-    const map: Record<string, ExtendedNode> = {};
-    const roots: ExtendedNode[] = [];
-    tree.forEach((node) => { map[node.id] = { ...node, children: [] }; });
-    tree.forEach((node) => {
-      const mappedNode = map[node.id];
-      if (node.level === 1) roots.push(mappedNode);
-      if (node.parent_id && map[node.parent_id]) map[node.parent_id].children.push(mappedNode);
-    });
-    return roots.sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
-  }, [tree]);
-
-  // Flat lessons list
-  const flatLessons = useMemo(() => {
-    const list: { id: string; title: string; video_url?: string | null; text_content?: string | null }[] = [];
-    const traverse = (nodes: ExtendedNode[]) => {
-      const sorted = [...nodes].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
-      for (const node of sorted) {
-        if (node.node_type === 'LESSON') {
-          list.push({
-            id: node.id,
-            title: node.title,
-            video_url: node.video_url,
-            text_content: node.text_content,
-          });
-        }
-        if (node.children && node.children.length > 0) {
-          traverse(node.children);
-        }
-      }
-    };
-    traverse(organizedTree);
-    return list;
-  }, [organizedTree]);
-
-  const currentLessonIndex = useMemo(() => {
-    return flatLessons.findIndex((l) => l.id === selectedLessonId);
-  }, [flatLessons, selectedLessonId]);
-
-  const prevLesson = currentLessonIndex > 0 ? flatLessons[currentLessonIndex - 1] : null;
-  const nextLesson = currentLessonIndex < flatLessons.length - 1 ? flatLessons[currentLessonIndex + 1] : null;
-
-  // Dynamically compute active sub-slides based on the fetched lesson details
-  const activeSubSlides = useMemo(() => {
-    if (!lessonDetails) return ['text']; // default fallback
-    const slides: ('video' | 'text')[] = [];
-    if (lessonDetails.video_url) slides.push('video');
-    if (lessonDetails.text_content) slides.push('text');
-    if (slides.length === 0) slides.push('text');
-    return slides;
-  }, [lessonDetails]);
-
-  const activeSlideType = activeSubSlides[currentSubSlideIndex] || 'text';
-  const isVideoSlide = activeSlideType === 'video';
-
-  // Compute slide counts for progress bar
-  const totalSlidesCount = useMemo(() => {
-    let count = 0;
-    for (const l of flatLessons) {
-      const hasVideo = !!l.video_url;
-      const hasText = !!l.text_content;
-      if (hasVideo && hasText) {
-        count += 2;
-      } else {
-        count += 1;
-      }
-    }
-    return count || 1;
-  }, [flatLessons]);
-
-  const currentSlideProgressIndex = useMemo(() => {
-    if (currentLessonIndex === -1) return 0;
-    let count = 0;
-    for (let i = 0; i < currentLessonIndex; i++) {
-      const l = flatLessons[i];
-      const hasVideo = !!l.video_url;
-      const hasText = !!l.text_content;
-      if (hasVideo && hasText) {
-        count += 2;
-      } else {
-        count += 1;
-      }
-    }
-    return count + currentSubSlideIndex + 1;
-  }, [flatLessons, currentLessonIndex, currentSubSlideIndex]);
-
-  const handlePrev = () => {
-    if (currentSubSlideIndex > 0) {
-      setCurrentSubSlideIndex(currentSubSlideIndex - 1);
-    } else if (prevLesson) {
-      setSelectedLessonId(prevLesson.id);
-      // Determine if previous lesson has both
-      const prevHasVideo = !!prevLesson.video_url;
-      const prevHasText = !!prevLesson.text_content;
-      if (prevHasVideo && prevHasText) {
-        setCurrentSubSlideIndex(1);
-      } else {
-        setCurrentSubSlideIndex(0);
-      }
-    }
-  };
-
-  const handleNext = () => {
-    if (currentSubSlideIndex < activeSubSlides.length - 1) {
-      setCurrentSubSlideIndex(currentSubSlideIndex + 1);
-    } else if (nextLesson) {
-      setSelectedLessonId(nextLesson.id);
-      setCurrentSubSlideIndex(0);
-    }
-  };
-
-  const handleSelectLesson = (lessonId: string) => {
-    setSelectedLessonId(lessonId);
-    setCurrentSubSlideIndex(0);
-  };
-
-  // Set default selected lesson
-  useEffect(() => {
-    if (flatLessons.length > 0 && !selectedLessonId) {
-      setTimeout(() => {
-        setSelectedLessonId(flatLessons[0].id);
-        setCurrentSubSlideIndex(0);
-      }, 0);
-    }
-  }, [flatLessons, selectedLessonId]);
-
-  // Redirect if no access
-  useEffect(() => {
-    if (!isLoadingAccess && accessData && !accessData.has_access) {
-      router.push(`/courses/s/${slug}`);
-    }
-  }, [isLoadingAccess, accessData, slug, router]);
-
-  const renderSyllabusContent = () => (
-    <Stack gap="md">
-      {organizedTree.map((subject) => (
-        <Box key={subject.id}>
-          <Text size="xs" fw={700} c="blue.6" style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }} mb={8}>
-            {subject.title}
-          </Text>
-          <Stack gap="xs">
-            {subject.children.map((chapter) => (
-              <Box key={chapter.id}>
-                <Text size="xs" fw={600} c="dimmed" mb={6}>
-                  {chapter.title}
-                </Text>
-                <div style={{ borderLeft: '1px solid var(--mantine-color-default-border)', paddingLeft: '8px', marginLeft: '4px' }}>
-                  <Stack gap={4}>
-                    {chapter.children.map((lesson) => {
-                      const isActive = selectedLessonId === lesson.id;
-                      return (
-                        <NavLink
-                          key={lesson.id}
-                          active={isActive}
-                          label={lesson.title}
-                          leftSection={lesson.video_url ? <IconVideo size={14} /> : <IconFileText size={14} />}
-                          rightSection={isActive ? <IconChevronRight size={12} /> : null}
-                          onClick={() => {
-                            handleSelectLesson(lesson.id);
-                            setMobileSidebarOpen(false);
-                          }}
-                          styles={{
-                            root: {
-                              borderRadius: '6px',
-                              padding: '8px 10px',
-                              fontSize: '13px',
-                              transition: 'all 0.2s ease',
-                              backgroundColor: isActive ? 'var(--mantine-color-blue-light)' : 'transparent',
-                              color: isActive ? 'var(--mantine-color-blue-filled)' : 'inherit',
-                              fontWeight: isActive ? 600 : 400,
-                            },
-                            label: {
-                              whiteSpace: 'normal',
-                              wordBreak: 'break-word',
-                            }
-                          }}
-                        />
-                      );
-                    })}
-                  </Stack>
-                </div>
-              </Box>
-            ))}
-          </Stack>
-          <Divider my="sm" />
-        </Box>
-      ))}
-    </Stack>
-  );
+  const {
+    slug,
+    selectedLessonId,
+    currentSubSlideIndex,
+    mobileSidebarOpen,
+    setMobileSidebarOpen,
+    isLoadingUser,
+    course,
+    isLoadingCourse,
+    isLoadingAccess,
+    isLoadingTree,
+    refetchTree,
+    lessonDetails,
+    isLoadingLesson,
+    quizzesData,
+    isLoadingQuizzes,
+    activeQuizId,
+    setActiveQuizId,
+    activeAttempt,
+    setActiveAttempt,
+    userAnswers,
+    setUserAnswers,
+    isAttempting,
+    setIsAttempting,
+    currentQuestionIndex,
+    setCurrentQuestionIndex,
+    attemptsData,
+    isLoadingAttempts,
+    refetchAttempts,
+    questionsData,
+    submitAttemptMutation,
+    selectedAttemptId,
+    setSelectedAttemptId,
+    isLoadingAttemptDetails,
+    upsertProgressMutation,
+    currentTreeNode,
+    updateProgress,
+    organizedTree,
+    flatLessons,
+    currentLessonIndex,
+    prevLesson,
+    nextLesson,
+    activeSubSlides,
+    activeSlideType,
+    isVideoSlide,
+    totalSlidesCount,
+    currentSlideProgressIndex,
+    handlePrev,
+    handleNext,
+    handleSelectLesson,
+    handleSelectQuiz,
+  } = useCoursePlayer();
 
   if (isLoadingUser || isLoadingCourse || isLoadingAccess || isLoadingTree) {
     return (
@@ -389,13 +107,15 @@ export default function CoursePlayerPage() {
   }
 
   return (
-    <Box style={{
-      display: 'flex',
-      height: 'calc(100vh - 60px)',
-      margin: 'calc(-1 * var(--mantine-spacing-md))',
-      overflow: 'hidden',
-      backgroundColor: 'var(--mantine-color-body)',
-    }}>
+    <Box
+      style={{
+        display: 'flex',
+        height: 'calc(100vh - 60px)',
+        margin: 'calc(-1 * var(--mantine-spacing-md))',
+        overflow: 'hidden',
+        backgroundColor: 'var(--mantine-color-body)',
+      }}
+    >
       {/* Desktop Navigation Sidebar */}
       <Box
         visibleFrom="md"
@@ -410,48 +130,30 @@ export default function CoursePlayerPage() {
         }}
       >
         <Box p="md" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
-          <Stack gap="xs">
-            <Button
-              component={Link}
-              href={`/courses/s/${slug}`}
-              variant="subtle"
-              color="gray"
-              leftSection={<IconArrowLeft size={16} />}
-              size="xs"
-              styles={{ root: { paddingLeft: 0, justifyContent: 'flex-start' } }}
-            >
-              Back to Course Landing Page
-            </Button>
-            
-            <Group justify="space-between" align="center" mt="xs">
-              <Title order={4} size="h5" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <IconBook size={18} color="var(--mantine-color-blue-filled)" />
-                Syllabus
-              </Title>
-              <Text size="xs" c="dimmed" fw={500}>
-                {currentSlideProgressIndex > 0 ? `${currentSlideProgressIndex} / ${totalSlidesCount}` : `0 / ${totalSlidesCount}`}
-              </Text>
-            </Group>
-
-            {/* Course Title */}
-            <Text size="sm" fw={600} lineClamp={1}>
-              {course?.title}
-            </Text>
-
-            {/* Progress Bar */}
-            <Progress
-              value={totalSlidesCount > 0 ? (currentSlideProgressIndex / totalSlidesCount) * 100 : 0}
-              size="xs"
-              radius="xl"
-              color="blue"
-              animated
-            />
-          </Stack>
+          <Button
+            component={Link}
+            href={`/courses/s/${slug}`}
+            variant="subtle"
+            color="gray"
+            leftSection={<IconArrowLeft size={16} />}
+            size="xs"
+            styles={{ root: { paddingLeft: 0, justifyContent: 'flex-start' } }}
+          >
+            Back to Course Landing Page
+          </Button>
         </Box>
 
-        <ScrollArea style={{ flex: 1 }} p="md">
-          {renderSyllabusContent()}
-        </ScrollArea>
+        <Box style={{ flex: 1, minHeight: 0 }}>
+          <SyllabusSidebar
+            organizedTree={organizedTree}
+            selectedLessonId={selectedLessonId}
+            activeQuizId={activeQuizId}
+            handleSelectLesson={handleSelectLesson}
+            handleSelectQuiz={handleSelectQuiz}
+            totalSlidesCount={totalSlidesCount}
+            currentSlideProgressIndex={currentSlideProgressIndex}
+          />
+        </Box>
       </Box>
 
       {/* Mobile Syllabus Drawer */}
@@ -467,33 +169,25 @@ export default function CoursePlayerPage() {
             <Group justify="space-between" align="center" mb="xs">
               <Title order={4} size="h5" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <IconBook size={18} color="var(--mantine-color-blue-filled)" />
-                Curriculum
+                Syllabus
               </Title>
               <Button variant="subtle" color="gray" size="xs" onClick={() => setMobileSidebarOpen(false)}>
                 Close
               </Button>
             </Group>
-            
-            <Group justify="space-between" mb={6}>
-              <Text size="xs" fw={500} c="dimmed">
-                Course Progress
-              </Text>
-              <Text size="xs" c="dimmed" fw={500}>
-                {currentSlideProgressIndex > 0 ? `${currentSlideProgressIndex} / ${totalSlidesCount}` : `0 / ${totalSlidesCount}`}
-              </Text>
-            </Group>
-            <Progress
-              value={totalSlidesCount > 0 ? (currentSlideProgressIndex / totalSlidesCount) * 100 : 0}
-              size="xs"
-              radius="xl"
-              color="blue"
-              animated
+          </Box>
+          <Box style={{ flex: 1, minHeight: 0 }}>
+            <SyllabusSidebar
+              organizedTree={organizedTree}
+              selectedLessonId={selectedLessonId}
+              activeQuizId={activeQuizId}
+              handleSelectLesson={handleSelectLesson}
+              handleSelectQuiz={handleSelectQuiz}
+              setMobileSidebarOpen={setMobileSidebarOpen}
+              totalSlidesCount={totalSlidesCount}
+              currentSlideProgressIndex={currentSlideProgressIndex}
             />
           </Box>
-
-          <ScrollArea style={{ flex: 1 }} p="md">
-            {renderSyllabusContent()}
-          </ScrollArea>
         </Box>
       </Drawer>
 
@@ -520,18 +214,16 @@ export default function CoursePlayerPage() {
           }}
         >
           <Group justify="space-between" align="center">
-            <Group gap="xs">
-              <Button
-                variant="subtle"
-                color="gray"
-                p={4}
-                onClick={() => setMobileSidebarOpen(true)}
-                leftSection={<IconMenu2 size={20} />}
-                size="sm"
-              >
-                Menu
-              </Button>
-            </Group>
+            <Button
+              variant="subtle"
+              color="gray"
+              p={4}
+              onClick={() => setMobileSidebarOpen(true)}
+              leftSection={<IconMenu2 size={20} />}
+              size="sm"
+            >
+              Menu
+            </Button>
             <Text size="xs" fw={600} lineClamp={1} style={{ maxWidth: '160px' }}>
               {course?.title}
             </Text>
@@ -548,14 +240,16 @@ export default function CoursePlayerPage() {
         </Box>
 
         {/* Upper Content Pane */}
-        <Box style={{
-          flex: 1,
-          overflowY: isVideoSlide ? 'hidden' : 'auto',
-          backgroundColor: isVideoSlide ? '#000' : 'var(--mantine-color-body)',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
-        }}>
+        <Box
+          style={{
+            flex: 1,
+            overflowY: isVideoSlide ? 'hidden' : 'auto',
+            backgroundColor: isVideoSlide ? '#000' : 'var(--mantine-color-body)',
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative',
+          }}
+        >
           {selectedLessonId ? (
             isLoadingLesson ? (
               <Center style={{ flex: 1 }}>
@@ -566,39 +260,54 @@ export default function CoursePlayerPage() {
                 /* Immersive Full Bleed Video Player */
                 <Box style={{ width: '100%', height: '100%', minHeight: 0, flex: 1 }}>
                   {lessonDetails.video_url ? (
-                    <LessonPlayer videoId={lessonDetails.video_url} />
+                    <LessonPlayer
+                      videoId={lessonDetails.video_url}
+                      onEnded={() => {
+                        if (selectedLessonId) {
+                          updateProgress(selectedLessonId, 'COMPLETED');
+                        }
+                      }}
+                    />
                   ) : (
                     <Center h="100%" bg="dark.9">
                       <Text c="white">No video file available for streaming.</Text>
                     </Center>
                   )}
                 </Box>
+              ) : activeSlideType === 'quiz' ? (
+                /* Interactive Quiz Module View */
+                <QuizArea
+                  quizzesData={quizzesData}
+                  isLoadingQuizzes={isLoadingQuizzes}
+                  activeQuizId={activeQuizId}
+                  setActiveQuizId={setActiveQuizId}
+                  activeAttempt={activeAttempt}
+                  setActiveAttempt={setActiveAttempt}
+                  userAnswers={userAnswers}
+                  setUserAnswers={setUserAnswers}
+                  isAttempting={isAttempting}
+                  setIsAttempting={setIsAttempting}
+                  currentQuestionIndex={currentQuestionIndex}
+                  setCurrentQuestionIndex={setCurrentQuestionIndex}
+                  attemptsData={attemptsData}
+                  isLoadingAttempts={isLoadingAttempts}
+                  refetchAttempts={refetchAttempts}
+                  questionsData={questionsData}
+                  submitAttemptMutation={submitAttemptMutation}
+                  selectedAttemptId={selectedAttemptId}
+                  setSelectedAttemptId={setSelectedAttemptId}
+                  isLoadingAttemptDetails={isLoadingAttemptDetails}
+                  refetchTree={refetchTree}
+                />
               ) : (
                 /* Premium MathJax Text/Reading content slide */
-                <Box style={{ padding: '32px 16px 40px 16px', width: '100%' }}>
-                  <Container size="md" style={{ maxWidth: '840px', width: '100%' }}>
-                    <Stack gap="xl">
-                      <Box>
-                        <Text size="xs" fw={700} c="blue.6" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
-                          Reading Material
-                        </Text>
-                        <Title order={1} size="h2" mt={4} style={{ fontWeight: 800 }}>
-                          {lessonDetails.title}
-                        </Title>
-                      </Box>
-                      
-                      <Divider />
-
-                      <Box style={{ minHeight: '250px' }}>
-                        {lessonDetails.text_content ? (
-                          <MathJaxContent html={parseHTMLContent(lessonDetails.text_content)} />
-                        ) : (
-                          <Text c="dimmed" style={{ fontStyle: 'italic' }}>No written content for this lesson.</Text>
-                        )}
-                      </Box>
-                    </Stack>
-                  </Container>
-                </Box>
+                <LessonTextView
+                  lessonDetails={lessonDetails}
+                  selectedLessonId={selectedLessonId}
+                  currentTreeNode={currentTreeNode}
+                  updateProgress={updateProgress}
+                  isPendingProgress={upsertProgressMutation.isPending}
+                />
               )
             ) : (
               <Center style={{ flex: 1 }} p="xl">
@@ -608,11 +317,20 @@ export default function CoursePlayerPage() {
               </Center>
             )
           ) : (
-            <Center style={{ flex: 1 }} p="xl">
-              <Card withBorder radius="lg" p="xl" ta="center" shadow="sm" style={{ maxWidth: '400px' }}>
+            <Center style={{ flex: 1 }} p={{ base: 'md', sm: 'xl' }}>
+              <Card
+                withBorder
+                radius="lg"
+                p={{ base: 'md', sm: 'xl' }}
+                ta="center"
+                shadow="sm"
+                style={{ maxWidth: '400px' }}
+              >
                 <Stack align="center" gap="md">
                   <IconBook size={48} color="var(--mantine-color-blue-filled)" />
-                  <Text fw={600} size="lg">Ready to start learning?</Text>
+                  <Text fw={600} size="lg">
+                    Ready to start learning?
+                  </Text>
                   <Text c="dimmed">Select a lesson from the syllabus sidebar to begin.</Text>
                 </Stack>
               </Card>
@@ -621,116 +339,21 @@ export default function CoursePlayerPage() {
         </Box>
 
         {/* Attached & Immovable Bottom Footer Navigation Bar */}
-        <Box
-          style={{
-            borderTop: '1px solid var(--mantine-color-default-border)',
-            backgroundColor: 'var(--mantine-color-default)',
-            padding: '12px 16px',
-            zIndex: 10,
-            flexShrink: 0,
-          }}
-        >
-          <Group justify="space-between" align="center" gap="xs">
-            {/* Left Side: Previous Slide Button */}
-            <Box style={{ flex: 1 }}>
-              {(currentSubSlideIndex > 0 || currentLessonIndex > 0) ? (
-                <Button
-                  variant="light"
-                  onClick={handlePrev}
-                  leftSection={<IconChevronLeft size={16} />}
-                  size="sm"
-                  styles={{
-                    root: {
-                      transition: 'transform 0.2s ease',
-                      '&:hover': {
-                        transform: 'translateX(-4px)',
-                      }
-                    }
-                  }}
-                >
-                  <Box ta="left" visibleFrom="xs">
-                    <Text size="xs" c="dimmed" style={{ textTransform: 'uppercase', fontSize: '9px', fontWeight: 700 }}>
-                      Previous
-                    </Text>
-                    <Text size="sm" fw={600} lineClamp={1} style={{ maxWidth: '150px' }}>
-                      {currentSubSlideIndex > 0 
-                        ? `${lessonDetails?.title || ''} - Video`
-                        : (prevLesson?.title || '')}
-                    </Text>
-                  </Box>
-                  <Text hiddenFrom="xs" size="sm">Prev</Text>
-                </Button>
-              ) : (
-                <Button variant="light" disabled size="sm" leftSection={<IconChevronLeft size={16} />}>
-                  <Text size="sm">Start</Text>
-                </Button>
-              )}
-            </Box>
-
-            {/* Center: Slide Count and Info */}
-            <Box style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flex: 1, maxWidth: '320px' }}>
-              <Text size="sm" fw={700} lineClamp={1}>
-                {lessonDetails ? lessonDetails.title : ''}
-              </Text>
-              <Text size="xs" c="dimmed">
-                {totalSlidesCount > 0 && currentSlideProgressIndex >= 0 
-                  ? `Slide ${currentSlideProgressIndex} of ${totalSlidesCount} (${Math.round((currentSlideProgressIndex / totalSlidesCount) * 100)}%)` 
-                  : '0%'}
-              </Text>
-            </Box>
-
-            {/* Right Side: Next Slide Button */}
-            <Box style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-              {(currentSubSlideIndex < activeSubSlides.length - 1 || currentLessonIndex < flatLessons.length - 1) ? (
-                <Button
-                  variant="filled"
-                  onClick={handleNext}
-                  rightSection={<IconChevronRight size={16} />}
-                  size="sm"
-                  styles={{
-                    root: {
-                      transition: 'transform 0.2s ease',
-                      '&:hover': {
-                        transform: 'translateX(4px)',
-                      }
-                    }
-                  }}
-                >
-                  <Box ta="right" visibleFrom="xs">
-                    <Text size="xs" style={{ textTransform: 'uppercase', fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>
-                      Next
-                    </Text>
-                    <Text size="sm" fw={600} lineClamp={1} style={{ maxWidth: '150px' }}>
-                      {currentSubSlideIndex < activeSubSlides.length - 1
-                        ? `${lessonDetails?.title || ''} - Reading`
-                        : (nextLesson?.title || '')}
-                    </Text>
-                  </Box>
-                  <Text hiddenFrom="xs" size="sm">Next</Text>
-                </Button>
-              ) : (
-                <Button
-                  variant="filled"
-                  color="green"
-                  component={Link}
-                  href={`/courses/s/${slug}`}
-                  rightSection={<IconCheck size={16} />}
-                  size="sm"
-                >
-                  <Box ta="right" visibleFrom="xs">
-                    <Text size="xs" style={{ textTransform: 'uppercase', fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>
-                      Course
-                    </Text>
-                    <Text size="sm" fw={600}>
-                      Finish
-                    </Text>
-                  </Box>
-                  <Text hiddenFrom="xs" size="sm">Finish</Text>
-                </Button>
-              )}
-            </Box>
-          </Group>
-        </Box>
+        {!isAttempting && (
+          <FooterNavBar
+            currentSubSlideIndex={currentSubSlideIndex}
+            currentLessonIndex={currentLessonIndex}
+            flatLessons={flatLessons}
+            activeSubSlides={activeSubSlides}
+            lessonDetails={lessonDetails}
+            prevLesson={prevLesson}
+            nextLesson={nextLesson}
+            handlePrev={handlePrev}
+            handleNext={handleNext}
+            totalSlidesCount={totalSlidesCount}
+            currentSlideProgressIndex={currentSlideProgressIndex}
+          />
+        )}
       </Box>
     </Box>
   );
