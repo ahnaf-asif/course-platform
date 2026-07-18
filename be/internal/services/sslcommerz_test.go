@@ -61,7 +61,10 @@ func TestSSLCommerzService_ValidateTransaction(t *testing.T) {
 	t.Run("Valid", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			resp := map[string]interface{}{
-				"status": "VALID",
+				"status":   "VALID",
+				"tran_id":  "tran-123",
+				"amount":   "100.00",
+				"currency": "BDT",
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
@@ -72,9 +75,13 @@ func TestSSLCommerzService_ValidateTransaction(t *testing.T) {
 		client := ssl.New("test_store", "test_pass", ssl.WithBaseURL(server.URL))
 		svc := &SSLCommerzService{client: client}
 
-		ok, err := svc.ValidateTransaction("val-123")
+		resp, err := svc.ValidateTransaction("val-123")
 		assert.NoError(t, err)
-		assert.True(t, ok)
+		assert.NotNil(t, resp)
+		assert.Equal(t, "VALID", resp.Status)
+		assert.Equal(t, "tran-123", resp.TranId)
+		assert.Equal(t, "100.00", resp.Amount)
+		assert.Equal(t, "BDT", resp.Currency)
 	})
 
 	t.Run("Invalid Status", func(t *testing.T) {
@@ -91,9 +98,10 @@ func TestSSLCommerzService_ValidateTransaction(t *testing.T) {
 		client := ssl.New("test_store", "test_pass", ssl.WithBaseURL(server.URL))
 		svc := &SSLCommerzService{client: client}
 
-		ok, err := svc.ValidateTransaction("val-123")
+		resp, err := svc.ValidateTransaction("val-123")
 		assert.NoError(t, err)
-		assert.False(t, ok)
+		assert.NotNil(t, resp)
+		assert.Equal(t, "FAILED", resp.Status)
 	})
 }
 

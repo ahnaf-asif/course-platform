@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/sagar290/sslcommerz-go/models"
 	"github.com/shafins-course/backend/internal/db/generated"
 	"github.com/shafins-course/backend/internal/middleware"
 	"github.com/stretchr/testify/assert"
@@ -30,9 +31,12 @@ func (m *MockPaymentGateway) InitiatePayment(tranID string, amount float64, curr
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockPaymentGateway) ValidateTransaction(valID string) (bool, error) {
+func (m *MockPaymentGateway) ValidateTransaction(valID string) (*models.OrderValidateResponse, error) {
 	args := m.Called(valID)
-	return args.Bool(0), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.OrderValidateResponse), args.Error(1)
 }
 
 func TestCommerceHandler_Checkout(t *testing.T) {
@@ -780,13 +784,20 @@ func TestCommerceHandler_HandleSuccess(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		mockGateway.On("ValidateTransaction", valID).Return(true, nil)
-
 		orderUUID, _ := uuid.Parse(tranID)
+		mockGateway.On("ValidateTransaction", valID).Return(&models.OrderValidateResponse{
+			Status:   "VALID",
+			TranId:   tranID,
+			Amount:   "100.00",
+			Currency: "BDT",
+		}, nil)
+
 		mockStore.On("GetOrderByTranID", mock.Anything, orderUUID).Return(generated.Order{
-			ID:       orderUUID,
-			Status:   generated.OrderStatusPENDING,
-			CouponID: uuid.NullUUID{},
+			ID:         orderUUID,
+			Status:     generated.OrderStatusPENDING,
+			CouponID:   uuid.NullUUID{},
+			AmountPaid: "100.00",
+			Currency:   "BDT",
 		}, nil)
 
 		mockStore.On("UpdateOrderReferenceAndStatus", mock.Anything, generated.UpdateOrderReferenceAndStatusParams{
@@ -820,14 +831,21 @@ func TestCommerceHandler_HandleSuccess(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		mockGateway.On("ValidateTransaction", valID).Return(true, nil)
-
 		orderUUID, _ := uuid.Parse(tranID)
 		couponID := uuid.New()
+		mockGateway.On("ValidateTransaction", valID).Return(&models.OrderValidateResponse{
+			Status:   "VALID",
+			TranId:   tranID,
+			Amount:   "100.00",
+			Currency: "BDT",
+		}, nil)
+
 		mockStore.On("GetOrderByTranID", mock.Anything, orderUUID).Return(generated.Order{
-			ID:       orderUUID,
-			Status:   generated.OrderStatusPENDING,
-			CouponID: uuid.NullUUID{UUID: couponID, Valid: true},
+			ID:         orderUUID,
+			Status:     generated.OrderStatusPENDING,
+			CouponID:   uuid.NullUUID{UUID: couponID, Valid: true},
+			AmountPaid: "100.00",
+			Currency:   "BDT",
 		}, nil)
 
 		mockStore.On("UpdateOrderReferenceAndStatus", mock.Anything, generated.UpdateOrderReferenceAndStatusParams{
@@ -881,7 +899,16 @@ func TestCommerceHandler_HandleSuccess(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		mockGateway.On("ValidateTransaction", valID).Return(false, nil)
+		orderUUID, _ := uuid.Parse(tranID)
+		mockStore.On("GetOrderByTranID", mock.Anything, orderUUID).Return(generated.Order{
+			ID:         orderUUID,
+			Status:     generated.OrderStatusPENDING,
+			AmountPaid: "100.00",
+			Currency:   "BDT",
+		}, nil)
+		mockGateway.On("ValidateTransaction", valID).Return(&models.OrderValidateResponse{
+			Status: "FAILED",
+		}, nil)
 
 		err := h.HandleSuccess(c)
 		assert.NoError(t, err)
@@ -905,8 +932,6 @@ func TestCommerceHandler_HandleSuccess(t *testing.T) {
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-
-		mockGateway.On("ValidateTransaction", valID).Return(true, nil)
 
 		orderUUID, _ := uuid.Parse(tranID)
 		mockStore.On("GetOrderByTranID", mock.Anything, orderUUID).Return(generated.Order{
@@ -937,12 +962,19 @@ func TestCommerceHandler_HandleSuccess(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		mockGateway.On("ValidateTransaction", valID).Return(true, nil)
-
 		orderUUID, _ := uuid.Parse(tranID)
+		mockGateway.On("ValidateTransaction", valID).Return(&models.OrderValidateResponse{
+			Status:   "VALID",
+			TranId:   tranID,
+			Amount:   "100.00",
+			Currency: "BDT",
+		}, nil)
+
 		mockStore.On("GetOrderByTranID", mock.Anything, orderUUID).Return(generated.Order{
-			ID:     orderUUID,
-			Status: generated.OrderStatusPENDING,
+			ID:         orderUUID,
+			Status:     generated.OrderStatusPENDING,
+			AmountPaid: "100.00",
+			Currency:   "BDT",
 		}, nil)
 
 		mockStore.On("UpdateOrderReferenceAndStatus", mock.Anything, mock.Anything).Return(generated.Order{}, errors.New("db error"))
@@ -1089,7 +1121,16 @@ func TestCommerceHandler_HandleIPN(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		mockGateway.On("ValidateTransaction", valID).Return(false, nil)
+		orderUUID, _ := uuid.Parse(tranID)
+		mockStore.On("GetOrderByTranID", mock.Anything, orderUUID).Return(generated.Order{
+			ID:         orderUUID,
+			Status:     generated.OrderStatusPENDING,
+			AmountPaid: "100.00",
+			Currency:   "BDT",
+		}, nil)
+		mockGateway.On("ValidateTransaction", valID).Return(&models.OrderValidateResponse{
+			Status: "FAILED",
+		}, nil)
 
 		err := h.HandleIPN(c)
 		assert.NoError(t, err)
@@ -1114,14 +1155,21 @@ func TestCommerceHandler_HandleIPN(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		mockGateway.On("ValidateTransaction", valID).Return(true, nil)
-
 		orderUUID, _ := uuid.Parse(tranID)
 		couponID := uuid.New()
+		mockGateway.On("ValidateTransaction", valID).Return(&models.OrderValidateResponse{
+			Status:   "VALID",
+			TranId:   tranID,
+			Amount:   "100.00",
+			Currency: "BDT",
+		}, nil)
+
 		mockStore.On("GetOrderByTranID", mock.Anything, orderUUID).Return(generated.Order{
-			ID:       orderUUID,
-			Status:   generated.OrderStatusPENDING,
-			CouponID: uuid.NullUUID{UUID: couponID, Valid: true},
+			ID:         orderUUID,
+			Status:     generated.OrderStatusPENDING,
+			CouponID:   uuid.NullUUID{UUID: couponID, Valid: true},
+			AmountPaid: "100.00",
+			Currency:   "BDT",
 		}, nil)
 
 		mockStore.On("UpdateOrderReferenceAndStatus", mock.Anything, generated.UpdateOrderReferenceAndStatusParams{
@@ -1484,4 +1532,3 @@ func TestCommerceHandler_GetEnrolledCourses(t *testing.T) {
 		mockStore.AssertExpectations(t)
 	})
 }
-

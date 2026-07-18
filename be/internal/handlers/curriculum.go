@@ -553,8 +553,6 @@ type ProgressResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-
-
 func (h *CurriculumHandler) GetCourseTree(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -761,7 +759,6 @@ func (h *CurriculumHandler) GetCourseTreeBySlug(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, h.mapToCourseTreeResponseBySlug(rows, hasAccess, quizzesMap, progressMap))
 }
-
 
 func (h *CurriculumHandler) GetUserLesson(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))

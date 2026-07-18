@@ -18,11 +18,11 @@ type StudentAnswerOption struct {
 }
 
 type StudentQuestionResponse struct {
-	ID           string                 `json:"id"`
-	QuizID       string                 `json:"quiz_id"`
-	Content      string                 `json:"content"`
-	QuestionType string                 `json:"question_type"`
-	Answers      []StudentAnswerOption  `json:"answers"`
+	ID           string                `json:"id"`
+	QuizID       string                `json:"quiz_id"`
+	Content      string                `json:"content"`
+	QuestionType string                `json:"question_type"`
+	Answers      []StudentAnswerOption `json:"answers"`
 }
 
 type SubmitQuizRequest struct {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -226,19 +227,46 @@ func (h *CommerceHandler) HandleSuccess(c echo.Context) error {
 		return c.Redirect(http.StatusSeeOther, feURL+"/payment/fail?error=invalid_order")
 	}
 
+	order, err := h.store.GetOrderByTranID(ctx, orderUUID)
+	if err != nil {
+		return c.Redirect(http.StatusSeeOther, feURL+"/payment/fail?tran_id="+tranID+"&error=order_not_found")
+	}
+	if order.Status == generated.OrderStatusCOMPLETED {
+		return c.Redirect(http.StatusSeeOther, feURL+"/payment/success?tran_id="+tranID)
+	}
+
 	// Verify status with gateway server-to-server
-	ok, err := h.sslcommerzService.ValidateTransaction(valID)
-	if err != nil || !ok {
+	resp, err := h.sslcommerzService.ValidateTransaction(valID)
+	if err != nil {
 		return c.Redirect(http.StatusSeeOther, feURL+"/payment/fail?tran_id="+tranID+"&error=verification_failed")
+	}
+
+	if resp.Status != "VALID" && resp.Status != "VALIDATED" {
+		return c.Redirect(http.StatusSeeOther, feURL+"/payment/fail?tran_id="+tranID+"&error=verification_failed")
+	}
+
+	// Secure verification checks
+	if resp.TranId != order.ID.String() {
+		return c.Redirect(http.StatusSeeOther, feURL+"/payment/fail?tran_id="+tranID+"&error=transaction_mismatch")
+	}
+
+	gatewayAmount, err1 := strconv.ParseFloat(resp.Amount, 64)
+	orderAmount, err2 := strconv.ParseFloat(order.AmountPaid, 64)
+	if err1 != nil || err2 != nil || math.Abs(gatewayAmount-orderAmount) > 0.01 {
+		return c.Redirect(http.StatusSeeOther, feURL+"/payment/fail?tran_id="+tranID+"&error=amount_mismatch")
+	}
+
+	if resp.Currency != order.Currency {
+		return c.Redirect(http.StatusSeeOther, feURL+"/payment/fail?tran_id="+tranID+"&error=currency_mismatch")
 	}
 
 	// Update order to Completed
 	err = h.store.WithTx(ctx, func(q generated.Querier) error {
-		order, err := q.GetOrderByTranID(ctx, orderUUID)
+		o, err := q.GetOrderByTranID(ctx, orderUUID)
 		if err != nil {
 			return err
 		}
-		if order.Status == generated.OrderStatusCOMPLETED {
+		if o.Status == generated.OrderStatusCOMPLETED {
 			return nil // Already updated
 		}
 
@@ -251,8 +279,8 @@ func (h *CommerceHandler) HandleSuccess(c echo.Context) error {
 			return err
 		}
 
-		if order.CouponID.Valid {
-			return q.IncrementCouponUsage(ctx, order.CouponID.UUID)
+		if o.CouponID.Valid {
+			return q.IncrementCouponUsage(ctx, o.CouponID.UUID)
 		}
 		return nil
 	})
@@ -310,33 +338,58 @@ func (h *CommerceHandler) HandleIPN(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	}
 
-	// Double check with validator
-	ok, err := h.sslcommerzService.ValidateTransaction(valID)
-	if err == nil && ok {
-		_ = h.store.WithTx(ctx, func(q generated.Querier) error {
-			order, err := q.GetOrderByTranID(ctx, orderUUID)
-			if err != nil {
-				return err
-			}
-			if order.Status == generated.OrderStatusCOMPLETED {
-				return nil
-			}
-
-			_, err = q.UpdateOrderReferenceAndStatus(ctx, generated.UpdateOrderReferenceAndStatusParams{
-				ID:                orderUUID,
-				Status:            generated.OrderStatusCOMPLETED,
-				ProviderReference: valID,
-			})
-			if err != nil {
-				return err
-			}
-
-			if order.CouponID.Valid {
-				return q.IncrementCouponUsage(ctx, order.CouponID.UUID)
-			}
-			return nil
-		})
+	order, err := h.store.GetOrderByTranID(ctx, orderUUID)
+	if err != nil {
+		return c.NoContent(http.StatusOK)
 	}
+	if order.Status == generated.OrderStatusCOMPLETED {
+		return c.NoContent(http.StatusOK)
+	}
+
+	// Double check with validator
+	resp, err := h.sslcommerzService.ValidateTransaction(valID)
+	if err != nil || (resp.Status != "VALID" && resp.Status != "VALIDATED") {
+		return c.NoContent(http.StatusOK)
+	}
+
+	// Secure verification checks
+	if resp.TranId != order.ID.String() {
+		return c.NoContent(http.StatusOK)
+	}
+
+	gatewayAmount, err1 := strconv.ParseFloat(resp.Amount, 64)
+	orderAmount, err2 := strconv.ParseFloat(order.AmountPaid, 64)
+	if err1 != nil || err2 != nil || math.Abs(gatewayAmount-orderAmount) > 0.01 {
+		return c.NoContent(http.StatusOK)
+	}
+
+	if resp.Currency != order.Currency {
+		return c.NoContent(http.StatusOK)
+	}
+
+	_ = h.store.WithTx(ctx, func(q generated.Querier) error {
+		o, err := q.GetOrderByTranID(ctx, orderUUID)
+		if err != nil {
+			return err
+		}
+		if o.Status == generated.OrderStatusCOMPLETED {
+			return nil
+		}
+
+		_, err = q.UpdateOrderReferenceAndStatus(ctx, generated.UpdateOrderReferenceAndStatusParams{
+			ID:                orderUUID,
+			Status:            generated.OrderStatusCOMPLETED,
+			ProviderReference: valID,
+		})
+		if err != nil {
+			return err
+		}
+
+		if o.CouponID.Valid {
+			return q.IncrementCouponUsage(ctx, o.CouponID.UUID)
+		}
+		return nil
+	})
 
 	return c.NoContent(http.StatusOK)
 }
@@ -454,4 +507,3 @@ func (h *CommerceHandler) GetEnrolledCourses(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, resp)
 }
-

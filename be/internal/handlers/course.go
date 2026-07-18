@@ -197,7 +197,6 @@ func (h *CourseHandler) ListPublishedCourses(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
-
 type UpdateCourseRequest struct {
 	Title        *string `json:"title" validate:"omitempty,min=3,max=255"`
 	Slug         *string `json:"slug" validate:"omitempty,lowercase,alphanumhyphen"`

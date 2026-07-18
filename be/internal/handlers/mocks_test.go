@@ -156,7 +156,6 @@ func (m *MockStore) ListPublishedCourses(ctx context.Context) ([]generated.ListP
 	return args.Get(0).([]generated.ListPublishedCoursesRow), args.Error(1)
 }
 
-
 // MockMinio is a shared mock for MinioService
 type MockMinio struct {
 	mock.Mock
@@ -274,6 +273,3 @@ func (m *MockStore) ListProgressByUser(ctx context.Context, userID uuid.UUID) ([
 	}
 	return args.Get(0).([]generated.Progress), args.Error(1)
 }
-
-
-

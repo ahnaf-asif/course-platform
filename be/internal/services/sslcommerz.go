@@ -10,7 +10,7 @@ import (
 
 type PaymentGateway interface {
 	InitiatePayment(tranID string, amount float64, currency string, productName string, customerName string, customerEmail string) (string, error)
-	ValidateTransaction(valID string) (bool, error)
+	ValidateTransaction(valID string) (*models.OrderValidateResponse, error)
 }
 
 type SSLCommerzService struct {
@@ -69,15 +69,15 @@ func (s *SSLCommerzService) InitiatePayment(tranID string, amount float64, curre
 	return resp.GatewayPageURL, nil
 }
 
-func (s *SSLCommerzService) ValidateTransaction(valID string) (bool, error) {
+func (s *SSLCommerzService) ValidateTransaction(valID string) (*models.OrderValidateResponse, error) {
 	req := models.OrderValidateRequest{
 		ValId: valID,
 	}
 
 	resp, err := s.client.ValidatePayment(req)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	return resp.Status == "VALID" || resp.Status == "VALIDATED", nil
+	return &resp, nil
 }
