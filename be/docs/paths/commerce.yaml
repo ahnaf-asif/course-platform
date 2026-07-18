@@ -1,0 +1,115 @@
+/orders/checkout:
+  post:
+    summary: Initiate Course Checkout
+    operationId: checkout
+    tags:
+      - commerce
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/commerce.yaml#/CheckoutRequest'
+    responses:
+      '200':
+        description: Checkout URL or Direct Enrollment status
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/commerce.yaml#/CheckoutResponse'
+      '409':
+        description: Course already purchased
+
+/courses/s/{slug}/access:
+  get:
+    summary: Check Course Access Status
+    operationId: checkAccess
+    tags:
+      - commerce
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Access status
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/commerce.yaml#/AccessResponse'
+
+/lessons/{id}:
+  get:
+    summary: Retrieve Lesson details for students
+    operationId: getUserLesson
+    tags:
+      - commerce
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Lesson details
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/LessonResponse'
+
+/courses/enrolled:
+  get:
+    summary: Retrieve user's enrolled courses
+    operationId: getEnrolledCourses
+    tags:
+      - commerce
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: List of enrolled courses
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../components/schemas/commerce.yaml#/EnrolledCourseResponse'
+
+/media/token/{videoId}:
+  get:
+    summary: Get secure streaming token for a video
+    operationId: getMediaStreamToken
+    tags:
+      - commerce
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: videoId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Stream token response
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+
+
+

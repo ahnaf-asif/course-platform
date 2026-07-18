@@ -15,6 +15,7 @@ type Querier interface {
 	AddPrerequisite(ctx context.Context, arg AddPrerequisiteParams) error
 	AttachQuizToNode(ctx context.Context, arg AttachQuizToNodeParams) error
 	AttachTagToNode(ctx context.Context, arg AttachTagToNodeParams) error
+	CheckUserAccessToNode(ctx context.Context, arg CheckUserAccessToNodeParams) (bool, error)
 	// Announcements
 	CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error)
 	// Answers
@@ -57,6 +58,7 @@ type Querier interface {
 	DeleteCourse(ctx context.Context, id uuid.UUID) error
 	DeleteExpiredRefreshTokens(ctx context.Context) error
 	DeleteLesson(ctx context.Context, id uuid.UUID) error
+	DeletePaymentGate(ctx context.Context, nodeID uuid.UUID) error
 	DeleteQuestion(ctx context.Context, id uuid.UUID) error
 	DeleteQuiz(ctx context.Context, id uuid.UUID) error
 	// DELETE HANDLERS (Generic for all nodes)
@@ -64,6 +66,7 @@ type Querier interface {
 	DeleteTag(ctx context.Context, id uuid.UUID) error
 	DetachQuizFromNode(ctx context.Context, arg DetachQuizFromNodeParams) error
 	DetachTagFromNode(ctx context.Context, arg DetachTagFromNodeParams) error
+	GetActiveOrderByUserAndNode(ctx context.Context, arg GetActiveOrderByUserAndNodeParams) (Order, error)
 	GetAttemptWithAnswers(ctx context.Context, id uuid.UUID) ([]GetAttemptWithAnswersRow, error)
 	GetAttemptsByUserAndQuiz(ctx context.Context, arg GetAttemptsByUserAndQuizParams) ([]QuizAttempt, error)
 	GetCertificate(ctx context.Context, id uuid.UUID) (Certificate, error)
@@ -76,16 +79,21 @@ type Querier interface {
 	GetCourseTree(ctx context.Context, id uuid.UUID) ([]GetCourseTreeRow, error)
 	GetCourseTreeHydrated(ctx context.Context, id uuid.UUID) ([]GetCourseTreeHydratedRow, error)
 	GetCourseTreeHydratedBySlug(ctx context.Context, slug string) ([]GetCourseTreeHydratedBySlugRow, error)
+	GetEnrolledCoursesByUser(ctx context.Context, userID uuid.UUID) ([]GetEnrolledCoursesByUserRow, error)
 	GetEnrollment(ctx context.Context, arg GetEnrollmentParams) (Enrollment, error)
 	GetLesson(ctx context.Context, id uuid.UUID) (GetLessonRow, error)
 	GetNodeWithType(ctx context.Context, id uuid.UUID) (Node, error)
 	GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error)
+	GetOrderByTranID(ctx context.Context, id uuid.UUID) (Order, error)
 	GetOrdersByUser(ctx context.Context, userID uuid.UUID) ([]Order, error)
 	GetPaymentGateByNode(ctx context.Context, nodeID uuid.UUID) (PaymentGate, error)
 	GetPrerequisites(ctx context.Context, nodeID uuid.UUID) ([]Node, error)
 	GetProgress(ctx context.Context, arg GetProgressParams) (Progress, error)
+	GetQuizAttempt(ctx context.Context, id uuid.UUID) (QuizAttempt, error)
+	GetQuizAttemptAnswers(ctx context.Context, attemptID uuid.UUID) ([]QuizAttemptAnswer, error)
 	GetQuizByID(ctx context.Context, id uuid.UUID) (Quiz, error)
 	GetQuizzesByNode(ctx context.Context, nodeID uuid.UUID) ([]Quiz, error)
+	GetQuizzesByNodes(ctx context.Context, dollar_1 []uuid.UUID) ([]GetQuizzesByNodesRow, error)
 	GetRefreshToken(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetSubject(ctx context.Context, id uuid.UUID) (GetSubjectRow, error)
 	GetTagByID(ctx context.Context, id uuid.UUID) (Tag, error)
@@ -93,6 +101,7 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserProfile(ctx context.Context, userID uuid.UUID) (UserProfile, error)
+	GetUserQuizAttemptsForQuizzes(ctx context.Context, arg GetUserQuizAttemptsForQuizzesParams) ([]GetUserQuizAttemptsForQuizzesRow, error)
 	GetUserWithProfile(ctx context.Context, id uuid.UUID) (GetUserWithProfileRow, error)
 	IncrementCouponUsage(ctx context.Context, id uuid.UUID) error
 	ListAnnouncementsByCourse(ctx context.Context, nodeID uuid.UUID) ([]Announcement, error)
@@ -101,6 +110,7 @@ type Querier interface {
 	ListEnrollmentsByUser(ctx context.Context, userID uuid.UUID) ([]Enrollment, error)
 	ListNodesByTag(ctx context.Context, tagID uuid.UUID) ([]Node, error)
 	ListProgressByUser(ctx context.Context, userID uuid.UUID) ([]Progress, error)
+	ListPublishedCourses(ctx context.Context) ([]ListPublishedCoursesRow, error)
 	ListQuestionsByQuiz(ctx context.Context, quizID uuid.UUID) ([]Question, error)
 	ListQuizzes(ctx context.Context) ([]Quiz, error)
 	ListReviewsByCourse(ctx context.Context, nodeID uuid.UUID) ([]ListReviewsByCourseRow, error)
@@ -115,6 +125,7 @@ type Querier interface {
 	UpdateChapter(ctx context.Context, arg UpdateChapterParams) (Chapter, error)
 	UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Course, error)
 	UpdateLesson(ctx context.Context, arg UpdateLessonParams) (Lesson, error)
+	UpdateOrderReferenceAndStatus(ctx context.Context, arg UpdateOrderReferenceAndStatusParams) (Order, error)
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
 	UpdateQuestion(ctx context.Context, arg UpdateQuestionParams) (Question, error)
 	UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, error)

@@ -1,0 +1,28 @@
+/nodes/{id}/progress:
+  post:
+    summary: Upsert progress status (STARTED or COMPLETED) for a student node
+    operationId: studentUpsertProgress
+    tags:
+      - curriculum
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/curriculum.yaml#/UpsertProgressRequest'
+    responses:
+      '200':
+        description: Success response containing upserted progress
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/ProgressResponse'

@@ -63,12 +63,34 @@ paths:
     $ref: './paths/admin_users.yaml#/~1admin~1users'
   /admin/users/{id}/role:
     $ref: './paths/admin_users.yaml#/~1admin~1users~1{id}~1role'
+  /courses:
+    $ref: './paths/courses.yaml'
   /courses/{id}/tree:
     $ref: './paths/admin_curriculum.yaml#/~1courses~1{id}~1tree'
   /courses/s/{slug}:
     $ref: './paths/course_by_slug.yaml'
   /courses/s/{slug}/tree:
     $ref: './paths/course_tree_by_slug.yaml'
+  /orders/checkout:
+    $ref: './paths/commerce.yaml#/~1orders~1checkout'
+  /courses/s/{slug}/access:
+    $ref: './paths/commerce.yaml#/~1courses~1s~1{slug}~1access'
+  /courses/enrolled:
+    $ref: './paths/commerce.yaml#/~1courses~1enrolled'
+  /lessons/{id}:
+    $ref: './paths/commerce.yaml#/~1lessons~1{id}'
+  /media/token/{videoId}:
+    $ref: './paths/commerce.yaml#/~1media~1token~1{videoId}'
+  /nodes/{id}/quizzes:
+    $ref: './paths/student_quiz.yaml#/~1nodes~1{id}~1quizzes'
+  /quizzes/{id}/questions:
+    $ref: './paths/student_quiz.yaml#/~1quizzes~1{id}~1questions'
+  /quizzes/{id}/attempts:
+    $ref: './paths/student_quiz.yaml#/~1quizzes~1{id}~1attempts'
+  /attempts/{id}:
+    $ref: './paths/student_quiz.yaml#/~1attempts~1{id}'
+  /nodes/{id}/progress:
+    $ref: './paths/student_progress.yaml#/~1nodes~1{id}~1progress'
 components:
   securitySchemes:
     bearerAuth:
@@ -132,6 +154,22 @@ components:
       $ref: './components/schemas/assessment.yaml#/QuestionResponse'
     BulkQuestionsRequest:
       $ref: './components/schemas/assessment.yaml#/BulkQuestionsRequest'
+    StudentAnswerOption:
+      $ref: './components/schemas/assessment.yaml#/StudentAnswerOption'
+    StudentQuestionResponse:
+      $ref: './components/schemas/assessment.yaml#/StudentQuestionResponse'
+    SubmitAnswerItem:
+      $ref: './components/schemas/assessment.yaml#/SubmitAnswerItem'
+    SubmitQuizRequest:
+      $ref: './components/schemas/assessment.yaml#/SubmitQuizRequest'
+    AttemptAnswerOption:
+      $ref: './components/schemas/assessment.yaml#/AttemptAnswerOption'
+    AttemptDetailQuestion:
+      $ref: './components/schemas/assessment.yaml#/AttemptDetailQuestion'
+    SubmitQuizResponse:
+      $ref: './components/schemas/assessment.yaml#/SubmitQuizResponse'
+    StudentQuizAttemptSummary:
+      $ref: './components/schemas/assessment.yaml#/StudentQuizAttemptSummary'
     AttachQuizRequest:
       $ref: './components/schemas/node_quiz.yaml#/AttachQuizRequest'
     TagResponse:
@@ -144,3 +182,7 @@ components:
       $ref: './components/schemas/tag.yaml#/AttachTagRequest'
     CourseTreeResponse:
       $ref: './components/schemas/curriculum.yaml#/CourseTreeResponse'
+    UpsertProgressRequest:
+      $ref: './components/schemas/curriculum.yaml#/UpsertProgressRequest'
+    ProgressResponse:
+      $ref: './components/schemas/curriculum.yaml#/ProgressResponse'

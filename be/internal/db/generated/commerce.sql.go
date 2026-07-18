@@ -8,9 +8,42 @@ package generated
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
+
+const checkUserAccessToNode = `-- name: CheckUserAccessToNode :one
+WITH RECURSIVE ancestors AS (
+    -- Anchor: start from the specific node
+    SELECT n_anchor.id, n_anchor.parent_id, n_anchor.node_type
+    FROM nodes n_anchor
+    WHERE n_anchor.id = $1
+    UNION ALL
+    -- Recursive step: traverse up to the parent
+    SELECT n_child.id, n_child.parent_id, n_child.node_type
+    FROM nodes n_child
+    JOIN ancestors a ON n_child.id = a.parent_id
+)
+SELECT EXISTS (
+    SELECT 1 FROM orders o
+    WHERE o.user_id = $2
+      AND o.status = 'COMPLETED'
+      AND o.node_id IN (SELECT a_out.id FROM ancestors a_out)
+) as has_access
+`
+
+type CheckUserAccessToNodeParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) CheckUserAccessToNode(ctx context.Context, arg CheckUserAccessToNodeParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, checkUserAccessToNode, arg.ID, arg.UserID)
+	var has_access bool
+	err := row.Scan(&has_access)
+	return has_access, err
+}
 
 const createCoupon = `-- name: CreateCoupon :one
 INSERT INTO coupons (
@@ -111,6 +144,45 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 	return i, err
 }
 
+const deletePaymentGate = `-- name: DeletePaymentGate :exec
+DELETE FROM payment_gates
+WHERE node_id = $1
+`
+
+func (q *Queries) DeletePaymentGate(ctx context.Context, nodeID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deletePaymentGate, nodeID)
+	return err
+}
+
+const getActiveOrderByUserAndNode = `-- name: GetActiveOrderByUserAndNode :one
+SELECT id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at FROM orders
+WHERE user_id = $1 AND node_id = $2 AND status = 'COMPLETED'
+LIMIT 1
+`
+
+type GetActiveOrderByUserAndNodeParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	NodeID uuid.UUID `json:"node_id"`
+}
+
+func (q *Queries) GetActiveOrderByUserAndNode(ctx context.Context, arg GetActiveOrderByUserAndNodeParams) (Order, error) {
+	row := q.db.QueryRowContext(ctx, getActiveOrderByUserAndNode, arg.UserID, arg.NodeID)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.NodeID,
+		&i.CouponID,
+		&i.AmountPaid,
+		&i.Currency,
+		&i.Status,
+		&i.PaymentProvider,
+		&i.ProviderReference,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getCouponByCode = `-- name: GetCouponByCode :one
 SELECT id, code, discount_type, discount_value, max_uses, used_count, expires_at, created_at FROM coupons
 WHERE code = $1 LIMIT 1
@@ -132,6 +204,68 @@ func (q *Queries) GetCouponByCode(ctx context.Context, code string) (Coupon, err
 	return i, err
 }
 
+const getEnrolledCoursesByUser = `-- name: GetEnrolledCoursesByUser :many
+SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.slug, c.description, c.thumbnail_url, c.is_published,
+       pg.price, pg.currency, o.created_at as enrolled_at
+FROM orders o
+JOIN nodes n ON o.node_id = n.id
+JOIN courses c ON n.id = c.node_id
+LEFT JOIN payment_gates pg ON n.id = pg.node_id
+WHERE o.user_id = $1 AND o.status = 'COMPLETED'
+ORDER BY o.created_at DESC
+`
+
+type GetEnrolledCoursesByUserRow struct {
+	ID           uuid.UUID      `json:"id"`
+	ParentID     uuid.NullUUID  `json:"parent_id"`
+	NodeType     NodeType       `json:"node_type"`
+	CreatedAt    time.Time      `json:"created_at"`
+	Title        string         `json:"title"`
+	Slug         string         `json:"slug"`
+	Description  sql.NullString `json:"description"`
+	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
+	IsPublished  bool           `json:"is_published"`
+	Price        sql.NullString `json:"price"`
+	Currency     sql.NullString `json:"currency"`
+	EnrolledAt   time.Time      `json:"enrolled_at"`
+}
+
+func (q *Queries) GetEnrolledCoursesByUser(ctx context.Context, userID uuid.UUID) ([]GetEnrolledCoursesByUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, getEnrolledCoursesByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetEnrolledCoursesByUserRow
+	for rows.Next() {
+		var i GetEnrolledCoursesByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ParentID,
+			&i.NodeType,
+			&i.CreatedAt,
+			&i.Title,
+			&i.Slug,
+			&i.Description,
+			&i.ThumbnailUrl,
+			&i.IsPublished,
+			&i.Price,
+			&i.Currency,
+			&i.EnrolledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getOrderByID = `-- name: GetOrderByID :one
 SELECT id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at FROM orders
 WHERE id = $1 LIMIT 1
@@ -139,6 +273,29 @@ WHERE id = $1 LIMIT 1
 
 func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error) {
 	row := q.db.QueryRowContext(ctx, getOrderByID, id)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.NodeID,
+		&i.CouponID,
+		&i.AmountPaid,
+		&i.Currency,
+		&i.Status,
+		&i.PaymentProvider,
+		&i.ProviderReference,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getOrderByTranID = `-- name: GetOrderByTranID :one
+SELECT id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at FROM orders
+WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetOrderByTranID(ctx context.Context, id uuid.UUID) (Order, error) {
+	row := q.db.QueryRowContext(ctx, getOrderByTranID, id)
 	var i Order
 	err := row.Scan(
 		&i.ID,
@@ -216,6 +373,37 @@ WHERE id = $1
 func (q *Queries) IncrementCouponUsage(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, incrementCouponUsage, id)
 	return err
+}
+
+const updateOrderReferenceAndStatus = `-- name: UpdateOrderReferenceAndStatus :one
+UPDATE orders
+SET status = $2, provider_reference = $3
+WHERE id = $1
+RETURNING id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at
+`
+
+type UpdateOrderReferenceAndStatusParams struct {
+	ID                uuid.UUID   `json:"id"`
+	Status            OrderStatus `json:"status"`
+	ProviderReference string      `json:"provider_reference"`
+}
+
+func (q *Queries) UpdateOrderReferenceAndStatus(ctx context.Context, arg UpdateOrderReferenceAndStatusParams) (Order, error) {
+	row := q.db.QueryRowContext(ctx, updateOrderReferenceAndStatus, arg.ID, arg.Status, arg.ProviderReference)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.NodeID,
+		&i.CouponID,
+		&i.AmountPaid,
+		&i.Currency,
+		&i.Status,
+		&i.PaymentProvider,
+		&i.ProviderReference,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const updateOrderStatus = `-- name: UpdateOrderStatus :one

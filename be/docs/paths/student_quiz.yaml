@@ -1,0 +1,124 @@
+/nodes/{id}/quizzes:
+  get:
+    summary: List quizzes attached to a node for student access
+    operationId: studentListQuizzesByNode
+    tags:
+      - assessment
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: List of quizzes
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../components/schemas/assessment.yaml#/QuizResponse'
+
+/quizzes/{id}/questions:
+  get:
+    summary: Get sanitized questions list for active student participation
+    operationId: studentGetQuizQuestions
+    tags:
+      - assessment
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Sanitized questions list
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../components/schemas/assessment.yaml#/StudentQuestionResponse'
+
+/quizzes/{id}/attempts:
+  post:
+    summary: Submit quiz answers, grade attempt, and return detail questions with explanation
+    operationId: studentSubmitQuizAttempt
+    tags:
+      - assessment
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/assessment.yaml#/SubmitQuizRequest'
+    responses:
+      '200':
+        description: Submitted quiz grading response
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assessment.yaml#/SubmitQuizResponse'
+  get:
+    summary: List attempts history for active student
+    operationId: studentListQuizAttempts
+    tags:
+      - assessment
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Attempts list
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../components/schemas/assessment.yaml#/StudentQuizAttemptSummary'
+
+/attempts/{id}:
+  get:
+    summary: Get full graded details and answers review for a past quiz attempt
+    operationId: studentGetAttemptDetails
+    tags:
+      - assessment
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Graded details and review
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assessment.yaml#/SubmitQuizResponse'

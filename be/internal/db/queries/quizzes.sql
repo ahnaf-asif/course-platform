@@ -133,3 +133,25 @@ WHERE qa.id = $1;
 SELECT * FROM quiz_attempts
 WHERE user_id = $1 AND quiz_id = $2
 ORDER BY completed_at DESC;
+
+-- name: GetQuizAttempt :one
+SELECT * FROM quiz_attempts
+WHERE id = $1 LIMIT 1;
+
+-- name: GetQuizAttemptAnswers :many
+SELECT * FROM quiz_attempt_answers
+WHERE attempt_id = $1;
+
+-- name: GetQuizzesByNodes :many
+SELECT nq.node_id, q.id as quiz_id, q.title, q.passing_score
+FROM quizzes q
+JOIN node_quiz nq ON q.id = nq.quiz_id
+WHERE nq.node_id = ANY($1::uuid[]);
+
+-- name: GetUserQuizAttemptsForQuizzes :many
+SELECT quiz_id, score, is_passed
+FROM quiz_attempts
+WHERE user_id = $1 AND quiz_id = ANY(sqlc.arg(quiz_ids)::uuid[]);
+
+
+
