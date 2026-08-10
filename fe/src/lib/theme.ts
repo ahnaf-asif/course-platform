@@ -3,5 +3,6 @@ import { createTheme } from '@mantine/core';
 export const theme = createTheme({
   primaryColor: 'blue',
   defaultRadius: 'md',
-  fontFamily: 'Verdana, sans-serif',
+  fontFamily: 'var(--font-hind-siliguri), "Hind Siliguri", -apple-system, BlinkMacSystemFont, sans-serif',
 });
+

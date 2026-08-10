@@ -94,18 +94,18 @@ export function QuizActiveAttempt({
   };
 
   return (
-    <Box py={{ base: 'md', md: 'xl' }} px={{ base: 'xs', sm: 'md' }} style={{ width: '100%' }}>
-      <Container size="md" px={{ base: 0, sm: 'md' }} style={{ maxWidth: '840px', width: '100%' }}>
-        <Stack gap="lg">
-          <Box px={{ base: 'md', sm: 0 }}>
+    <Box py="xs" px={0} style={{ width: '100%' }}>
+      <Container size="md" px={0} style={{ maxWidth: '840px', width: '100%' }}>
+        <Stack gap="md">
+          <Box px={0}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text
                 size="xs"
-                fw={700}
+                fw={800}
                 c="blue.6"
                 style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}
               >
-                Active Attempt
+                কুইজ পরীক্ষা চলছে
               </Text>
               <Button
                 variant="subtle"
@@ -117,30 +117,30 @@ export function QuizActiveAttempt({
                   setCurrentQuestionIndex(0);
                 }}
               >
-                Cancel Quiz
+                কুইজ বাতিল করুন
               </Button>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
-              <Title order={2} size="h3" style={{ fontWeight: 700 }}>
-                Question {currentQuestionIndex + 1} of {questionsData.length}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+              <Title order={2} size="h3" style={{ fontWeight: 800 }}>
+                প্রশ্ন {currentQuestionIndex + 1} / {questionsData.length}
               </Title>
-              <Badge color="blue" variant="light">
-                {currentQuestion.question_type === 'SINGLE_CORRECT' ? 'Single Choice' : 'Multiple Choice'}
+              <Badge color="blue" variant="light" size="sm">
+                {currentQuestion.question_type === 'SINGLE_CORRECT' ? 'একক উত্তর' : 'বহুনির্বাচনী'}
               </Badge>
             </div>
           </Box>
 
-          <Divider />
+          <Divider color="#e2e8f0" />
 
-          <Card withBorder radius="md" p={{ base: 'md', sm: 'lg' }} mx={{ base: 'md', sm: 0 }}>
+          <Card withBorder radius="lg" p={{ base: 'sm', sm: 'lg' }} style={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0' }}>
             <Stack gap="md">
-              <Box fw={600} style={{ fontSize: '16px' }}>
+              <Box fw={700} style={{ fontSize: '16px', color: '#0f172a', lineHeight: 1.6 }}>
                 <MathJaxContent html={parseHTMLContent(currentQuestion.content)} />
               </Box>
 
-              <Divider />
+              <Divider color="#f1f5f9" />
 
-              <Stack gap="sm">
+              <Stack gap="xs">
                 {currentQuestion.answers.map((opt) => {
                   const isSelected = selectedOptions.includes(opt.id);
                   return (
@@ -149,20 +149,20 @@ export function QuizActiveAttempt({
                       onClick={() => handleOptionToggle(opt.id)}
                       style={{
                         width: '100%',
-                        padding: '16px',
+                        padding: '12px 16px',
                         border: `2px solid ${
-                          isSelected ? 'var(--mantine-color-blue-filled)' : 'var(--mantine-color-default-border)'
+                          isSelected ? '#2563eb' : '#e2e8f0'
                         }`,
-                        borderRadius: '8px',
+                        borderRadius: '10px',
                         backgroundColor: isSelected
-                          ? 'var(--mantine-color-blue-light)'
-                          : 'var(--mantine-color-default)',
+                          ? 'rgba(37, 99, 235, 0.08)'
+                          : '#ffffff',
                         textAlign: 'left',
-                        transition: 'all 0.2s ease',
+                        transition: 'all 0.15s ease',
                         display: 'block',
                       }}
                     >
-                      <Text size="sm" fw={isSelected ? 600 : 400}>
+                      <Text size="sm" fw={isSelected ? 700 : 500} c={isSelected ? 'blue.8' : 'gray.8'}>
                         {opt.content}
                       </Text>
                     </UnstyledButton>
@@ -172,31 +172,85 @@ export function QuizActiveAttempt({
             </Stack>
           </Card>
 
-          <Group justify="space-between" mt="md" px={{ base: 'md', sm: 0 }} style={{ display: 'flex', width: '100%' }}>
+          {/* Full width stacked buttons for mobile view */}
+          <Stack gap="xs" hiddenFrom="sm" mt="xs" style={{ width: '100%' }}>
+            {currentQuestionIndex < questionsData.length - 1 ? (
+              <Button
+                fullWidth
+                size="md"
+                variant="gradient"
+                gradient={{ from: 'blue', to: 'violet' }}
+                onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
+                rightSection={<IconChevronRight size={18} />}
+                style={{ fontWeight: 700 }}
+              >
+                পরবর্তী প্রশ্ন
+              </Button>
+            ) : (
+              <Button
+                fullWidth
+                size="md"
+                variant="gradient"
+                gradient={{ from: 'teal', to: 'green' }}
+                onClick={handleSubmitQuiz}
+                loading={submitAttemptMutation.isPending}
+                rightSection={<IconCheck size={18} />}
+                style={{ fontWeight: 700 }}
+              >
+                কুইজ জমা দিন
+              </Button>
+            )}
+
             <Button
+              fullWidth
+              size="md"
               variant="outline"
+              color="gray.7"
               onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
               disabled={currentQuestionIndex === 0}
-              leftSection={<IconChevronLeft size={16} />}
+              leftSection={<IconChevronLeft size={18} />}
+              style={{ fontWeight: 600 }}
             >
-              Previous Question
+              পূর্ববর্তী প্রশ্ন
+            </Button>
+          </Stack>
+
+          {/* Side by side buttons for tablet & desktop view */}
+          <Group justify="space-between" mt="md" visibleFrom="sm" style={{ display: 'flex', width: '100%' }}>
+            <Button
+              variant="outline"
+              color="gray.7"
+              size="md"
+              onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
+              disabled={currentQuestionIndex === 0}
+              leftSection={<IconChevronLeft size={18} />}
+              style={{ fontWeight: 600 }}
+            >
+              পূর্ববর্তী প্রশ্ন
             </Button>
 
             {currentQuestionIndex < questionsData.length - 1 ? (
               <Button
+                size="md"
+                variant="gradient"
+                gradient={{ from: 'blue', to: 'violet' }}
                 onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
-                rightSection={<IconChevronRight size={16} />}
+                rightSection={<IconChevronRight size={18} />}
+                style={{ fontWeight: 700 }}
               >
-                Next Question
+                পরবর্তী প্রশ্ন
               </Button>
             ) : (
               <Button
-                color="green"
+                size="md"
+                variant="gradient"
+                gradient={{ from: 'teal', to: 'green' }}
                 onClick={handleSubmitQuiz}
                 loading={submitAttemptMutation.isPending}
-                rightSection={<IconCheck size={16} />}
+                rightSection={<IconCheck size={18} />}
+                style={{ fontWeight: 700 }}
               >
-                Submit Quiz
+                কুইজ জমা দিন
               </Button>
             )}
           </Group>
@@ -210,7 +264,6 @@ interface UnstyledButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEleme
   children: React.ReactNode;
 }
 
-// Inline helper UnstyledButton to avoid custom styles layout issues
 function UnstyledButton({ children, style, ...props }: UnstyledButtonProps) {
   return (
     <button

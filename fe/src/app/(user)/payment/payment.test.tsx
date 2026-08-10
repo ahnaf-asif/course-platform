@@ -27,10 +27,10 @@ describe('Payment Callback Pages', () => {
       mockGet.mockReturnValue('tran-12345');
       render(<SuccessPage />);
 
-      expect(screen.getByText('Payment Successful!')).toBeInTheDocument();
+      expect(screen.getByText(/পেমেন্ট সফল হয়েছে/i)).toBeInTheDocument();
       expect(screen.getByText('tran-12345')).toBeInTheDocument();
-      expect(screen.getByText('PAID / COMPLETED')).toBeInTheDocument();
-      expect(screen.getByText('My Dashboard')).toBeInTheDocument();
+      expect(screen.getByText('PAID')).toBeInTheDocument();
+      expect(screen.getByText('আমার ড্যাশবোর্ডে যান')).toBeInTheDocument();
     });
   });
 
@@ -44,7 +44,7 @@ describe('Payment Callback Pages', () => {
 
       render(<FailPage />);
 
-      expect(screen.getByText('Payment Failed')).toBeInTheDocument();
+      expect(screen.getByText('পেমেন্ট সম্পন্ন করা যায়নি')).toBeInTheDocument();
       expect(screen.getByText('tran-failed-id')).toBeInTheDocument();
       expect(screen.getByText('Transaction could not be completed')).toBeInTheDocument();
     });

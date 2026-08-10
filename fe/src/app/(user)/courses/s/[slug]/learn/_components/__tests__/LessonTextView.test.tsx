@@ -21,10 +21,10 @@ describe('LessonTextView Component', () => {
       />
     );
 
-    expect(screen.getByText('Reading Material')).toBeInTheDocument();
+    expect(screen.getByText('লেকচার নোট ও রিভিশন শিট')).toBeInTheDocument();
     expect(screen.getByText('Test Lesson Title')).toBeInTheDocument();
     expect(screen.getByText('This is the test lesson written content.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /mark as completed/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /পড়া সম্পন্ন হিসেবে চিহ্নিত করুন/i })).toBeInTheDocument();
   });
 
   it('renders completed status and triggers updateProgress on button click', () => {
@@ -39,7 +39,7 @@ describe('LessonTextView Component', () => {
       />
     );
 
-    const completedBtn = screen.getByRole('button', { name: /completed/i });
+    const completedBtn = screen.getByRole('button', { name: /পড়া সম্পন্ন হয়েছে/i });
     expect(completedBtn).toBeInTheDocument();
 
     fireEvent.click(completedBtn);

@@ -1,4 +1,4 @@
-import { Box, Divider, NavLink, Progress, Stack, Text, Title, Group } from '@mantine/core';
+import { Box, NavLink, Progress, Stack, Text, Title, Group, Badge } from '@mantine/core';
 import {
   IconBook,
   IconCheck,
@@ -39,146 +39,144 @@ export function SyllabusSidebar({
     if (setMobileSidebarOpen) setMobileSidebarOpen(false);
   };
 
-  const progressPercent = totalSlidesCount > 0 ? (currentSlideProgressIndex / totalSlidesCount) * 100 : 0;
+  const progressPercent = totalSlidesCount > 0 ? Math.min(100, Math.round((currentSlideProgressIndex / totalSlidesCount) * 100)) : 0;
 
   const renderSyllabusContent = () => (
-    <Stack gap="md">
+    <Stack gap="lg">
       {organizedTree.map((subject) => (
         <Box key={subject.id}>
           <Text
             size="xs"
-            fw={700}
-            c="blue.6"
+            fw={800}
+            c="blue.7"
             style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}
-            mb={8}
+            mb={6}
           >
             {subject.title}
           </Text>
           <Stack gap="xs">
             {subject.children.map((chapter) => (
               <Box key={chapter.id}>
-                <Text size="xs" fw={600} c="dimmed" mb={6}>
+                <Text size="xs" fw={700} c="gray.6" mb={4}>
                   {chapter.title}
                 </Text>
-                <div
-                  style={{
-                    borderLeft: '1px solid var(--mantine-color-default-border)',
-                    paddingLeft: '8px',
-                    marginLeft: '4px',
-                  }}
-                >
-                  <Stack gap={4}>
-                    {chapter.children.flatMap((lesson) => {
-                      const isLessonActive = selectedLessonId === lesson.id;
-                      const isLessonCompleted = lesson.progress_status === 'COMPLETED';
+                <Stack gap={2}>
+                  {chapter.children.flatMap((lesson) => {
+                    const isLessonActive = selectedLessonId === lesson.id;
+                    const isLessonCompleted = lesson.progress_status === 'COMPLETED';
 
-                      const lessonLink = (
+                    const lessonLink = (
+                      <NavLink
+                        key={lesson.id}
+                        active={isLessonActive && !activeQuizId}
+                        label={lesson.title}
+                        leftSection={
+                          isLessonCompleted ? (
+                            <IconCheck size={16} color="#10b981" />
+                          ) : lesson.video_url ? (
+                            <IconVideo size={16} color={isLessonActive ? '#2563eb' : '#64748b'} />
+                          ) : (
+                            <IconFileText size={16} color={isLessonActive ? '#2563eb' : '#64748b'} />
+                          )
+                        }
+                        onClick={() => onSelectLesson(lesson.id)}
+                        styles={{
+                          root: {
+                            borderRadius: '8px',
+                            padding: '8px 10px',
+                            fontSize: '13px',
+                            transition: 'all 0.15s ease',
+                            backgroundColor:
+                              isLessonActive && !activeQuizId
+                                ? 'rgba(37, 99, 235, 0.08)'
+                                : 'transparent',
+                            color:
+                              isLessonActive && !activeQuizId
+                                ? '#2563eb'
+                                : '#334155',
+                            fontWeight: isLessonActive && !activeQuizId ? 700 : 500,
+                          },
+                          label: {
+                            whiteSpace: 'normal',
+                            wordBreak: 'break-word',
+                            lineHeight: 1.4,
+                          },
+                        }}
+                      />
+                    );
+
+                    const quizLinks = (lesson.quizzes ?? []).map((quiz) => {
+                      const isQuizActive = activeQuizId === quiz.id;
+                      const isQuizPassed = quiz.is_passed;
+                      return (
                         <NavLink
-                          key={lesson.id}
-                          active={isLessonActive && !activeQuizId}
-                          label={lesson.title}
+                          key={quiz.id}
+                          active={isQuizActive}
+                          label={quiz.title}
                           leftSection={
-                            isLessonCompleted ? (
-                              <IconCheck size={14} color="var(--mantine-color-green-filled)" />
-                            ) : lesson.video_url ? (
-                              <IconVideo size={14} />
+                            isQuizPassed ? (
+                              <IconCheck size={16} color="#10b981" />
                             ) : (
-                              <IconFileText size={14} />
+                              <IconHelpCircle size={16} color={isQuizActive ? '#7c3aed' : '#9333ea'} />
                             )
                           }
-                          onClick={() => onSelectLesson(lesson.id)}
+                          onClick={() => onSelectQuiz(lesson.id, quiz.id)}
                           styles={{
                             root: {
-                              borderRadius: '6px',
+                              borderRadius: '8px',
                               padding: '8px 10px',
                               fontSize: '13px',
-                              transition: 'all 0.2s ease',
-                              backgroundColor:
-                                isLessonActive && !activeQuizId
-                                  ? 'var(--mantine-color-blue-light)'
-                                  : 'transparent',
-                              color:
-                                isLessonActive && !activeQuizId
-                                  ? 'var(--mantine-color-blue-filled)'
-                                  : 'inherit',
-                              fontWeight: isLessonActive && !activeQuizId ? 600 : 400,
+                              transition: 'all 0.15s ease',
+                              backgroundColor: isQuizActive
+                                ? 'rgba(124, 58, 237, 0.08)'
+                                : 'transparent',
+                              color: isQuizActive
+                                ? '#7c3aed'
+                                : '#334155',
+                              fontWeight: isQuizActive ? 700 : 500,
                             },
                             label: {
                               whiteSpace: 'normal',
                               wordBreak: 'break-word',
+                              lineHeight: 1.4,
                             },
                           }}
                         />
                       );
+                    });
 
-                      const quizLinks = (lesson.quizzes ?? []).map((quiz) => {
-                        const isQuizActive = activeQuizId === quiz.id;
-                        const isQuizPassed = quiz.is_passed;
-                        return (
-                          <NavLink
-                            key={quiz.id}
-                            active={isQuizActive}
-                            label={quiz.title}
-                            leftSection={
-                              isQuizPassed ? (
-                                <IconCheck size={14} color="var(--mantine-color-green-filled)" />
-                              ) : (
-                                <IconHelpCircle size={14} />
-                              )
-                            }
-                            onClick={() => onSelectQuiz(lesson.id, quiz.id)}
-                            styles={{
-                              root: {
-                                borderRadius: '6px',
-                                padding: '8px 10px',
-                                fontSize: '13px',
-                                transition: 'all 0.2s ease',
-                                backgroundColor: isQuizActive
-                                  ? 'var(--mantine-color-blue-light)'
-                                  : 'transparent',
-                                color: isQuizActive
-                                  ? 'var(--mantine-color-blue-filled)'
-                                  : 'inherit',
-                                fontWeight: isQuizActive ? 600 : 400,
-                              },
-                              label: {
-                                whiteSpace: 'normal',
-                                wordBreak: 'break-word',
-                              },
-                            }}
-                          />
-                        );
-                      });
-
-                      return [lessonLink, ...quizLinks];
-                    })}
-                  </Stack>
-                </div>
+                    return [lessonLink, ...quizLinks];
+                  })}
+                </Stack>
               </Box>
             ))}
           </Stack>
-          <Divider my="sm" />
         </Box>
       ))}
     </Stack>
   );
 
   return (
-    <Box style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box p="md" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+    <Box style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', color: '#0f172a' }}>
+      <Box p="md" style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#fafbfc' }}>
         <Stack gap="xs">
-          <Title order={4} size="h5" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <IconBook size={18} color="var(--mantine-color-blue-filled)" />
-            Syllabus
-          </Title>
+          <Group justify="space-between" align="center">
+            <Title order={4} size="h5" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a', fontWeight: 800 }}>
+              <IconBook size={18} color="#2563eb" />
+              কোর্স সিলেবাস
+            </Title>
+            <Badge variant="gradient" gradient={{ from: 'blue', to: 'violet' }} size="sm">
+              {progressPercent}% সম্পূর্ণ
+            </Badge>
+          </Group>
           <Group justify="space-between" mb={2} style={{ display: 'flex', width: '100%' }}>
-            <Text size="xs" fw={500} c="dimmed">
-              Course Progress
+            <Text size="xs" fw={600} c="gray.6">
+              পড়াশোনার অগ্রগতি
             </Text>
-            <Text size="xs" c="dimmed" fw={500}>
+            <Text size="xs" c="gray.7" fw={700}>
               {currentSlideProgressIndex > 0
                 ? `${currentSlideProgressIndex} / ${totalSlidesCount}`
-                : `0 / ${totalSlidesCount}`}
+                : `০ / ${totalSlidesCount}`}
             </Text>
           </Group>
           <Progress value={progressPercent} size="xs" radius="xl" color="blue" animated />

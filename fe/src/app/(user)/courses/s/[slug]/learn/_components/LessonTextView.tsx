@@ -26,43 +26,47 @@ export function LessonTextView({
   const isCompleted = currentTreeNode?.progress_status === 'COMPLETED';
 
   return (
-    <Box py={{ base: 'md', md: 'xl' }} px={{ base: 'xs', sm: 'md' }} style={{ width: '100%' }}>
-      <Container size="md" px={{ base: 0, sm: 'md' }} style={{ maxWidth: '840px', width: '100%' }}>
-        <Stack gap="xl" px={{ base: 'md', sm: 0 }}>
+    <Box py={{ base: 'xs', sm: 'md' }} px={0} style={{ width: '100%', backgroundColor: '#ffffff', minHeight: '100%' }}>
+      <Container size="md" px={{ base: 'xs', sm: 'md' }} style={{ maxWidth: '840px', width: '100%' }}>
+        <Stack gap="md">
           <Box>
-            <Text size="xs" fw={700} c="blue.6" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Reading Material
+            <Text size="xs" fw={800} c="blue.6" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
+              লেকচার নোট ও রিভিশন শিট
             </Text>
-            <Title order={1} size="h2" mt={4} style={{ fontWeight: 800 }}>
+            <Title order={1} size="h3" mt={4} style={{ fontWeight: 800, color: '#0f172a' }}>
               {lessonDetails.title}
             </Title>
           </Box>
 
-          <Divider />
+          <Divider color="#e2e8f0" />
 
-          <Box style={{ minHeight: '250px' }}>
+          <Box style={{ minHeight: '180px', lineHeight: 1.8, fontSize: '15px', color: '#334155' }}>
             {lessonDetails.text_content ? (
               <MathJaxContent html={parseHTMLContent(lessonDetails.text_content)} />
             ) : (
               <Text c="dimmed" style={{ fontStyle: 'italic' }}>
-                No written content for this lesson.
+                এই লেকচারের জন্য কোনো লিখিত কন্টেন্ট পাওয়া যায়নি।
               </Text>
             )}
           </Box>
 
-          <Box mt="xl">
+          <Box mt="md" pb="xs">
             <Button
-              color={isCompleted ? 'green' : 'blue'}
-              variant={isCompleted ? 'light' : 'filled'}
-              leftSection={<IconCheck size={16} />}
+              variant={isCompleted ? 'light' : 'gradient'}
+              gradient={isCompleted ? undefined : { from: 'blue', to: 'violet' }}
+              color={isCompleted ? 'green' : undefined}
+              leftSection={<IconCheck size={18} />}
+              size="md"
+              radius="md"
               onClick={() => {
                 if (selectedLessonId) {
                   updateProgress(selectedLessonId, 'COMPLETED');
                 }
               }}
               loading={isPendingProgress}
+              style={{ fontWeight: 700 }}
             >
-              {isCompleted ? 'Completed' : 'Mark as Completed'}
+              {isCompleted ? 'পড়া সম্পন্ন হয়েছে' : 'পড়া সম্পন্ন হিসেবে চিহ্নিত করুন'}
             </Button>
           </Box>
         </Stack>

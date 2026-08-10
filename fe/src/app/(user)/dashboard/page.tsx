@@ -16,11 +16,10 @@ import {
   Tabs,
   ThemeIcon,
   Box,
-  Divider,
 } from '@mantine/core';
 import { useGetEnrolledCourses } from '@/api/generated/commerce/commerce';
 import { useListPublishedCourses } from '@/api/generated/course/course';
-import { IconBooks, IconCompass, IconBook, IconCalendar } from '@tabler/icons-react';
+import { IconBooks, IconCompass, IconBook, IconCalendar, IconArrowRight } from '@tabler/icons-react';
 import Link from 'next/link';
 
 export default function UserDashboard() {
@@ -39,7 +38,7 @@ export default function UserDashboard() {
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleDateString(undefined, {
+      return new Date(dateStr).toLocaleDateString('bn-BD', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -50,219 +49,314 @@ export default function UserDashboard() {
   };
 
   return (
-    <Container size="lg" py="xl">
-      {/* Header Section */}
-      <Box mb="xl" style={{ position: 'relative' }}>
-        <Title order={1} mb="xs" style={{ fontFamily: 'Outfit, Inter, sans-serif', fontWeight: 800 }}>
-          My Learning Center
-        </Title>
-        <Text c="dimmed" size="lg">
-          Track your progress, access your courses, and discover new skills.
-        </Text>
+    <Box pb="xl">
+      {/* Hero Section */}
+      <Box
+        py={{ base: '32px', sm: '50px', md: '75px' }}
+        style={{
+          background: 'radial-gradient(circle at 80% 20%, #1e1b4b 0%, #0f172a 60%, #020617 100%)',
+          color: 'white',
+          position: 'relative',
+        }}
+        mb={{ base: '20px', sm: '36px' }}
+      >
+        <div className="glow-effect" style={{ top: '10%', right: '15%', opacity: 0.7 }} />
+        <Container size="xl" style={{ position: 'relative', zIndex: 10 }}>
+          <Stack gap="xs">
+            <Badge variant="gradient" gradient={{ from: 'blue', to: 'violet' }} size="lg" radius="sm" style={{ width: 'fit-content' }}>
+              লার্নিং সেন্টার
+            </Badge>
+            <Title order={1} style={{ fontSize: 'clamp(28px, 5vw, 40px)', fontWeight: 900 }}>
+              আমার ড্যাশবোর্ড
+            </Title>
+            <Text size="md" style={{ color: 'var(--mantine-color-gray-4)', lineHeight: 1.6, maxWidth: '600px' }}>
+              আপনার বিসিএস প্রিলি প্রস্তুতির অগ্রগতি ট্র্যাক করুন এবং বিষয়ভিত্তিক কোর্সগুলোতে সরাসরি প্রবেশ করুন।
+            </Text>
+          </Stack>
+        </Container>
       </Box>
 
-      {/* Tabs Menu */}
-      <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md">
-        <Tabs.List mb="xl">
-          <Tabs.Tab 
-            value="my-courses" 
-            leftSection={<IconBooks size={16} />}
-            style={{ fontWeight: 600, padding: '12px 20px' }}
-          >
-            My Courses
-          </Tabs.Tab>
-          <Tabs.Tab 
-            value="discover" 
-            leftSection={<IconCompass size={16} />}
-            style={{ fontWeight: 600, padding: '12px 20px' }}
-          >
-            Discover Courses
-          </Tabs.Tab>
-        </Tabs.List>
-
-        {/* Tab 1: My Courses */}
-        <Tabs.Panel value="my-courses">
-          {isLoadingEnrolled ? (
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Card key={i} p="md" radius="md" withBorder>
-                  <Skeleton height={160} radius="md" mb="md" />
-                  <Skeleton height={20} radius="sm" width="70%" mb="xs" />
-                  <Skeleton height={14} radius="sm" width="90%" mb="md" />
-                  <Skeleton height={36} radius="sm" />
-                </Card>
-              ))}
-            </SimpleGrid>
-          ) : !enrolledCourses || enrolledCourses.length === 0 ? (
-            <Card 
-              p="xl" 
-              radius="md" 
-              withBorder 
-              style={{ 
-                textAlign: 'center', 
-                backgroundColor: 'var(--mantine-color-gray-0)',
-                borderStyle: 'dashed',
-                borderWidth: '2px'
-              }}
+      {/* Main Content Area */}
+      <Container size="xl">
+        {/* Tabs Menu */}
+        <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md">
+          <Tabs.List mb="xl">
+            <Tabs.Tab 
+              value="my-courses" 
+              leftSection={<IconBooks size={18} />}
+              style={{ fontWeight: 700, fontSize: '14px' }}
+              py={{ base: '8px', sm: '12px' }}
+              px={{ base: '12px', sm: '24px' }}
             >
-              <Stack align="center" gap="md" py="xl">
-                <ThemeIcon size={60} radius="xl" color="blue" variant="light">
-                  <IconBook size={30} />
-                </ThemeIcon>
-                <Title order={3}>No Enrolled Courses</Title>
-                <Text c="dimmed" maw={460} mx="auto" size="sm">
-                  You haven&apos;t enrolled in any courses yet. Explore our catalog of professional courses to start your learning journey.
-                </Text>
-                <Button onClick={() => setActiveTab('discover')} variant="light" size="md" radius="md" mt="xs">
-                  Browse Catalog
-                </Button>
-              </Stack>
-            </Card>
-          ) : (
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-              {enrolledCourses.map((course) => (
-                <Card 
-                  key={course.id} 
-                  p="md" 
-                  radius="md" 
-                  withBorder 
-                  shadow="sm"
-                  style={{
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      transform: 'translateY(-5px)',
-                      boxShadow: 'var(--mantine-shadow-md)',
-                    }
-                  }}
-                  component={Link}
-                  href={`/courses/s/${course.slug}/learn`}
-                >
-                  <Card.Section>
-                    <Image
-                      src={course.thumbnail_url || 'https://placehold.co/600x400?text=Course+Thumbnail'}
-                      height={160}
-                      alt={course.title}
-                    />
-                  </Card.Section>
+              আমার কোর্সসমূহ
+            </Tabs.Tab>
+            <Tabs.Tab 
+              value="discover" 
+              leftSection={<IconCompass size={18} />}
+              style={{ fontWeight: 700, fontSize: '14px' }}
+              py={{ base: '8px', sm: '12px' }}
+              px={{ base: '12px', sm: '24px' }}
+            >
+              কোর্স এক্সপ্লোর করুন
+            </Tabs.Tab>
+          </Tabs.List>
 
-                  <Stack gap="xs" mt="md" style={{ flex: 1 }}>
-                    <Title order={4} lineClamp={1}>
-                      {course.title}
-                    </Title>
-                    <Text size="sm" c="dimmed" lineClamp={2} style={{ minHeight: 40 }}>
-                      {course.description}
-                    </Text>
-
-                    <Divider my="xs" />
-
-                    <Group gap="xs" style={{ marginTop: 'auto' }}>
-                      <IconCalendar size={14} color="var(--mantine-color-dimmed)" />
-                      <Text size="xs" c="dimmed">
-                        Enrolled on {formatDate(course.enrolled_at)}
-                      </Text>
-                    </Group>
-
-                    <Button 
-                      color="green" 
-                      fullWidth 
-                      mt="md" 
-                      radius="md"
-                      leftSection={<IconBook size={16} />}
-                    >
-                      Resume Learning
-                    </Button>
-                  </Stack>
-                </Card>
-              ))}
-            </SimpleGrid>
-          )}
-        </Tabs.Panel>
-
-        {/* Tab 2: Discover Courses */}
-        <Tabs.Panel value="discover">
-          {isLoadingAll ? (
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Card key={i} p="md" radius="md" withBorder>
-                  <Skeleton height={160} radius="md" mb="md" />
-                  <Skeleton height={20} radius="sm" width="70%" mb="xs" />
-                  <Skeleton height={14} radius="sm" width="90%" mb="md" />
-                  <Skeleton height={36} radius="sm" />
-                </Card>
-              ))}
-            </SimpleGrid>
-          ) : !allCourses || allCourses.length === 0 ? (
-            <Card p="xl" radius="md" withBorder style={{ textAlign: 'center' }}>
-              <Text c="dimmed">No courses are currently available for enrollment.</Text>
-            </Card>
-          ) : (
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-              {allCourses.map((course) => {
-                const enrolled = isEnrolled(course.id);
-                const isPaid = course.price && course.price !== '0.00';
-
-                return (
+          {/* Tab 1: My Courses */}
+          <Tabs.Panel value="my-courses">
+            {isLoadingEnrolled ? (
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i} p="md" radius="md" withBorder>
+                    <Skeleton height={160} radius="md" mb="md" />
+                    <Skeleton height={20} radius="sm" width="70%" mb="xs" />
+                    <Skeleton height={14} radius="sm" width="90%" mb="md" />
+                    <Skeleton height={36} radius="sm" />
+                  </Card>
+                ))}
+              </SimpleGrid>
+            ) : !enrolledCourses || enrolledCourses.length === 0 ? (
+              <Card 
+                p={{ base: 'xl', sm: '40px' }} 
+                radius="lg" 
+                withBorder 
+                style={{ 
+                  textAlign: 'center', 
+                  backgroundColor: '#fafbfc',
+                  borderStyle: 'dashed',
+                  borderWidth: '2px',
+                  borderColor: '#cbd5e1',
+                }}
+              >
+                <Stack align="center" gap="md" py="lg">
+                  <ThemeIcon size={64} radius="xl" color="blue" variant="light">
+                    <IconBook size={32} />
+                  </ThemeIcon>
+                  <Title order={3} style={{ fontWeight: 800 }}>কোনো এনরোল করা কোর্স নেই</Title>
+                  <Text c="dimmed" maw={500} mx="auto" size="sm" style={{ lineHeight: 1.6 }}>
+                    আপনি এখনো কোনো প্রিলি কোর্সে এনরোল করেননি। সেরা প্রস্তুতির জন্য আজই আমাদের বিষয়ভিত্তিক কোর্স ক্যাটালগ এক্সপ্লোর করুন।
+                  </Text>
+                  <Button
+                    onClick={() => setActiveTab('discover')}
+                    variant="gradient"
+                    gradient={{ from: 'blue', to: 'violet' }}
+                    size="md"
+                    radius="md"
+                    mt="xs"
+                    style={{ fontWeight: 700 }}
+                  >
+                    কোর্সসমূহ এক্সপ্লোর করুন
+                  </Button>
+                </Stack>
+              </Card>
+            ) : (
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xl">
+                {enrolledCourses.map((course) => (
                   <Card 
                     key={course.id} 
-                    p="md" 
-                    radius="md" 
+                    shadow="xs"
+                    padding="lg" 
+                    radius="20px" 
                     withBorder 
-                    shadow="sm"
+                    className="modern-course-card"
                     style={{
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-5px)',
-                        boxShadow: 'var(--mantine-shadow-md)',
-                      }
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      height: '100%',
+                      borderColor: '#e2e8f0',
+                      backgroundColor: '#ffffff',
                     }}
                   >
-                    <Card.Section style={{ position: 'relative' }}>
-                      <Image
-                        src={course.thumbnail_url || 'https://placehold.co/600x400?text=Course+Thumbnail'}
-                        height={160}
-                        alt={course.title}
-                      />
-                      <Box style={{ position: 'absolute', top: 12, right: 12 }}>
-                        {enrolled ? (
-                          <Badge color="green" size="md" variant="filled">Enrolled</Badge>
-                        ) : isPaid ? (
-                          <Badge color="blue" size="md" variant="filled">
-                            {course.price} {course.currency || 'BDT'}
+                    <div>
+                      <Card.Section style={{ position: 'relative', overflow: 'hidden' }}>
+                        <Image
+                          src={course.thumbnail_url || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80'}
+                          height={190}
+                          alt={course.title}
+                          fallbackSrc="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80"
+                          className="card-img"
+                        />
+                        <Box
+                          style={{
+                            position: 'absolute',
+                            top: 12,
+                            right: 12,
+                            backgroundColor: 'rgba(13, 148, 136, 0.85)',
+                            backdropFilter: 'blur(8px)',
+                            WebkitBackdropFilter: 'blur(8px)',
+                            border: '1px solid rgba(255, 255, 255, 0.25)',
+                            borderRadius: '100px',
+                            padding: '4px 14px',
+                            color: 'white',
+                            fontWeight: 800,
+                            fontSize: '12px',
+                          }}
+                        >
+                          এনরোল করা আছে
+                        </Box>
+                      </Card.Section>
+
+                      <Stack gap="xs" mt="md">
+                        <Group justify="space-between" align="center">
+                          <Badge variant="light" color="blue" size="xs" radius="sm">
+                            বিসিএস প্রিলিমিনারি
                           </Badge>
-                        ) : (
-                          <Badge color="teal" size="md" variant="filled">FREE</Badge>
-                        )}
-                      </Box>
-                    </Card.Section>
+                          <Group gap={4} align="center">
+                            <IconCalendar size={13} style={{ color: '#64748b' }} />
+                            <Text size="xs" c="dimmed" fw={600}>
+                              {formatDate(course.enrolled_at)}
+                            </Text>
+                          </Group>
+                        </Group>
 
-                    <Stack gap="xs" mt="md" style={{ flex: 1 }}>
-                      <Title order={4} lineClamp={1}>
-                        {course.title}
-                      </Title>
-                      <Text size="sm" c="dimmed" lineClamp={2} style={{ minHeight: 40 }}>
-                        {course.description}
-                      </Text>
+                        <Title order={3} style={{ fontSize: '18px', fontWeight: 800, lineHeight: 1.35 }} lineClamp={2} c="gray.9">
+                          {course.title}
+                        </Title>
 
+                        <Text size="sm" c="dimmed" lineClamp={2} style={{ lineHeight: 1.6, minHeight: '44px' }}>
+                          {course.description || 'এই কোর্সের বিস্তারিত পড়াশোনা শুরু করতে নিচে ক্লিক করুন।'}
+                        </Text>
+                      </Stack>
+                    </div>
+
+                    <Box mt="md" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px' }}>
                       <Button 
-                        component={Link}
-                        href={enrolled ? `/courses/s/${course.slug}/learn` : `/courses/s/${course.slug}`}
-                        variant={enrolled ? 'outline' : 'filled'}
-                        color={enrolled ? 'green' : 'blue'}
+                        variant="gradient"
+                        gradient={{ from: 'teal', to: 'green' }}
                         fullWidth 
-                        mt="auto" 
                         radius="md"
+                        size="md"
+                        leftSection={<IconBook size={18} />}
+                        component={Link}
+                        href={`/courses/s/${course.slug}/learn`}
+                        style={{ fontWeight: 700, boxShadow: '0 4px 12px rgba(13, 148, 136, 0.25)' }}
                       >
-                        {enrolled ? 'Go to Course' : 'View Course'}
+                        পড়াশোনা চালিয়ে যান
                       </Button>
-                    </Stack>
+                    </Box>
                   </Card>
-                );
-              })}
-            </SimpleGrid>
-          )}
-        </Tabs.Panel>
-      </Tabs>
-    </Container>
+                ))}
+              </SimpleGrid>
+            )}
+          </Tabs.Panel>
+
+          {/* Tab 2: Discover Courses */}
+          <Tabs.Panel value="discover">
+            {isLoadingAll ? (
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i} p="md" radius="md" withBorder>
+                    <Skeleton height={160} radius="md" mb="md" />
+                    <Skeleton height={20} radius="sm" width="70%" mb="xs" />
+                    <Skeleton height={14} radius="sm" width="90%" mb="md" />
+                    <Skeleton height={36} radius="sm" />
+                  </Card>
+                ))}
+              </SimpleGrid>
+            ) : !allCourses || allCourses.length === 0 ? (
+              <Card p="xl" radius="md" withBorder style={{ textAlign: 'center' }}>
+                <Text c="dimmed">বর্তমানে এনরোলমেন্টের জন্য কোনো নতুন কোর্স উপলব্ধ নেই।</Text>
+              </Card>
+            ) : (
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xl">
+                {allCourses.map((course) => {
+                  const enrolled = isEnrolled(course.id);
+                  const isPaid = course.price && course.price !== '0.00';
+                  const priceText = enrolled ? 'এনরোল করা আছে' : isPaid ? `${course.price} ${course.currency || 'BDT'}` : 'ফ্রি';
+
+                  return (
+                    <Card 
+                      key={course.id} 
+                      shadow="xs"
+                      padding="lg" 
+                      radius="20px" 
+                      withBorder 
+                      className="modern-course-card"
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        height: '100%',
+                        borderColor: '#e2e8f0',
+                        backgroundColor: '#ffffff',
+                      }}
+                    >
+                      <div>
+                        <Card.Section style={{ position: 'relative', overflow: 'hidden' }}>
+                          <Image
+                            src={course.thumbnail_url || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80'}
+                            height={190}
+                            alt={course.title}
+                            fallbackSrc="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80"
+                            className="card-img"
+                          />
+                          <Box
+                            style={{
+                              position: 'absolute',
+                              top: 12,
+                              right: 12,
+                              backgroundColor: enrolled || !isPaid ? 'rgba(13, 148, 136, 0.85)' : 'rgba(15, 23, 42, 0.85)',
+                              backdropFilter: 'blur(8px)',
+                              WebkitBackdropFilter: 'blur(8px)',
+                              border: '1px solid rgba(255, 255, 255, 0.25)',
+                              borderRadius: '100px',
+                              padding: '4px 14px',
+                              color: 'white',
+                              fontWeight: 800,
+                              fontSize: '12px',
+                            }}
+                          >
+                            {priceText}
+                          </Box>
+                        </Card.Section>
+
+                        <Stack gap="xs" mt="md">
+                          <Group justify="space-between" align="center">
+                            <Badge variant="light" color="blue" size="xs" radius="sm">
+                              বিসিএস প্রিলিমিনারি
+                            </Badge>
+                            <Group gap={4} align="center">
+                              <IconBook size={13} style={{ color: '#64748b' }} />
+                              <Text size="xs" c="dimmed" fw={600}>
+                                বিষয়ভিত্তিক
+                              </Text>
+                            </Group>
+                          </Group>
+
+                          <Title order={3} style={{ fontSize: '18px', fontWeight: 800, lineHeight: 1.35 }} lineClamp={2} c="gray.9">
+                            {course.title}
+                          </Title>
+
+                          <Text size="sm" c="dimmed" lineClamp={2} style={{ lineHeight: 1.6, minHeight: '44px' }}>
+                            {course.description || 'বিসিএস প্রিলিমিনারি পরীক্ষার শতভাগ সিলেবাস কাভার করে তৈরি করা আমাদের স্পেশাল কোর্স।'}
+                          </Text>
+                        </Stack>
+                      </div>
+
+                      <Box mt="md" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px' }}>
+                        <Button 
+                          component={Link}
+                          href={enrolled ? `/courses/s/${course.slug}/learn` : `/courses/s/${course.slug}`}
+                          variant={enrolled ? 'outline' : 'gradient'}
+                          gradient={enrolled ? undefined : { from: 'blue', to: 'violet' }}
+                          color={enrolled ? 'green' : undefined}
+                          fullWidth 
+                          radius="md"
+                          size="md"
+                          rightSection={<IconArrowRight size={16} />}
+                          style={{ fontWeight: 700, boxShadow: enrolled ? undefined : '0 4px 12px rgba(59, 130, 246, 0.25)' }}
+                        >
+                          {enrolled ? 'কোর্সে যান' : 'বিস্তারিত দেখুন'}
+                        </Button>
+                      </Box>
+                    </Card>
+                  );
+                })}
+              </SimpleGrid>
+            )}
+          </Tabs.Panel>
+        </Tabs>
+      </Container>
+    </Box>
   );
 }

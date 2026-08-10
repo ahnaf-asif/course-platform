@@ -57,7 +57,7 @@ describe('UserProfilePage Component', () => {
   it('renders initial user profile values correctly', () => {
     render(<UserProfilePage />);
 
-    expect(screen.getByText('Account Settings')).toBeInTheDocument();
+    expect(screen.getByText('অ্যাকাউন্ট সেটিংস')).toBeInTheDocument();
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Jane Doe')).toBeInTheDocument();
     expect(screen.getByDisplayValue('jane@example.com')).toBeInTheDocument();
@@ -76,7 +76,7 @@ describe('UserProfilePage Component', () => {
     const nameInput = screen.getByDisplayValue('Jane Doe');
     fireEvent.change(nameInput, { target: { value: 'Janey Doe' } });
 
-    const saveButton = screen.getByText('Save Changes');
+    const saveButton = screen.getByText('পরিবর্তন সংরক্ষণ করুন');
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -100,20 +100,20 @@ describe('UserProfilePage Component', () => {
     render(<UserProfilePage />);
 
     // Click Security Tab
-    const securityTab = screen.getByText('Security');
+    const securityTab = screen.getByText('সিকিউরিটি');
     fireEvent.click(securityTab);
 
-    expect(screen.getByText('Change Password')).toBeInTheDocument();
+    expect(screen.getByText('পাসওয়ার্ড পরিবর্তন করুন')).toBeInTheDocument();
 
-    const currentPasswordInput = screen.getByPlaceholderText('Your current password');
-    const newPasswordInput = screen.getByPlaceholderText('At least 8 characters');
-    const confirmPasswordInput = screen.getByPlaceholderText('Repeat new password');
+    const currentPasswordInput = screen.getByPlaceholderText('আপনার বর্তমান পাসওয়ার্ড লিখুন');
+    const newPasswordInput = screen.getByPlaceholderText('কমপক্ষে ৮ অক্ষর');
+    const confirmPasswordInput = screen.getByPlaceholderText('পুনরায় নতুন পাসওয়ার্ড লিখুন');
 
     fireEvent.change(currentPasswordInput, { target: { value: 'old-pass-123' } });
     fireEvent.change(newPasswordInput, { target: { value: 'new-pass-123' } });
     fireEvent.change(confirmPasswordInput, { target: { value: 'new-pass-123' } });
 
-    const updateButton = screen.getByText('Update Password');
+    const updateButton = screen.getByText('পাসওয়ার্ড হালনাগাদ করুন');
     fireEvent.click(updateButton);
 
     await waitFor(() => {
@@ -138,11 +138,11 @@ describe('UserProfilePage Component', () => {
 
     render(<UserProfilePage />);
 
-    const saveButton = screen.getByText('Save Changes');
+    const saveButton = screen.getByText('পরিবর্তন সংরক্ষণ করুন');
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Account Settings')).toBeInTheDocument();
+      expect(screen.getByText('অ্যাকাউন্ট সেটিংস')).toBeInTheDocument();
     });
   });
 
@@ -158,22 +158,22 @@ describe('UserProfilePage Component', () => {
 
     render(<UserProfilePage />);
 
-    const securityTab = screen.getByText('Security');
+    const securityTab = screen.getByText('সিকিউরিটি');
     fireEvent.click(securityTab);
 
-    const currentPasswordInput = screen.getByPlaceholderText('Your current password');
-    const newPasswordInput = screen.getByPlaceholderText('At least 8 characters');
-    const confirmPasswordInput = screen.getByPlaceholderText('Repeat new password');
+    const currentPasswordInput = screen.getByPlaceholderText('আপনার বর্তমান পাসওয়ার্ড লিখুন');
+    const newPasswordInput = screen.getByPlaceholderText('কমপক্ষে ৮ অক্ষর');
+    const confirmPasswordInput = screen.getByPlaceholderText('পুনরায় নতুন পাসওয়ার্ড লিখুন');
 
     fireEvent.change(currentPasswordInput, { target: { value: 'wrong-pass' } });
     fireEvent.change(newPasswordInput, { target: { value: 'new-pass-123' } });
     fireEvent.change(confirmPasswordInput, { target: { value: 'new-pass-123' } });
 
-    const updateButton = screen.getByText('Update Password');
+    const updateButton = screen.getByText('পাসওয়ার্ড হালনাগাদ করুন');
     fireEvent.click(updateButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Change Password')).toBeInTheDocument();
+      expect(screen.getByText('পাসওয়ার্ড পরিবর্তন করুন')).toBeInTheDocument();
     });
   });
 });

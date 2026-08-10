@@ -2,7 +2,6 @@
 
 import {
   Container,
-  Grid,
   Text,
   Stack,
   Group,
@@ -15,12 +14,15 @@ import {
   Alert,
   Loader,
   Title,
+  Badge,
+  ThemeIcon,
 } from '@mantine/core';
 import {
   IconArrowLeft,
   IconAlertCircle,
   IconMenu2,
   IconBook,
+  IconBooks,
 } from '@tabler/icons-react';
 import Link from 'next/link';
 
@@ -88,58 +90,54 @@ export default function CoursePlayerPage() {
 
   if (isLoadingUser || isLoadingCourse || isLoadingAccess || isLoadingTree) {
     return (
-      <Container size="xl" py="xl">
-        <Grid gap="md">
-          <Grid.Col span={{ base: 12, md: 8 }}>
-            <Stack gap="md">
-              <Skeleton height={400} radius="md" />
-              <Skeleton height={30} width="60%" />
-              <Skeleton height={20} />
-              <Skeleton height={20} width="80%" />
-            </Stack>
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Skeleton height={500} radius="md" />
-          </Grid.Col>
-        </Grid>
-      </Container>
+      <Box py="xl" style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+        <Container size="xl">
+          <Stack gap="xl">
+            <Skeleton height={50} radius="md" />
+            <Skeleton height={420} radius="xl" />
+            <Skeleton height={150} radius="lg" />
+          </Stack>
+        </Container>
+      </Box>
     );
   }
+
+  const progressPercent = totalSlidesCount > 0 ? Math.min(100, Math.round((currentSlideProgressIndex / totalSlidesCount) * 100)) : 0;
 
   return (
     <Box
       style={{
         display: 'flex',
         height: 'calc(100vh - 60px)',
-        margin: 'calc(-1 * var(--mantine-spacing-md))',
+        backgroundColor: '#f8fafc',
         overflow: 'hidden',
-        backgroundColor: 'var(--mantine-color-body)',
       }}
     >
-      {/* Desktop Navigation Sidebar */}
+      {/* PC Left Fixed Navigation Sidebar */}
       <Box
         visibleFrom="md"
         style={{
-          width: '320px',
+          width: '300px',
           height: '100%',
-          backgroundColor: 'var(--mantine-color-default)',
-          borderRight: '1px solid var(--mantine-color-default-border)',
+          backgroundColor: '#ffffff',
+          borderRight: '1px solid #e2e8f0',
           display: 'flex',
           flexDirection: 'column',
           flexShrink: 0,
+          boxShadow: '4px 0 16px rgba(0, 0, 0, 0.02)',
         }}
       >
-        <Box p="md" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+        <Box p="md" style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#fafbfc' }}>
           <Button
             component={Link}
             href={`/courses/s/${slug}`}
             variant="subtle"
-            color="gray"
+            color="gray.7"
             leftSection={<IconArrowLeft size={16} />}
             size="xs"
-            styles={{ root: { paddingLeft: 0, justifyContent: 'flex-start' } }}
+            styles={{ root: { paddingLeft: 0, justifyContent: 'flex-start', color: '#475569', fontWeight: 600 } }}
           >
-            Back to Course Landing Page
+            কোর্স ল্যান্ডিং পেজে ফিরুন
           </Button>
         </Box>
 
@@ -156,42 +154,30 @@ export default function CoursePlayerPage() {
         </Box>
       </Box>
 
-      {/* Mobile Syllabus Drawer */}
+      {/* Mobile Syllabus Drawer (Left Side) */}
       <Drawer
         opened={mobileSidebarOpen}
         onClose={() => setMobileSidebarOpen(false)}
-        size="320px"
+        size="310px"
         padding={0}
         withCloseButton={false}
+        position="left"
       >
-        <Box style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <Box p="md" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
-            <Group justify="space-between" align="center" mb="xs">
-              <Title order={4} size="h5" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <IconBook size={18} color="var(--mantine-color-blue-filled)" />
-                Syllabus
-              </Title>
-              <Button variant="subtle" color="gray" size="xs" onClick={() => setMobileSidebarOpen(false)}>
-                Close
-              </Button>
-            </Group>
-          </Box>
-          <Box style={{ flex: 1, minHeight: 0 }}>
-            <SyllabusSidebar
-              organizedTree={organizedTree}
-              selectedLessonId={selectedLessonId}
-              activeQuizId={activeQuizId}
-              handleSelectLesson={handleSelectLesson}
-              handleSelectQuiz={handleSelectQuiz}
-              setMobileSidebarOpen={setMobileSidebarOpen}
-              totalSlidesCount={totalSlidesCount}
-              currentSlideProgressIndex={currentSlideProgressIndex}
-            />
-          </Box>
+        <Box style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff' }}>
+          <SyllabusSidebar
+            organizedTree={organizedTree}
+            selectedLessonId={selectedLessonId}
+            activeQuizId={activeQuizId}
+            handleSelectLesson={handleSelectLesson}
+            handleSelectQuiz={handleSelectQuiz}
+            setMobileSidebarOpen={setMobileSidebarOpen}
+            totalSlidesCount={totalSlidesCount}
+            currentSlideProgressIndex={currentSlideProgressIndex}
+          />
         </Box>
       </Drawer>
 
-      {/* Main Content Area */}
+      {/* Main Right Workspace Area */}
       <Box
         style={{
           flex: 1,
@@ -200,145 +186,159 @@ export default function CoursePlayerPage() {
           flexDirection: 'column',
           position: 'relative',
           overflow: 'hidden',
-          backgroundColor: 'var(--mantine-color-body)',
+          backgroundColor: '#f8fafc',
         }}
       >
-        {/* Mobile Header */}
+        {/* Top Header Bar */}
         <Box
-          hiddenFrom="md"
-          p="xs"
+          px="md"
+          py="xs"
           style={{
-            borderBottom: '1px solid var(--mantine-color-default-border)',
-            backgroundColor: 'var(--mantine-color-default)',
+            backgroundColor: '#ffffff',
+            borderBottom: '1px solid #e2e8f0',
             flexShrink: 0,
           }}
         >
           <Group justify="space-between" align="center">
-            <Button
-              variant="subtle"
-              color="gray"
-              p={4}
-              onClick={() => setMobileSidebarOpen(true)}
-              leftSection={<IconMenu2 size={20} />}
-              size="sm"
-            >
-              Menu
-            </Button>
-            <Text size="xs" fw={600} lineClamp={1} style={{ maxWidth: '160px' }}>
-              {course?.title}
-            </Text>
-            <Button
-              component={Link}
-              href={`/courses/s/${slug}`}
-              variant="subtle"
-              size="xs"
-              leftSection={<IconArrowLeft size={14} />}
-            >
-              Back
-            </Button>
+            <Group gap="xs">
+              <Button
+                hiddenFrom="md"
+                variant="subtle"
+                color="gray.7"
+                p={4}
+                onClick={() => setMobileSidebarOpen(true)}
+                leftSection={<IconMenu2 size={20} color="#2563eb" />}
+                size="sm"
+                style={{ fontWeight: 700 }}
+              >
+                সিলেবাস
+              </Button>
+              <Group gap="xs" visibleFrom="md">
+                <ThemeIcon size={26} radius="md" variant="gradient" gradient={{ from: 'blue', to: 'violet' }}>
+                  <IconBooks size={15} color="white" />
+                </ThemeIcon>
+                <Text size="sm" fw={800} style={{ color: '#0f172a' }} lineClamp={1}>
+                  {course?.title}
+                </Text>
+              </Group>
+            </Group>
+
+            <Group gap="xs">
+              <Badge variant="light" color="blue" size="md">
+                অগ্রগতি: {currentSlideProgressIndex} / {totalSlidesCount} ({progressPercent}%)
+              </Badge>
+            </Group>
           </Group>
         </Box>
 
-        {/* Upper Content Pane */}
+        {/* Content Scrollable Workspace */}
         <Box
           style={{
             flex: 1,
-            overflowY: isVideoSlide ? 'hidden' : 'auto',
-            backgroundColor: isVideoSlide ? '#000' : 'var(--mantine-color-body)',
-            display: 'flex',
-            flexDirection: 'column',
-            position: 'relative',
+            overflowY: 'auto',
+            backgroundColor: '#f8fafc',
           }}
+          p={{ base: '8px', sm: '16px' }}
         >
-          {selectedLessonId ? (
-            isLoadingLesson ? (
-              <Center style={{ flex: 1 }}>
-                <Loader size="lg" />
-              </Center>
-            ) : lessonDetails ? (
-              isVideoSlide ? (
-                /* Immersive Full Bleed Video Player */
-                <Box style={{ width: '100%', height: '100%', minHeight: 0, flex: 1 }}>
-                  {lessonDetails.video_url ? (
-                    <LessonPlayer
-                      videoId={lessonDetails.video_url}
-                      onEnded={() => {
-                        if (selectedLessonId) {
-                          updateProgress(selectedLessonId, 'COMPLETED');
-                        }
-                      }}
-                    />
-                  ) : (
-                    <Center h="100%" bg="dark.9">
-                      <Text c="white">No video file available for streaming.</Text>
+          <Container size="xl" p={0} style={{ maxWidth: '1100px', width: '100%' }}>
+            <Stack gap="md">
+              {/* Main Content Player Container */}
+              <Box style={{ width: '100%', borderRadius: '16px', overflow: 'hidden' }}>
+                {selectedLessonId ? (
+                  isLoadingLesson ? (
+                    <Center style={{ minHeight: '360px', backgroundColor: '#ffffff', borderRadius: '16px' }}>
+                      <Loader size="lg" color="blue" />
                     </Center>
-                  )}
-                </Box>
-              ) : activeSlideType === 'quiz' ? (
-                /* Interactive Quiz Module View */
-                <QuizArea
-                  quizzesData={quizzesData}
-                  isLoadingQuizzes={isLoadingQuizzes}
-                  activeQuizId={activeQuizId}
-                  setActiveQuizId={setActiveQuizId}
-                  activeAttempt={activeAttempt}
-                  setActiveAttempt={setActiveAttempt}
-                  userAnswers={userAnswers}
-                  setUserAnswers={setUserAnswers}
-                  isAttempting={isAttempting}
-                  setIsAttempting={setIsAttempting}
-                  currentQuestionIndex={currentQuestionIndex}
-                  setCurrentQuestionIndex={setCurrentQuestionIndex}
-                  attemptsData={attemptsData}
-                  isLoadingAttempts={isLoadingAttempts}
-                  refetchAttempts={refetchAttempts}
-                  questionsData={questionsData}
-                  submitAttemptMutation={submitAttemptMutation}
-                  selectedAttemptId={selectedAttemptId}
-                  setSelectedAttemptId={setSelectedAttemptId}
-                  isLoadingAttemptDetails={isLoadingAttemptDetails}
-                  refetchTree={refetchTree}
-                />
-              ) : (
-                /* Premium MathJax Text/Reading content slide */
-                <LessonTextView
-                  lessonDetails={lessonDetails}
-                  selectedLessonId={selectedLessonId}
-                  currentTreeNode={currentTreeNode}
-                  updateProgress={updateProgress}
-                  isPendingProgress={upsertProgressMutation.isPending}
-                />
-              )
-            ) : (
-              <Center style={{ flex: 1 }} p="xl">
-                <Alert title="Error" color="red" icon={<IconAlertCircle size={16} />}>
-                  Failed to load lesson details. Please select another item from the syllabus.
-                </Alert>
-              </Center>
-            )
-          ) : (
-            <Center style={{ flex: 1 }} p={{ base: 'md', sm: 'xl' }}>
-              <Card
-                withBorder
-                radius="lg"
-                p={{ base: 'md', sm: 'xl' }}
-                ta="center"
-                shadow="sm"
-                style={{ maxWidth: '400px' }}
-              >
-                <Stack align="center" gap="md">
-                  <IconBook size={48} color="var(--mantine-color-blue-filled)" />
-                  <Text fw={600} size="lg">
-                    Ready to start learning?
-                  </Text>
-                  <Text c="dimmed">Select a lesson from the syllabus sidebar to begin.</Text>
-                </Stack>
-              </Card>
-            </Center>
-          )}
+                  ) : lessonDetails ? (
+                    isVideoSlide ? (
+                      /* Video Player Card */
+                      <Card p={0} radius="lg" withBorder style={{ backgroundColor: '#000000', borderColor: '#cbd5e1', overflow: 'hidden', boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)' }}>
+                        <Box style={{ width: '100%', aspectRatio: '16/9', maxHeight: '540px' }}>
+                          {lessonDetails.video_url ? (
+                            <LessonPlayer
+                              videoId={lessonDetails.video_url}
+                              onEnded={() => {
+                                if (selectedLessonId) {
+                                  updateProgress(selectedLessonId, 'COMPLETED');
+                                }
+                              }}
+                            />
+                          ) : (
+                            <Center h="100%" bg="dark.9">
+                              <Text c="white">এই লেকচারের ভিডিও স্ট্রিমিং ফাইল পাওয়া যায়নি।</Text>
+                            </Center>
+                          )}
+                        </Box>
+                      </Card>
+                    ) : activeSlideType === 'quiz' ? (
+                      /* Interactive Quiz Module View */
+                      <Card p={{ base: 'md', sm: 'xl' }} radius="lg" withBorder style={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0' }}>
+                        <QuizArea
+                          quizzesData={quizzesData}
+                          isLoadingQuizzes={isLoadingQuizzes}
+                          activeQuizId={activeQuizId}
+                          setActiveQuizId={setActiveQuizId}
+                          activeAttempt={activeAttempt}
+                          setActiveAttempt={setActiveAttempt}
+                          userAnswers={userAnswers}
+                          setUserAnswers={setUserAnswers}
+                          isAttempting={isAttempting}
+                          setIsAttempting={setIsAttempting}
+                          currentQuestionIndex={currentQuestionIndex}
+                          setCurrentQuestionIndex={setCurrentQuestionIndex}
+                          attemptsData={attemptsData}
+                          isLoadingAttempts={isLoadingAttempts}
+                          refetchAttempts={refetchAttempts}
+                          questionsData={questionsData}
+                          submitAttemptMutation={submitAttemptMutation}
+                          selectedAttemptId={selectedAttemptId}
+                          setSelectedAttemptId={setSelectedAttemptId}
+                          isLoadingAttemptDetails={isLoadingAttemptDetails}
+                          refetchTree={refetchTree}
+                        />
+                      </Card>
+                    ) : (
+                      /* MathJax Reading Notes View */
+                      <Card p={0} radius="lg" withBorder style={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)' }}>
+                        <LessonTextView
+                          lessonDetails={lessonDetails}
+                          selectedLessonId={selectedLessonId}
+                          currentTreeNode={currentTreeNode}
+                          updateProgress={updateProgress}
+                          isPendingProgress={upsertProgressMutation.isPending}
+                        />
+                      </Card>
+                    )
+                  ) : (
+                    <Center p="xl" style={{ minHeight: '300px', backgroundColor: '#ffffff', borderRadius: '16px' }}>
+                      <Alert title="ত্রুটি" color="red" icon={<IconAlertCircle size={16} />}>
+                        লেকচার বিবরণি লোড করা সম্ভব হয়নি। সিলেবাস থেকে অন্য একটি লেকচার নির্বাচন করুন।
+                      </Alert>
+                    </Center>
+                  )
+                ) : (
+                  <Center p={{ base: 'md', sm: 'xl' }} style={{ minHeight: '360px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                    <Card p="xl" radius="lg" ta="center" shadow="none">
+                      <Stack align="center" gap="md">
+                        <ThemeIcon size={64} radius="xl" variant="light" color="blue">
+                          <IconBook size={32} color="#2563eb" />
+                        </ThemeIcon>
+                        <Title order={3} style={{ fontWeight: 800, color: '#0f172a' }}>
+                          পড়াশোনা শুরু করতে প্রস্তুত?
+                        </Title>
+                        <Text c="dimmed" size="sm" style={{ lineHeight: 1.6 }}>
+                          বামপাশের সিলেবাস তালিকা থেকে যেকোনো একটি ভিডিও বা রিভিশন লেকচার নির্বাচন করুন।
+                        </Text>
+                      </Stack>
+                    </Card>
+                  </Center>
+                )}
+              </Box>
+            </Stack>
+          </Container>
         </Box>
 
-        {/* Attached & Immovable Bottom Footer Navigation Bar */}
+        {/* Bottom Navigation Dock */}
         {!isAttempting && (
           <FooterNavBar
             currentSubSlideIndex={currentSubSlideIndex}

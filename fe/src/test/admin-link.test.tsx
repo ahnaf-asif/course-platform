@@ -58,13 +58,13 @@ describe('UserLayout Admin Link', () => {
       </UserLayout>
     );
 
-    // Click the menu target to open dropdown
-    const target = screen.getByRole('button');
+    // Click the profile pill target to open dropdown
+    const target = screen.getByText('লগইন করা আছে');
     await act(async () => {
       fireEvent.click(target);
     });
 
-    expect(screen.queryByText('Admin Panel')).not.toBeInTheDocument();
+    expect(screen.queryByText('অ্যাডমিন প্যানেল')).not.toBeInTheDocument();
   });
 
   it('should show Admin Panel link when user is an admin', async () => {
@@ -81,14 +81,14 @@ describe('UserLayout Admin Link', () => {
       </UserLayout>
     );
 
-    // Click the menu target to open dropdown
-    const target = screen.getByRole('button');
+    // Click the profile pill target to open dropdown
+    const target = screen.getByText('লগইন করা আছে');
     await act(async () => {
       fireEvent.click(target);
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Admin Panel')).toBeInTheDocument();
+      expect(screen.getByText('অ্যাডমিন প্যানেল')).toBeInTheDocument();
     });
   });
 });

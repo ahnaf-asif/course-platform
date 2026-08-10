@@ -45,9 +45,8 @@ describe('UserDashboard Component', () => {
   it('renders empty state when no courses are enrolled', () => {
     render(<UserDashboard />);
 
-    expect(screen.getByText('No Enrolled Courses')).toBeInTheDocument();
-    expect(screen.getByText(/You haven't enrolled in any courses yet/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Browse Catalog/i })).toBeInTheDocument();
+    expect(screen.getByText('কোনো এনরোল করা কোর্স নেই')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /কোর্সসমূহ এক্সপ্লোর করুন/i })).toBeInTheDocument();
   });
 
   it('renders enrolled courses correctly', () => {
@@ -70,7 +69,7 @@ describe('UserDashboard Component', () => {
 
     expect(screen.getByText('Learn Go Programming')).toBeInTheDocument();
     expect(screen.getByText('A comprehensive guide to learning Go.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Resume Learning/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /পড়াশোনা চালিয়ে যান/i })).toBeInTheDocument();
   });
 
   it('switches tabs and displays discover courses', () => {
@@ -93,12 +92,12 @@ describe('UserDashboard Component', () => {
     render(<UserDashboard />);
 
     // Click Discover Courses tab
-    const discoverTab = screen.getByRole('tab', { name: /Discover Courses/i });
+    const discoverTab = screen.getByRole('tab', { name: /কোর্স এক্সপ্লোর করুন/i });
     fireEvent.click(discoverTab);
 
     expect(screen.getByText('Master Next.js')).toBeInTheDocument();
     expect(screen.getByText('A deep dive into building Next.js apps.')).toBeInTheDocument();
     expect(screen.getByText('999.00 BDT')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /View Course/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /বিস্তারিত দেখুন/i })).toBeInTheDocument();
   });
 });

@@ -80,8 +80,8 @@ describe('CoursePlayerPage Component', () => {
     render(<CoursePlayerPage />);
 
     // Renders back-link and sidebar syllabus title
-    expect(screen.getByText('Back to Course Landing Page')).toBeInTheDocument();
-    expect(screen.getByText('Syllabus')).toBeInTheDocument();
+    expect(screen.getByText('কোর্স ল্যান্ডিং পেজে ফিরুন')).toBeInTheDocument();
+    expect(screen.getByText('কোর্স সিলেবাস')).toBeInTheDocument();
 
     // Verifies lesson details title is shown on the video slide
     await waitFor(() => {
@@ -89,10 +89,8 @@ describe('CoursePlayerPage Component', () => {
     });
 
     // Find and click the 'Next' slide navigation button to go to the reading material slide
-    const nextBtn = screen.getByRole('button', { name: /next/i });
+    const nextBtn = screen.getByRole('button', { name: /পরবর্তী/i });
     fireEvent.click(nextBtn);
-
-    screen.debug();
 
     // Verifies reading material content renders on the next slide
     await waitFor(() => {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ColorSchemeScript } from '@mantine/core';
+import { Hind_Siliguri } from 'next/font/google';
 import { Providers } from './providers';
 
 import '@mantine/core/styles.css';
@@ -12,6 +13,13 @@ import '@mantine/code-highlight/styles.css';
 import '@mantine/spotlight/styles.css';
 import '@mantine/tiptap/styles.css';
 
+const hindSiliguri = Hind_Siliguri({
+  weight: ['300', '400', '500', '600', '700'],
+  subsets: ['bengali', 'latin'],
+  display: 'swap',
+  variable: '--font-hind-siliguri',
+});
+
 export const metadata: Metadata = {
   title: "Course Platform",
   description: "A modern course platform",
@@ -23,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="bn" className={hindSiliguri.variable} suppressHydrationWarning>
       <head>
         <ColorSchemeScript defaultColorScheme="light" />
         <script
@@ -47,7 +55,7 @@ export default function RootLayout({
           }}
         ></script>
       </head>
-      <body suppressHydrationWarning>
+      <body className={hindSiliguri.className} suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>

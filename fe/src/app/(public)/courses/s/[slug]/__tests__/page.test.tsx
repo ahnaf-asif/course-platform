@@ -54,9 +54,9 @@ describe('PublicCoursePage Landing and Checkout', () => {
 
     render(<PublicCoursePage />);
 
-    expect(screen.getByText('Learn Go Programming')).toBeInTheDocument();
-    expect(screen.getByText('FREE')).toBeInTheDocument();
-    expect(screen.getByText('Enroll for Free')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Learn Go Programming' })).toBeInTheDocument();
+    expect(screen.getByText('ফ্রি')).toBeInTheDocument();
+    expect(screen.getByText('বিনামূল্যে এনরোল করুন')).toBeInTheDocument();
   });
 
   it('renders paid course pricing and coupon fields', () => {
@@ -74,8 +74,8 @@ describe('PublicCoursePage Landing and Checkout', () => {
 
     render(<PublicCoursePage />);
 
-    expect(screen.getByText('Price: 1500.00 BDT')).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText('Promo Code')).toBeNull(); // Promo code text input requires authenticated user
+    expect(screen.getByText(/1500\.00 BDT/)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('প্রোমো কোড (যদি থাকে)')).toBeNull();
   });
 
   it('shows promo code input when user is logged in and course is paid', () => {
@@ -94,8 +94,8 @@ describe('PublicCoursePage Landing and Checkout', () => {
 
     render(<PublicCoursePage />);
 
-    expect(screen.getByPlaceholderText('Promo Code')).toBeInTheDocument();
-    expect(screen.getByText('Enroll in Course')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('প্রোমো কোড (যদি থাকে)')).toBeInTheDocument();
+    expect(screen.getByText('এনরোল করুন')).toBeInTheDocument();
   });
 
   it('initiates paid checkout redirection on click', async () => {
@@ -128,7 +128,7 @@ describe('PublicCoursePage Landing and Checkout', () => {
 
     render(<PublicCoursePage />);
 
-    const enrollButton = screen.getByText('Enroll in Course');
+    const enrollButton = screen.getByText('এনরোল করুন');
     fireEvent.click(enrollButton);
 
     await waitFor(() => {
