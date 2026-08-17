@@ -58,8 +58,8 @@ describe('UserLayout Admin Link', () => {
       </UserLayout>
     );
 
-    // Click the profile pill target to open dropdown
-    const target = screen.getByText('লগইন করা আছে');
+    // Click the profile target to open dropdown
+    const target = screen.getByText('user@example.com');
     await act(async () => {
       fireEvent.click(target);
     });
@@ -81,8 +81,8 @@ describe('UserLayout Admin Link', () => {
       </UserLayout>
     );
 
-    // Click the profile pill target to open dropdown
-    const target = screen.getByText('লগইন করা আছে');
+    // Click the profile target to open dropdown
+    const target = screen.getByText('admin@example.com');
     await act(async () => {
       fireEvent.click(target);
     });

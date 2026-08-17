@@ -21,12 +21,6 @@ export default function HeroSection() {
       <Container size="xl" style={{ position: 'relative', zIndex: 10 }}>
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing={{ base: '30px', md: '50px' }}>
           <Stack gap="xl">
-            <Group gap="xs">
-              <Badge variant="gradient" gradient={{ from: 'blue', to: 'violet' }} size="lg" radius="sm">
-                বিসিএস প্রিলিমিনারি প্রস্তুতি
-              </Badge>
-            </Group>
-            
             <Title
               order={1}
               style={{
@@ -65,11 +59,11 @@ export default function HeroSection() {
               >
                 প্রস্তুতি শুরু করুন
               </Button>
-              <Button 
-                size="xl" 
-                variant="outline" 
-                color="gray.4" 
-                component={Link} 
+              <Button
+                size="xl"
+                variant="outline"
+                color="gray.4"
+                component={Link}
                 href="/about"
                 className="hero-btn"
                 styles={{

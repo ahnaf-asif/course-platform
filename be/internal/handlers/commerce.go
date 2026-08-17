@@ -87,8 +87,15 @@ func (h *CommerceHandler) Checkout(c echo.Context) error {
 					PaymentProvider:   "direct",
 					ProviderReference: "free-enrollment",
 				})
+				if err != nil {
+					return err
+				}
 				directOrder = o
-				return err
+				_, _ = q.CreateEnrollment(ctx, generated.CreateEnrollmentParams{
+					UserID: userID,
+					NodeID: nodeID,
+				})
+				return nil
 			})
 			if txErr != nil {
 				return echo.NewHTTPError(http.StatusInternalServerError, "Failed to create free enrollment")
@@ -151,6 +158,10 @@ func (h *CommerceHandler) Checkout(c echo.Context) error {
 				return err
 			}
 			couponOrder = o
+			_, _ = q.CreateEnrollment(ctx, generated.CreateEnrollmentParams{
+				UserID: userID,
+				NodeID: nodeID,
+			})
 			if couponID.Valid {
 				return q.IncrementCouponUsage(ctx, couponID.UUID)
 			}
@@ -279,6 +290,11 @@ func (h *CommerceHandler) HandleSuccess(c echo.Context) error {
 			return err
 		}
 
+		_, _ = q.CreateEnrollment(ctx, generated.CreateEnrollmentParams{
+			UserID: o.UserID,
+			NodeID: o.NodeID,
+		})
+
 		if o.CouponID.Valid {
 			return q.IncrementCouponUsage(ctx, o.CouponID.UUID)
 		}
@@ -384,6 +400,11 @@ func (h *CommerceHandler) HandleIPN(c echo.Context) error {
 		if err != nil {
 			return err
 		}
+
+		_, _ = q.CreateEnrollment(ctx, generated.CreateEnrollmentParams{
+			UserID: o.UserID,
+			NodeID: o.NodeID,
+		})
 
 		if o.CouponID.Valid {
 			return q.IncrementCouponUsage(ctx, o.CouponID.UUID)

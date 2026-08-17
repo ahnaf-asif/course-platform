@@ -3,8 +3,12 @@
 import { Container, Stack, Title, Text, Button, Box } from '@mantine/core';
 import { IconArrowRight } from '@tabler/icons-react';
 import Link from 'next/link';
+import { useAuthContext } from '@/context/AuthContext';
 
 export default function CTASection() {
+  const { isAuthenticated, isHydrated } = useAuthContext();
+  const isUserLoggedIn = isHydrated && isAuthenticated;
+
   return (
     <Box
       py={{ base: '50px', sm: '70px', md: '100px' }}
@@ -23,7 +27,7 @@ export default function CTASection() {
             ক্যাডার হওয়ার স্বপ্ন পূরণ করুন আজই
           </Title>
           <Text size="lg" style={{ opacity: 0.85, maxWidth: '580px', lineHeight: 1.7 }}>
-            আমাদের প্ল্যাটফর্মে বিনামূল্যে যুক্ত হোন এবং প্রিলিমিনারি প্রস্তুতির সেরা ম্যাটেরিয়ালগুলোর অ্যাক্সেস নিন। আপনার স্বপ্নের ক্যারিয়ার গড়ার প্রথম ধাপ শুরু হোক এখান থেকেই।
+            আমাদের প্ল্যাটফর্মে যুক্ত হয়ে প্রিলিমিনারি প্রস্তুতির সেরা ম্যাটেরিয়ালগুলোর অ্যাক্সেস নিন। আপনার স্বপ্নের ক্যারিয়ার গড়ার প্রথম ধাপ শুরু হোক এখান থেকেই।
           </Text>
           <Button
             size="xl"
@@ -31,14 +35,14 @@ export default function CTASection() {
             color="blue"
             mt="lg"
             component={Link}
-            href="/register"
+            href={isUserLoggedIn ? '/courses' : '/register'}
             rightSection={<IconArrowRight size={20} />}
             style={{
               boxShadow: '0 15px 30px rgba(0, 0, 0, 0.15)',
               fontWeight: 700,
             }}
           >
-            রেজিস্ট্রেশন করুন
+            {isUserLoggedIn ? 'কোর্সসমূহ দেখুন' : 'রেজিস্ট্রেশন করুন'}
           </Button>
         </Stack>
       </Container>

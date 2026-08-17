@@ -30,6 +30,10 @@ SELECT EXISTS (
     WHERE o.user_id = $2
       AND o.status = 'COMPLETED'
       AND o.node_id IN (SELECT a_out.id FROM ancestors a_out)
+    UNION
+    SELECT 1 FROM enrollments e
+    WHERE e.user_id = $2
+      AND e.node_id IN (SELECT a_out.id FROM ancestors a_out)
 ) as has_access
 `
 
@@ -205,14 +209,61 @@ func (q *Queries) GetCouponByCode(ctx context.Context, code string) (Coupon, err
 }
 
 const getEnrolledCoursesByUser = `-- name: GetEnrolledCoursesByUser :many
-SELECT n.id, n.parent_id, n.node_type, n.created_at, c.title, c.slug, c.description, c.thumbnail_url, c.is_published,
-       pg.price, pg.currency, o.created_at as enrolled_at
-FROM orders o
-JOIN nodes n ON o.node_id = n.id
+WITH RECURSIVE course_nodes AS (
+    SELECT n.id as course_id, n.id as node_id
+    FROM nodes n
+    WHERE n.node_type = 'COURSE'
+    UNION ALL
+    SELECT cn.course_id, child.id as node_id
+    FROM nodes child
+    JOIN course_nodes cn ON child.parent_id = cn.node_id
+),
+user_engagements AS (
+    -- Completed orders
+    SELECT cn.course_id, o.created_at as engaged_at
+    FROM orders o
+    JOIN course_nodes cn ON o.node_id = cn.node_id
+    WHERE o.user_id = $1 AND o.status = 'COMPLETED'
+
+    UNION ALL
+
+    -- Explicit enrollments
+    SELECT cn.course_id, e.enrolled_at as engaged_at
+    FROM enrollments e
+    JOIN course_nodes cn ON e.node_id = cn.node_id
+    WHERE e.user_id = $1
+
+    UNION ALL
+
+    -- Progress recorded
+    SELECT cn.course_id, p.updated_at as engaged_at
+    FROM progress p
+    JOIN course_nodes cn ON p.node_id = cn.node_id
+    WHERE p.user_id = $1
+),
+enrolled_courses AS (
+    SELECT course_id, MIN(engaged_at)::timestamptz as enrolled_at
+    FROM user_engagements
+    GROUP BY course_id
+)
+SELECT 
+    n.id,
+    n.parent_id,
+    n.node_type,
+    n.created_at,
+    c.title,
+    c.slug,
+    c.description,
+    c.thumbnail_url,
+    c.is_published,
+    pg.price,
+    pg.currency,
+    ec.enrolled_at::timestamptz as enrolled_at
+FROM enrolled_courses ec
+JOIN nodes n ON ec.course_id = n.id
 JOIN courses c ON n.id = c.node_id
 LEFT JOIN payment_gates pg ON n.id = pg.node_id
-WHERE o.user_id = $1 AND o.status = 'COMPLETED'
-ORDER BY o.created_at DESC
+ORDER BY ec.enrolled_at DESC
 `
 
 type GetEnrolledCoursesByUserRow struct {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Card, Divider, Stack, Text, Title, Badge, Group, Button, Container } from '@mantine/core';
+import { Box, Card, Divider, Stack, Text, Title, Badge, Group, Button, Container, Checkbox, Radio } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight, IconCheck } from '@tabler/icons-react';
 import { MathJaxContent } from '@/components/MathJaxContent';
 import { parseHTMLContent } from './utils';
@@ -42,11 +42,13 @@ export function QuizActiveAttempt({
   refetchTree,
 }: QuizActiveAttemptProps) {
   const currentQuestion = questionsData[currentQuestionIndex];
+  const isMultiSelect =
+    currentQuestion.question_type === 'MULTIPLE' ||
+    currentQuestion.question_type === 'MULTI_CORRECT';
   const selectedOptions = userAnswers[currentQuestion.id] || [];
 
   const handleOptionToggle = (optionId: string) => {
-    const isMultiCorrect = currentQuestion.question_type === 'MULTI_CORRECT';
-    if (!isMultiCorrect) {
+    if (!isMultiSelect) {
       setUserAnswers((prev) => ({
         ...prev,
         [currentQuestion.id]: [optionId],
@@ -124,8 +126,8 @@ export function QuizActiveAttempt({
               <Title order={2} size="h3" style={{ fontWeight: 800 }}>
                 প্রশ্ন {currentQuestionIndex + 1} / {questionsData.length}
               </Title>
-              <Badge color="blue" variant="light" size="sm">
-                {currentQuestion.question_type === 'SINGLE_CORRECT' ? 'একক উত্তর' : 'বহুনির্বাচনী'}
+              <Badge color={isMultiSelect ? 'violet' : 'blue'} variant="light" size="sm">
+                {isMultiSelect ? 'বহুনির্বাচনী (একাধিক উত্তর)' : 'একক উত্তর'}
               </Badge>
             </div>
           </Box>
@@ -162,9 +164,26 @@ export function QuizActiveAttempt({
                         display: 'block',
                       }}
                     >
-                      <Text size="sm" fw={isSelected ? 700 : 500} c={isSelected ? 'blue.8' : 'gray.8'}>
-                        {opt.content}
-                      </Text>
+                      <Group wrap="nowrap" align="center" gap="sm">
+                        {isMultiSelect ? (
+                          <Checkbox
+                            checked={isSelected}
+                            onChange={() => {}}
+                            size="sm"
+                            styles={{ input: { cursor: 'pointer' } }}
+                          />
+                        ) : (
+                          <Radio
+                            checked={isSelected}
+                            onChange={() => {}}
+                            size="sm"
+                            styles={{ radio: { cursor: 'pointer' } }}
+                          />
+                        )}
+                        <Text size="sm" fw={isSelected ? 700 : 500} c={isSelected ? 'blue.8' : 'gray.8'} style={{ flex: 1 }}>
+                          {opt.content}
+                        </Text>
+                      </Group>
                     </UnstyledButton>
                   );
                 })}

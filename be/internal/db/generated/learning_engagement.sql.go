@@ -82,6 +82,8 @@ INSERT INTO enrollments (
 ) VALUES (
     $1, $2
 )
+ON CONFLICT (user_id, node_id) DO UPDATE
+SET enrolled_at = enrollments.enrolled_at
 RETURNING user_id, node_id, enrolled_at
 `
 

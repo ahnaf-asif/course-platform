@@ -148,6 +148,22 @@ func (m *MockStore) GetEnrolledCoursesByUser(ctx context.Context, userID uuid.UU
 	return args.Get(0).([]generated.GetEnrolledCoursesByUserRow), args.Error(1)
 }
 
+func (m *MockStore) CreateEnrollment(ctx context.Context, arg generated.CreateEnrollmentParams) (generated.Enrollment, error) {
+	for _, call := range m.ExpectedCalls {
+		if call.Method == "CreateEnrollment" {
+			args := m.Called(ctx, arg)
+			if args.Get(0) == nil {
+				return generated.Enrollment{}, args.Error(1)
+			}
+			return args.Get(0).(generated.Enrollment), args.Error(1)
+		}
+	}
+	return generated.Enrollment{
+		UserID: arg.UserID,
+		NodeID: arg.NodeID,
+	}, nil
+}
+
 func (m *MockStore) ListPublishedCourses(ctx context.Context) ([]generated.ListPublishedCoursesRow, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {

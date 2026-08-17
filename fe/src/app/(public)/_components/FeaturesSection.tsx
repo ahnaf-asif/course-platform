@@ -3,8 +3,12 @@
 import { Container, Grid, Stack, Badge, Title, Text, SimpleGrid, Card, ThemeIcon, Box, Group } from '@mantine/core';
 import { IconBooks, IconQrcode, IconCertificate, IconShieldLock, IconChevronRight } from '@tabler/icons-react';
 import Link from 'next/link';
+import { useAuthContext } from '@/context/AuthContext';
 
 export default function FeaturesSection() {
+  const { isAuthenticated, isHydrated } = useAuthContext();
+  const isUserLoggedIn = isHydrated && isAuthenticated;
+
   const features = [
     {
       icon: IconBooks,
@@ -16,7 +20,7 @@ export default function FeaturesSection() {
     {
       icon: IconQrcode,
       title: 'লাইভ মডেল টেস্ট',
-      description: 'নেগেটিভ মার্কিং সহ হুবহু বিসিএস স্টাইলে তৈরি মডেল টেস্ট দিয়ে নিজেকে যাচাই করুন।',
+      description: 'নেগেティブ মার্কিং সহ হুবহু বিসিএস স্টাইলে তৈরি মডেল টেস্ট দিয়ে নিজেকে যাচাই করুন।',
       color: 'violet',
       bgGrad: 'linear-gradient(135deg, rgba(115, 0, 230, 0.15), rgba(115, 0, 230, 0.02))',
     },
@@ -56,9 +60,9 @@ export default function FeaturesSection() {
               <Text c="dimmed" size="md" style={{ lineHeight: 1.7 }}>
                 বিসিএস প্রস্তুতি কোনো এলোমেলো বিষয় নয়। আমাদের প্ল্যাটফর্মটি এমনভাবে ডিজাইন করা হয়েছে যাতে প্রতিটি পরীক্ষার্থী সঠিক গাইডলাইন এবং নিয়মিত মডেল টেস্টের মাধ্যমে নিজেকে যাচাই করতে পারে।
               </Text>
-              <Link href="/register" style={{ textDecoration: 'none' }}>
+              <Link href={isUserLoggedIn ? '/courses' : '/register'} style={{ textDecoration: 'none' }}>
                 <Group gap="xs" style={{ color: 'var(--mantine-color-blue-6)', fontWeight: 700, cursor: 'pointer' }}>
-                  <span>আজই বিনামূল্যে অ্যাকাউন্ট খুলুন</span>
+                  <span>{isUserLoggedIn ? 'সকল কোর্স দেখুন' : 'আজই বিনামূল্যে অ্যাকাউন্ট খুলুন'}</span>
                   <IconChevronRight size={16} />
                 </Group>
               </Link>

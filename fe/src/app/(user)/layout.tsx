@@ -124,17 +124,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
               </Link>
 
               {/* Desktop Navigation Links */}
-              <Group
-                visibleFrom="sm"
-                gap="xs"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  padding: '4px 8px',
-                  borderRadius: '100px',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.05)',
-                }}
-              >
+              <Group visibleFrom="sm" gap="lg" align="center">
                 {desktopNavLinks}
               </Group>
 
@@ -142,58 +132,39 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
               <Group visibleFrom="sm" gap="sm">
                 <Menu shadow="xl" width={230} position="bottom-end" transitionProps={{ transition: 'pop-top-right', duration: 150 }}>
                   <Menu.Target>
-                    <UnstyledButton
-                      style={{
-                        padding: '4px 14px 4px 6px',
-                        borderRadius: '100px',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                      }}
-                      className="profile-pill"
-                    >
+                    <UnstyledButton className="nav-profile-btn">
                       <Group gap={8} wrap="nowrap" align="center">
-                        <Box style={{ position: 'relative' }}>
-                          <Avatar
-                            src={null}
-                            alt={userEmail || ''}
-                            radius="xl"
-                            size={30}
-                            variant="gradient"
-                            gradient={{ from: 'blue', to: 'violet' }}
-                            fw={800}
-                          >
-                            {userEmail?.slice(0, 2).toUpperCase()}
-                          </Avatar>
-                          <span
-                            style={{
-                              position: 'absolute',
-                              bottom: 0,
-                              right: 0,
-                              width: '8px',
-                              height: '8px',
-                              borderRadius: '50%',
-                              backgroundColor: '#22c55e',
-                              boxShadow: '0 0 6px #22c55e',
-                              border: '1.5px solid #0f172a',
-                            }}
-                          />
-                        </Box>
-                        <Stack gap={0} align="flex-start" style={{ display: 'flex', justifyContent: 'center' }}>
-                          <Text size="9px" c="gray.4" style={{ lineHeight: 1, textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
-                            লগইন করা আছে
-                          </Text>
-                          <Text size="xs" fw={700} lineClamp={1} style={{ maxWidth: '110px', lineHeight: 1.2, color: 'white' }}>
-                            {userEmail}
-                          </Text>
-                        </Stack>
-                        <IconChevronDown size={14} stroke={2} color="rgba(255, 255, 255, 0.7)" />
+                        <Avatar
+                          src={null}
+                          alt={userEmail || ''}
+                          radius="xl"
+                          size={28}
+                          variant="gradient"
+                          gradient={{ from: 'blue', to: 'violet' }}
+                          styles={{
+                            placeholder: { fontSize: '11px', fontWeight: 700, color: 'white' },
+                          }}
+                        >
+                          {userEmail?.slice(0, 2).toUpperCase()}
+                        </Avatar>
+                        <Text size="sm" fw={500} lineClamp={1} className="nav-profile-text" style={{ maxWidth: '140px' }}>
+                          {userEmail}
+                        </Text>
+                        <IconChevronDown size={14} className="nav-profile-chevron" stroke={1.8} />
                       </Group>
                     </UnstyledButton>
                   </Menu.Target>
 
                   <Menu.Dropdown className="custom-menu-dropdown">
+                    <Box px={12} py={8}>
+                      <Text size="10px" c="dimmed" style={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
+                        লগইন করা আছে
+                      </Text>
+                      <Text size="xs" fw={700} c="white" lineClamp={1}>
+                        {userEmail}
+                      </Text>
+                    </Box>
+                    <Menu.Divider style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
                     <Menu.Item
                       leftSection={<IconLayoutDashboard size={16} />}
                       component={Link}
@@ -313,37 +284,28 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
             <Box>
               <Divider color="rgba(255, 255, 255, 0.1)" mb="lg" />
               <Stack gap="md">
-                <Group gap="sm" style={{ padding: '12px', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                  <Box style={{ position: 'relative' }}>
-                    <Avatar
-                      src={null}
-                      alt={userEmail || ''}
-                      radius="xl"
-                      size={38}
-                      variant="gradient"
-                      gradient={{ from: 'blue', to: 'violet' }}
-                      fw={800}
-                    >
-                      {userEmail?.slice(0, 2).toUpperCase()}
-                    </Avatar>
-                    <span
-                      style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        right: 0,
-                        width: '9px',
-                        height: '9px',
-                        borderRadius: '50%',
-                        backgroundColor: '#22c55e',
-                        boxShadow: '0 0 6px #22c55e',
-                        border: '1.5px solid #0f172a',
-                      }}
-                    />
+                <Group gap="sm" px={4} py={4} align="center" wrap="nowrap">
+                  <Avatar
+                    src={null}
+                    alt={userEmail || ''}
+                    radius="xl"
+                    size={36}
+                    variant="gradient"
+                    gradient={{ from: 'blue', to: 'violet' }}
+                    styles={{
+                      placeholder: { fontSize: '12px', fontWeight: 700, color: 'white' },
+                    }}
+                  >
+                    {userEmail?.slice(0, 2).toUpperCase()}
+                  </Avatar>
+                  <Box style={{ overflow: 'hidden', flex: 1 }}>
+                    <Text size="10px" c="gray.5" style={{ textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', lineHeight: 1.2 }}>
+                      লগইন করা আছে
+                    </Text>
+                    <Text size="sm" fw={600} style={{ color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {userEmail}
+                    </Text>
                   </Box>
-                  <div style={{ overflow: 'hidden' }}>
-                    <Text size="10px" c="gray.4" style={{ textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>লগইন করা আছে</Text>
-                    <Text size="xs" fw={700} style={{ color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userEmail}</Text>
-                  </div>
                 </Group>
 
                 <Stack gap="xs">
@@ -406,25 +368,47 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
           <style jsx global>{`
             .desktop-nav-link {
               text-decoration: none;
-              color: rgba(241, 245, 249, 0.75);
-              font-size: 13.5px;
-              font-weight: 600;
-              padding: 6px 16px;
-              border-radius: 100px;
-              transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-              letter-spacing: 0.2px;
-              display: inline-block;
-              border: 1px solid transparent;
+              color: #94a3b8;
+              font-size: 14px;
+              font-weight: 500;
+              padding: 8px 4px;
+              position: relative;
+              transition: color 0.2s ease;
+              letter-spacing: 0.1px;
+              display: inline-flex;
+              align-items: center;
             }
             .desktop-nav-link:hover {
-              background-color: rgba(255, 255, 255, 0.08);
               color: #ffffff;
             }
             .desktop-nav-link.active {
               color: #60a5fa;
-              background-color: rgba(59, 130, 246, 0.15);
-              border-color: rgba(59, 130, 246, 0.3);
-              box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+              font-weight: 600;
+            }
+            .desktop-nav-link::after {
+              content: '';
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              height: 2px;
+              background: #60a5fa;
+              border-radius: 2px;
+              transform: scaleX(0);
+              transform-origin: center;
+              transition: transform 0.2s ease, opacity 0.2s ease;
+              opacity: 0;
+            }
+            .desktop-nav-link:hover::after {
+              transform: scaleX(1);
+              background: rgba(255, 255, 255, 0.4);
+              opacity: 0.8;
+            }
+            .desktop-nav-link.active::after {
+              transform: scaleX(1);
+              background: #60a5fa;
+              opacity: 1;
+              box-shadow: 0 0 8px rgba(96, 165, 250, 0.4);
             }
             .mobile-nav-link {
               text-decoration: none;
@@ -444,7 +428,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
               border-color: rgba(96, 165, 250, 0.3);
             }
             .nav-icon {
-              color: rgba(241, 245, 249, 0.5);
+              color: #64748b;
               transition: color 0.2s ease;
             }
             .desktop-nav-link:hover .nav-icon {
@@ -453,9 +437,30 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
             .desktop-nav-link.active .nav-icon {
               color: #60a5fa;
             }
-            .profile-pill:hover {
-              background-color: rgba(255, 255, 255, 0.1) !important;
-              border-color: rgba(255, 255, 255, 0.3) !important;
+            .nav-profile-btn {
+              padding: 4px 8px;
+              border-radius: 8px;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              display: inline-flex;
+              align-items: center;
+            }
+            .nav-profile-btn:hover {
+              background-color: rgba(255, 255, 255, 0.06);
+            }
+            .nav-profile-text {
+              color: #94a3b8;
+              transition: color 0.2s ease;
+            }
+            .nav-profile-btn:hover .nav-profile-text {
+              color: #ffffff;
+            }
+            .nav-profile-chevron {
+              color: #64748b;
+              transition: color 0.2s ease;
+            }
+            .nav-profile-btn:hover .nav-profile-chevron {
+              color: #ffffff;
             }
             .custom-menu-dropdown {
               background-color: rgba(15, 23, 42, 0.95) !important;
