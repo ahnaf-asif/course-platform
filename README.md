@@ -61,12 +61,13 @@ This initializes all `.env` files from their examples.
 make dev
 ```
 This command:
-1. Starts **Postgres, Redis, Minio, Media-Server, Jaeger, Prometheus, Grafana** in Docker.
+1. Starts **Postgres, Redis, Minio, Media-Server** in Docker.
 2. Runs the **Go API** locally via `air`.
 3. Runs the **Next.js Frontend** locally via `npm run dev`.
 
 ### 4. Other Commands
-- `make infra-up`: Start only Docker infrastructure.
+- `make infra-up`: Start only essential Docker infrastructure (DB, Redis, MinIO, Media-Server).
+- `make observability-up`: Start optional observability tools (Jaeger, Prometheus, Grafana).
 - `make infra-down`: Stop Docker containers.
 - `make clean`: Stop everything and delete all local build caches.
 - `make reset-infra`: **WARNING**: Deletes all Docker volumes (DB & Media data).

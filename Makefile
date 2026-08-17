@@ -1,14 +1,18 @@
 # Variables
 DOCKER_COMPOSE = docker compose
-INFRA_SERVICES = db redis minio minio-setup media-server migrate jaeger prometheus grafana
+INFRA_SERVICES = db redis minio minio-setup media-server migrate
 
 .PHONY: help
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: infra-up
-infra-up: ## Start infrastructure services in Docker (Postgres, Redis, Minio, Media Server, etc.)
-	$(DOCKER_COMPOSE) up -d db redis minio minio-setup media-server migrate jaeger grafana
+infra-up: ## Start infrastructure services in Docker (Postgres, Redis, Minio, Media Server)
+	$(DOCKER_COMPOSE) up -d $(INFRA_SERVICES)
+
+.PHONY: observability-up
+observability-up: ## Start optional observability services in Docker (Jaeger, Prometheus, Grafana)
+	$(DOCKER_COMPOSE) up -d jaeger grafana
 	$(DOCKER_COMPOSE) up -d --no-deps prometheus
 
 .PHONY: infra-down
