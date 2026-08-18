@@ -7,7 +7,7 @@ import { MathJaxContent } from '@/components/MathJaxContent';
 import { WatermarkOverlay } from '@/components/WatermarkOverlay';
 import { useAuthContext } from '@/context/AuthContext';
 import { embedFingerprint } from '@/lib/steganography';
-import { useDevToolsDetector } from '@/lib/useDevToolsDetector';
+import { useDevToolsDetector, isDevToolsOpenSync } from '@/lib/useDevToolsDetector';
 import { parseHTMLContent } from './utils';
 
 interface LessonTextViewProps {
@@ -31,7 +31,7 @@ export function LessonTextView({
   isPendingProgress,
 }: LessonTextViewProps) {
   const { userEmail } = useAuthContext();
-  const [isTampered, setIsTampered] = useState(false);
+  const [isTampered, setIsTampered] = useState(() => isDevToolsOpenSync());
   const isCompleted = currentTreeNode?.progress_status === 'COMPLETED';
 
   // DevTools open detector: unmounts content if inspector is activated

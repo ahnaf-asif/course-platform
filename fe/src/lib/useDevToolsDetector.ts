@@ -3,11 +3,36 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Hook to detect if Developer Tools (DevTools) is opened in the browser.
- * Uses window outer/inner dimension differential and performance timing traps.
+ * Synchronously checks if DevTools is already open at the moment of component evaluation/mount.
+ * Prevents initial render of sensitive HTML content when transitioning between pages.
+ */
+export function isDevToolsOpenSync(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  // 1. Dimension Differential Threshold (Docked bottom, right, left)
+  const widthDiff = window.outerWidth - window.innerWidth > 160;
+  const heightDiff = window.outerHeight - window.innerHeight > 160;
+  if (widthDiff || heightDiff) return true;
+
+  // 2. Regex / Object getter evaluation trap
+  let getterFired = false;
+  const reg = /./;
+  reg.toString = function () {
+    getterFired = true;
+    return 'devtools-check';
+  };
+  console.debug('%c', reg);
+  if (getterFired) return true;
+
+  return false;
+}
+
+/**
+ * Hook to continuously detect if Developer Tools (DevTools) is opened in the browser.
+ * Uses dimension checks, regex toString getters, debugger timing traps, and global shortcut blockers.
  */
 export function useDevToolsDetector(onOpen?: () => void): boolean {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => isDevToolsOpenSync());
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -19,37 +44,35 @@ export function useDevToolsDetector(onOpen?: () => void): boolean {
       const widthDiff = window.outerWidth - window.innerWidth > 160;
       const heightDiff = window.outerHeight - window.innerHeight > 160;
 
-      // 2. Timing trap for undocked or docked DevTools (console.table/dir getter trap)
-      const element = new Image();
+      // 2. Timing trap for undocked or docked DevTools (console getter trap)
       let getterTriggered = false;
-      Object.defineProperty(element, 'id', {
-        get: function () {
-          getterTriggered = true;
-          return 'devtools-detect';
-        },
-      });
+      const reg = /./;
+      reg.toString = function () {
+        getterTriggered = true;
+        return 'trap';
+      };
+      console.debug('%c', reg);
 
-      // Passing to console triggers getter in Chrome/Firefox/Safari if DevTools is open
-      // We use a harmless log that executes the getter
-      // Note: we avoid spamming by checking getterTriggered
-      console.debug(element);
+      // 3. Debugger timing evaluation trap (catches undocked DevTools / active inspectors)
+      let debuggerDelayed = false;
+      const t0 = performance.now();
+      debugger;
+      if (performance.now() - t0 > 100) {
+        debuggerDelayed = true;
+      }
 
-      const detected = widthDiff || heightDiff || getterTriggered;
+      const detected = widthDiff || heightDiff || getterTriggered || debuggerDelayed;
 
       if (detected && !isDevToolsOpen) {
         isDevToolsOpen = true;
         setIsOpen(true);
         onOpen?.();
-      } else if (!detected && isDevToolsOpen) {
-        // Optional reset if closed
-        // isDevToolsOpen = false;
-        // setIsOpen(false);
       }
     };
 
-    // Initial check and periodic poll
+    // Immediate check
     checkDevTools();
-    const interval = setInterval(checkDevTools, 800);
+    const interval = setInterval(checkDevTools, 400);
     window.addEventListener('resize', checkDevTools);
 
     // Block keyboard shortcuts for DevTools & View Source globally on the page

@@ -6,7 +6,7 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 import Hls from 'hls.js';
 import { axiosInstance } from '@/lib/axios';
 import { WatermarkOverlay } from '@/components/WatermarkOverlay';
-import { useDevToolsDetector } from '@/lib/useDevToolsDetector';
+import { useDevToolsDetector, isDevToolsOpenSync } from '@/lib/useDevToolsDetector';
 
 interface LessonPlayerProps {
   videoId: string;
@@ -17,14 +17,14 @@ export function LessonPlayer({ videoId, onEnded }: LessonPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isTampered, setIsTampered] = useState(false);
+  const [isTampered, setIsTampered] = useState(() => isDevToolsOpenSync());
 
   const [prevVideoId, setPrevVideoId] = useState(videoId);
   if (videoId !== prevVideoId) {
     setPrevVideoId(videoId);
     setLoading(true);
     setError(null);
-    setIsTampered(false);
+    setIsTampered(isDevToolsOpenSync());
   }
 
   const handleTamper = () => {

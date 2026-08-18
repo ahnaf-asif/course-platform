@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Card, Divider, Stack, Text, Title, Badge, ThemeIcon, Alert, Group, Button, Container } from '@mantine/core';
-import { IconAward, IconCheck, IconX, IconAlertCircle } from '@tabler/icons-react';
+import { IconAward, IconCheck, IconX, IconAlertTriangle, IconAlertCircle } from '@tabler/icons-react';
 import { MathJaxContent } from '@/components/MathJaxContent';
 import { WatermarkOverlay } from '@/components/WatermarkOverlay';
+import { useDevToolsDetector, isDevToolsOpenSync } from '@/lib/useDevToolsDetector';
 import { parseHTMLContent } from './utils';
 import { SubmitQuizResponse } from '@/api/model/components-schemas-assessment/submitQuizResponse';
 import { AttemptDetailQuestion } from '@/api/model/components-schemas-assessment/attemptDetailQuestion';
@@ -14,7 +15,26 @@ interface QuizReviewProps {
 }
 
 export function QuizReview({ activeAttempt, setActiveAttempt }: QuizReviewProps) {
+  const [isTampered, setIsTampered] = useState(() => isDevToolsOpenSync());
+  useDevToolsDetector(() => setIsTampered(true));
+
   const isPassed = activeAttempt.is_passed;
+
+  if (isTampered) {
+    return (
+      <Box py="xl" px="md">
+        <Alert
+          icon={<IconAlertTriangle size={24} />}
+          title="নিরাপত্তা সতর্কতা"
+          color="red"
+          variant="filled"
+          radius="md"
+        >
+          কন্টেন্ট সুরক্ষায় অসঙ্গতি বা অননুমোদিত হস্তক্ষেপ শনাক্ত হয়েছে। কুইজ উত্তর দেখতে অনুগ্রহ করে ইন্সপেক্ট উইন্ডো বন্ধ করে পেজটি রিফ্রেশ করুন।
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box

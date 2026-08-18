@@ -1,7 +1,8 @@
-import React from 'react';
-import { Box, Card, Divider, Stack, Text, Title, Badge, Group, Button, Container, Checkbox, Radio } from '@mantine/core';
-import { IconChevronLeft, IconChevronRight, IconCheck } from '@tabler/icons-react';
+import React, { useState } from 'react';
+import { Box, Card, Divider, Stack, Text, Title, Badge, Group, Button, Container, Checkbox, Radio, Alert } from '@mantine/core';
+import { IconChevronLeft, IconChevronRight, IconCheck, IconAlertTriangle } from '@tabler/icons-react';
 import { MathJaxContent } from '@/components/MathJaxContent';
+import { useDevToolsDetector, isDevToolsOpenSync } from '@/lib/useDevToolsDetector';
 import { parseHTMLContent } from './utils';
 import { StudentQuestionResponse } from '@/api/model/components-schemas-assessment/studentQuestionResponse';
 import { SubmitQuizResponse } from '@/api/model/components-schemas-assessment/submitQuizResponse';
@@ -41,11 +42,30 @@ export function QuizActiveAttempt({
   refetchAttempts,
   refetchTree,
 }: QuizActiveAttemptProps) {
+  const [isTampered, setIsTampered] = useState(() => isDevToolsOpenSync());
+  useDevToolsDetector(() => setIsTampered(true));
+
   const currentQuestion = questionsData[currentQuestionIndex];
   const isMultiSelect =
-    currentQuestion.question_type === 'MULTIPLE' ||
-    currentQuestion.question_type === 'MULTI_CORRECT';
-  const selectedOptions = userAnswers[currentQuestion.id] || [];
+    currentQuestion?.question_type === 'MULTIPLE' ||
+    currentQuestion?.question_type === 'MULTI_CORRECT';
+  const selectedOptions = currentQuestion ? userAnswers[currentQuestion.id] || [] : [];
+
+  if (isTampered) {
+    return (
+      <Box py="xl" px="md">
+        <Alert
+          icon={<IconAlertTriangle size={24} />}
+          title="নিরাপত্তা সতর্কতা"
+          color="red"
+          variant="filled"
+          radius="md"
+        >
+          কন্টেন্ট সুরক্ষায় অসঙ্গতি বা অননুমোদিত হস্তক্ষেপ শনাক্ত হয়েছে। কুইজ দেখতে অনুগ্রহ করে ইন্সপেক্ট উইন্ডো বন্ধ করে পেজটি রিফ্রেশ করুন।
+        </Alert>
+      </Box>
+    );
+  }
 
   const handleOptionToggle = (optionId: string) => {
     if (!isMultiSelect) {

@@ -1,10 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useDevToolsDetector } from '../useDevToolsDetector';
+import { useDevToolsDetector, isDevToolsOpenSync } from '../useDevToolsDetector';
 
-describe('useDevToolsDetector Hook', () => {
+describe('useDevToolsDetector Hook and isDevToolsOpenSync', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('isDevToolsOpenSync returns true if window dimension differential exceeds threshold', () => {
+    Object.defineProperty(window, 'outerWidth', { value: 1200, writable: true });
+    Object.defineProperty(window, 'innerWidth', { value: 900, writable: true });
+    expect(isDevToolsOpenSync()).toBe(true);
+
+    Object.defineProperty(window, 'innerWidth', { value: 1200, writable: true });
+    Object.defineProperty(window, 'outerHeight', { value: 800, writable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 800, writable: true });
+    expect(isDevToolsOpenSync()).toBe(false);
   });
 
   it('blocks F12 and inspection keyboard shortcuts', () => {
