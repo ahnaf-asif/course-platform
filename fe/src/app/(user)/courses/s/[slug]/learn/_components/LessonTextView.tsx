@@ -5,6 +5,7 @@ import { Box, Button, Divider, Stack, Text, Title, Container, Alert } from '@man
 import { IconCheck, IconAlertTriangle } from '@tabler/icons-react';
 import { MathJaxContent } from '@/components/MathJaxContent';
 import { WatermarkOverlay } from '@/components/WatermarkOverlay';
+import { ProtectedCanvasView } from '@/components/ProtectedCanvasView';
 import { useAuthContext } from '@/context/AuthContext';
 import { embedFingerprint } from '@/lib/steganography';
 import { useDevToolsDetector, isDevToolsOpenSync } from '@/lib/useDevToolsDetector';
@@ -39,6 +40,12 @@ export function LessonTextView({
   useDevToolsDetector(setIsDevToolsOpen);
 
   const isBlocked = isTampered || isDevToolsOpen;
+
+  // Check if content has complex LaTeX/MathJax formulas
+  const hasLatex = useMemo(() => {
+    const raw = lessonDetails.text_content || '';
+    return raw.includes('$') || raw.includes('\\(') || raw.includes('\\[') || raw.includes('class="math"');
+  }, [lessonDetails.text_content]);
 
   // Embed invisible forensic steganography into content
   const protectedHTML = useMemo(() => {
@@ -122,8 +129,15 @@ export function LessonTextView({
               }}
               data-testid="lesson-text-content"
             >
-              {protectedHTML ? (
-                <MathJaxContent html={protectedHTML} />
+              {lessonDetails.text_content ? (
+                hasLatex ? (
+                  <MathJaxContent html={protectedHTML || ''} />
+                ) : (
+                  <ProtectedCanvasView
+                    content={lessonDetails.text_content}
+                    userEmail={userEmail}
+                  />
+                )
               ) : (
                 <Text c="dimmed" style={{ fontStyle: 'italic' }}>
                   এই লেকচারের জন্য কোনো লিখিত কন্টেন্ট পাওয়া যায়নি।

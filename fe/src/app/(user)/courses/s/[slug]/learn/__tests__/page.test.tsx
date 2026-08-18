@@ -94,7 +94,7 @@ describe('CoursePlayerPage Component', () => {
 
     // Verifies reading material content renders on the next slide
     await waitFor(() => {
-      expect(screen.getByText(/Written content about Go/i)).toBeInTheDocument();
+      expect(screen.getByTestId('protected-canvas-element')).toBeInTheDocument();
     });
   });
 });

@@ -35,7 +35,7 @@ describe('LessonTextView Component', () => {
 
     expect(screen.getByText('লেকচার নোট ও রিভিশন শিট')).toBeInTheDocument();
     expect(screen.getByText('Test Lesson Title')).toBeInTheDocument();
-    expect(screen.getByText(/This is the test lesson written content/i)).toBeInTheDocument();
+    expect(screen.getByTestId('protected-canvas-element')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /পড়া সম্পন্ন হিসেবে চিহ্নিত করুন/i })).toBeInTheDocument();
 
     const container = screen.getByTestId('lesson-text-view-container');
