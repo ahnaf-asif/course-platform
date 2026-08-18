@@ -96,7 +96,20 @@ export function QuizActiveAttempt({
   };
 
   return (
-    <Box py="xs" px={0} style={{ width: '100%' }}>
+    <Box
+      py="xs"
+      px={0}
+      style={{
+        width: '100%',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none',
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+      onCopy={(e) => e.preventDefault()}
+      data-testid="quiz-active-container"
+    >
       <Container size="md" px={0} style={{ maxWidth: '840px', width: '100%' }}>
         <Stack gap="md">
           <Box px={0}>

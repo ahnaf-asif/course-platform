@@ -197,6 +197,12 @@ func (s *Server) registerRoutes() {
 		),
 		DenyHandler: denyHandler,
 	})
+	lessonContentRateLimit := middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
+		Store: middleware.NewRateLimiterMemoryStoreWithConfig(
+			middleware.RateLimiterMemoryStoreConfig{Rate: 30, Burst: 30, ExpiresIn: 1 * time.Minute},
+		),
+		DenyHandler: denyHandler,
+	})
 
 	auth.Use(defaultRateLimit)
 	auth.POST("/register", authHandler.Register, registerRateLimit)
@@ -225,9 +231,9 @@ func (s *Server) registerRoutes() {
 	protected.POST("/orders/checkout", commerceHandler.Checkout)
 	protected.GET("/courses/s/:slug/access", commerceHandler.CheckAccess)
 	protected.GET("/courses/enrolled", commerceHandler.GetEnrolledCourses)
-	protected.GET("/lessons/:id", curriculumHandler.GetUserLesson)
+	protected.GET("/lessons/:id", curriculumHandler.GetUserLesson, lessonContentRateLimit)
 	protected.POST("/nodes/:id/progress", curriculumHandler.StudentUpsertProgress)
-	protected.GET("/media/token/:videoId", curriculumHandler.GetMediaStreamToken)
+	protected.GET("/media/token/:videoId", curriculumHandler.GetMediaStreamToken, lessonContentRateLimit)
 
 	// Student Quiz routes
 	protected.GET("/nodes/:id/quizzes", quizHandler.StudentListQuizzesByNode)
