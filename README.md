@@ -96,7 +96,9 @@ For specific development guides, troubleshooting, and architectural details, ple
 
 - 📚 **[Backend Documentation](./be/README.md)**
 - 🎨 **[Frontend Documentation](./fe/README.md)**
+- 🚀 **[Production Deployment & Security Guide](./DEPLOYMENT_GUIDE.md)**
 - 🛡️ **[Secure Media System](./DOCS_MEDIA_SYSTEM.md)**
+- 🔒 **[Anti-Scraping & Content Protection System](./ANTI_SCRAPING_CONTENT_PROTECTION_PLAN.md)**
 - 📡 **[API Specification (OpenAPI)](./be/docs/openapi.yaml)**
 
 ---
