@@ -15,15 +15,31 @@ import {
   Group,
   Skeleton,
 } from '@mantine/core';
-import { IconSearch, IconBook } from '@tabler/icons-react';
+import { IconSearch, IconBook, IconArrowRight } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useListPublishedCourses } from '@/api/generated/course/course';
+import { useGetEnrolledCourses } from '@/api/generated/commerce/commerce';
+import { useAuthContext } from '@/context/AuthContext';
 import { CourseResponse } from '@/api/model/components-schemas-course/courseResponse';
 import { useState, useMemo } from 'react';
 
 export default function CoursesPage() {
+  const { isAuthenticated, isHydrated } = useAuthContext();
+  const isUserLoggedIn = isHydrated && isAuthenticated;
+
   const { data: nodes, isLoading } = useListPublishedCourses();
+  const { data: enrolledCourses } = useGetEnrolledCourses({
+    query: {
+      enabled: isUserLoggedIn,
+    },
+  });
+
   const [search, setSearch] = useState('');
+
+  const isEnrolled = (courseId: string) => {
+    if (!isUserLoggedIn || !enrolledCourses) return false;
+    return enrolledCourses.some((c) => c.id === courseId);
+  };
 
   // Filter nodes to only show actual course products
   const courses: CourseResponse[] = useMemo(() => {
@@ -165,9 +181,10 @@ export default function CoursesPage() {
             <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xl">
               {renderCourses.map((c) => {
                 const isMock = c.id.startsWith('mock-');
+                const enrolled = isEnrolled(c.id);
                 const coursePrice = parseFloat(c.price || '0');
                 const isFree = coursePrice === 0;
-                const priceText = isFree ? 'ফ্রি' : `${c.price} ${c.currency || 'BDT'}`;
+                const priceText = enrolled ? 'এনরোল করা আছে' : isFree ? 'ফ্রি' : `${c.price} ${c.currency || 'BDT'}`;
 
                 return (
                   <Card
@@ -201,7 +218,7 @@ export default function CoursesPage() {
                             position: 'absolute',
                             top: 12,
                             right: 12,
-                            backgroundColor: isFree ? 'rgba(13, 148, 136, 0.85)' : 'rgba(15, 23, 42, 0.85)',
+                            backgroundColor: enrolled || isFree ? 'rgba(13, 148, 136, 0.85)' : 'rgba(15, 23, 42, 0.85)',
                             backdropFilter: 'blur(8px)',
                             WebkitBackdropFilter: 'blur(8px)',
                             border: '1px solid rgba(255, 255, 255, 0.25)',
@@ -241,16 +258,21 @@ export default function CoursesPage() {
 
                     <Box mt="md" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px' }}>
                       <Button
-                        variant="gradient"
-                        gradient={{ from: 'blue', to: 'violet' }}
+                        variant={enrolled ? 'outline' : 'gradient'}
+                        gradient={enrolled ? undefined : { from: 'blue', to: 'violet' }}
+                        color={enrolled ? 'green' : undefined}
                         fullWidth
                         radius="md"
                         size="md"
+                        rightSection={<IconArrowRight size={16} />}
                         component={Link}
-                        href={isMock ? '/login' : `/courses/s/${c.slug}`}
-                        style={{ fontWeight: 700, boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)' }}
+                        href={isMock ? '/login' : enrolled ? `/courses/s/${c.slug}/learn` : `/courses/s/${c.slug}`}
+                        style={{
+                          fontWeight: 700,
+                          boxShadow: enrolled ? undefined : '0 4px 12px rgba(59, 130, 246, 0.25)',
+                        }}
                       >
-                        {isMock ? 'কোর্সটি দেখুন' : 'বিস্তারিত দেখুন'}
+                        {isMock ? 'কোর্সটি দেখুন' : enrolled ? 'কোর্সে যান' : 'বিস্তারিত দেখুন'}
                       </Button>
                     </Box>
                   </Card>
