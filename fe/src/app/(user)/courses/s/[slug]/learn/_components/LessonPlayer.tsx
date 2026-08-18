@@ -17,14 +17,15 @@ export function LessonPlayer({ videoId, onEnded }: LessonPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isTampered, setIsTampered] = useState(() => isDevToolsOpenSync());
+  const [isTampered, setIsTampered] = useState(false);
+  const [isDevToolsOpen, setIsDevToolsOpen] = useState(() => isDevToolsOpenSync());
 
   const [prevVideoId, setPrevVideoId] = useState(videoId);
   if (videoId !== prevVideoId) {
     setPrevVideoId(videoId);
     setLoading(true);
     setError(null);
-    setIsTampered(isDevToolsOpenSync());
+    setIsTampered(false);
   }
 
   const handleTamper = () => {
@@ -34,8 +35,13 @@ export function LessonPlayer({ videoId, onEnded }: LessonPlayerProps) {
     }
   };
 
-  // Detect DevTools opening and trigger tamper pause
-  useDevToolsDetector(handleTamper);
+  // Detect DevTools opening and dynamically update state
+  useDevToolsDetector((open) => {
+    setIsDevToolsOpen(open);
+    if (open && videoRef.current) {
+      videoRef.current.pause();
+    }
+  });
 
   useEffect(() => {
     let hls: Hls | null = null;
@@ -94,7 +100,9 @@ export function LessonPlayer({ videoId, onEnded }: LessonPlayerProps) {
     };
   }, [videoId]);
 
-  if (isTampered) {
+  const isBlocked = isTampered || isDevToolsOpen;
+
+  if (isBlocked) {
     return (
       <Center w="100%" h="100%" bg="dark.9" p="md" data-testid="player-tamper-warning">
         <Alert
@@ -104,7 +112,9 @@ export function LessonPlayer({ videoId, onEnded }: LessonPlayerProps) {
           radius="md"
           styles={{ root: { maxWidth: '480px' } }}
         >
-          ভিডিও প্লেয়ার ও কন্টেন্ট সুরক্ষায় অননুমোদিত হস্তক্ষেপ ধরা পড়েছে। পুনরায় ভিডিও দেখতে পেজটি রিফ্রেশ করুন।
+          {isDevToolsOpen
+            ? 'ডেভলপার টুলস (DevTools) খোলা অবস্থায় ভিডিও প্লেব্যাক বন্ধ রাখা হয়েছে। ভিডিও দেখতে ইন্সপেক্ট উইন্ডো বন্ধ করুন।'
+            : 'ভিডিও প্লেয়ার ও কন্টেন্ট সুরক্ষায় অননুমোদিত হস্তক্ষেপ ধরা পড়েছে। পুনরায় ভিডিও দেখতে পেজটি রিফ্রেশ করুন।'}
         </Alert>
       </Center>
     );

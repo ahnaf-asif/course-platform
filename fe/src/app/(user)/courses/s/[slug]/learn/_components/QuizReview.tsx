@@ -15,12 +15,12 @@ interface QuizReviewProps {
 }
 
 export function QuizReview({ activeAttempt, setActiveAttempt }: QuizReviewProps) {
-  const [isTampered, setIsTampered] = useState(() => isDevToolsOpenSync());
-  useDevToolsDetector(() => setIsTampered(true));
+  const [isDevToolsOpen, setIsDevToolsOpen] = useState(() => isDevToolsOpenSync());
+  useDevToolsDetector(setIsDevToolsOpen);
 
   const isPassed = activeAttempt.is_passed;
 
-  if (isTampered) {
+  if (isDevToolsOpen) {
     return (
       <Box py="xl" px="md">
         <Alert
@@ -30,7 +30,7 @@ export function QuizReview({ activeAttempt, setActiveAttempt }: QuizReviewProps)
           variant="filled"
           radius="md"
         >
-          কন্টেন্ট সুরক্ষায় অসঙ্গতি বা অননুমোদিত হস্তক্ষেপ শনাক্ত হয়েছে। কুইজ উত্তর দেখতে অনুগ্রহ করে ইন্সপেক্ট উইন্ডো বন্ধ করে পেজটি রিফ্রেশ করুন।
+          ডেভলপার টুলস (DevTools) খোলা অবস্থায় কুইজ উত্তর প্রদর্শন বন্ধ রাখা হয়েছে। কুইজ উত্তর দেখতে ইন্সপেক্ট উইন্ডো বন্ধ করুন।
         </Alert>
       </Box>
     );

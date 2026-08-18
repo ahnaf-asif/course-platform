@@ -31,19 +31,22 @@ export function LessonTextView({
   isPendingProgress,
 }: LessonTextViewProps) {
   const { userEmail } = useAuthContext();
-  const [isTampered, setIsTampered] = useState(() => isDevToolsOpenSync());
+  const [isTampered, setIsTampered] = useState(false);
+  const [isDevToolsOpen, setIsDevToolsOpen] = useState(() => isDevToolsOpenSync());
   const isCompleted = currentTreeNode?.progress_status === 'COMPLETED';
 
-  // DevTools open detector: unmounts content if inspector is activated
-  useDevToolsDetector(() => setIsTampered(true));
+  // DevTools open detector: dynamically updates when DevTools is opened or closed
+  useDevToolsDetector(setIsDevToolsOpen);
+
+  const isBlocked = isTampered || isDevToolsOpen;
 
   // Embed invisible forensic steganography into content
   const protectedHTML = useMemo(() => {
-    if (!lessonDetails.text_content || isTampered) return null;
+    if (!lessonDetails.text_content || isBlocked) return null;
     const identifier = userEmail || 'EduVerse';
     const fingerprinted = embedFingerprint(lessonDetails.text_content, identifier);
     return parseHTMLContent(fingerprinted);
-  }, [lessonDetails.text_content, userEmail, isTampered]);
+  }, [lessonDetails.text_content, userEmail, isBlocked]);
 
   // Anti-Copy & Anti-Print Keyboard Shortcut Interceptor
   useEffect(() => {
@@ -95,7 +98,7 @@ export function LessonTextView({
 
           <Divider color="#e2e8f0" />
 
-          {isTampered ? (
+          {isBlocked ? (
             <Alert
               icon={<IconAlertTriangle size={20} />}
               title="নিরাপত্তা সতর্কতা"
@@ -103,7 +106,9 @@ export function LessonTextView({
               radius="md"
               data-testid="tamper-alert"
             >
-              কন্টেন্ট সুরক্ষায় অসঙ্গতি বা অননুমোদিত হস্তক্ষেপ শনাক্ত হয়েছে। কন্টেন্ট দেখতে অনুগ্রহ করে পেজটি রিফ্রেশ করুন।
+              {isDevToolsOpen
+                ? 'ডেভলপার টুলস (DevTools) খোলা অবস্থায় কন্টেন্ট প্রদর্শন বন্ধ রাখা হয়েছে। কন্টেন্ট দেখতে ইন্সপেক্ট উইন্ডো বন্ধ করুন।'
+                : 'কন্টেন্ট সুরক্ষায় অসঙ্গতি বা অননুমোদিত হস্তক্ষেপ শনাক্ত হয়েছে। কন্টেন্ট দেখতে অনুগ্রহ করে পেজটি রিফ্রেশ করুন।'}
             </Alert>
           ) : (
             <Box

@@ -42,8 +42,8 @@ export function QuizActiveAttempt({
   refetchAttempts,
   refetchTree,
 }: QuizActiveAttemptProps) {
-  const [isTampered, setIsTampered] = useState(() => isDevToolsOpenSync());
-  useDevToolsDetector(() => setIsTampered(true));
+  const [isDevToolsOpen, setIsDevToolsOpen] = useState(() => isDevToolsOpenSync());
+  useDevToolsDetector(setIsDevToolsOpen);
 
   const currentQuestion = questionsData[currentQuestionIndex];
   const isMultiSelect =
@@ -51,7 +51,7 @@ export function QuizActiveAttempt({
     currentQuestion?.question_type === 'MULTI_CORRECT';
   const selectedOptions = currentQuestion ? userAnswers[currentQuestion.id] || [] : [];
 
-  if (isTampered) {
+  if (isDevToolsOpen) {
     return (
       <Box py="xl" px="md">
         <Alert
@@ -61,7 +61,7 @@ export function QuizActiveAttempt({
           variant="filled"
           radius="md"
         >
-          কন্টেন্ট সুরক্ষায় অসঙ্গতি বা অননুমোদিত হস্তক্ষেপ শনাক্ত হয়েছে। কুইজ দেখতে অনুগ্রহ করে ইন্সপেক্ট উইন্ডো বন্ধ করে পেজটি রিফ্রেশ করুন।
+          ডেভলপার টুলস (DevTools) খোলা অবস্থায় কুইজ প্রদর্শন বন্ধ রাখা হয়েছে। কুইজ দেখতে ইন্সপেক্ট উইন্ডো বন্ধ করুন।
         </Alert>
       </Box>
     );
