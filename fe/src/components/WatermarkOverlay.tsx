@@ -85,8 +85,12 @@ export function WatermarkOverlay({
     observer.observe(parentNode, { childList: true, subtree: true });
     observer.observe(targetNode, { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
 
+    // Periodic heartbeat integrity check
+    const heartbeatInterval = setInterval(checkTamper, 3000);
+
     return () => {
       observer.disconnect();
+      clearInterval(heartbeatInterval);
     };
   }, [onTamper]);
 

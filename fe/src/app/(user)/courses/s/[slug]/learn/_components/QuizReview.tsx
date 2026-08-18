@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Card, Divider, Stack, Text, Title, Badge, ThemeIcon, Alert, Group, Button, Container } from '@mantine/core';
 import { IconAward, IconCheck, IconX, IconAlertCircle } from '@tabler/icons-react';
 import { MathJaxContent } from '@/components/MathJaxContent';
+import { WatermarkOverlay } from '@/components/WatermarkOverlay';
 import { parseHTMLContent } from './utils';
 import { SubmitQuizResponse } from '@/api/model/components-schemas-assessment/submitQuizResponse';
 import { AttemptDetailQuestion } from '@/api/model/components-schemas-assessment/attemptDetailQuestion';
@@ -16,7 +17,23 @@ export function QuizReview({ activeAttempt, setActiveAttempt }: QuizReviewProps)
   const isPassed = activeAttempt.is_passed;
 
   return (
-    <Box py={{ base: 'md', md: 'xl' }} px={{ base: 'xs', sm: 'md' }} style={{ width: '100%' }}>
+    <Box
+      py={{ base: 'md', md: 'xl' }}
+      px={{ base: 'xs', sm: 'md' }}
+      style={{
+        width: '100%',
+        position: 'relative',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none',
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+      onCopy={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+      data-testid="quiz-review-container"
+    >
+      <WatermarkOverlay variant="reading" />
       <Container size="md" px={{ base: 0, sm: 'md' }} style={{ maxWidth: '840px', width: '100%' }}>
         <Stack gap="xl">
           <Card

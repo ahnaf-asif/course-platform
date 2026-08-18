@@ -54,6 +54,18 @@ export default function RootLayout({
             `,
           }}
         ></script>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              @media print {
+                body {
+                  display: none !important;
+                  visibility: hidden !important;
+                }
+              }
+            `,
+          }}
+        />
       </head>
       <body className={hindSiliguri.className} suppressHydrationWarning>
         <Providers>
