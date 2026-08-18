@@ -38,7 +38,7 @@ vi.mock('hls.js', () => {
 describe('LessonPlayer Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseAuthContext.mockReturnValue({ user: mockUser });
+    mockUseAuthContext.mockReturnValue({ userEmail: 'video.student@eduverse.org' });
   });
 
   it('renders video element with anti-download and anti-picture-in-picture attributes', () => {

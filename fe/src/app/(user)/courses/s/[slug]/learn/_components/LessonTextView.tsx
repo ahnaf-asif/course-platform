@@ -30,7 +30,7 @@ export function LessonTextView({
   updateProgress,
   isPendingProgress,
 }: LessonTextViewProps) {
-  const { user } = useAuthContext();
+  const { userEmail } = useAuthContext();
   const [isTampered, setIsTampered] = useState(false);
   const isCompleted = currentTreeNode?.progress_status === 'COMPLETED';
 
@@ -40,10 +40,10 @@ export function LessonTextView({
   // Embed invisible forensic steganography into content
   const protectedHTML = useMemo(() => {
     if (!lessonDetails.text_content || isTampered) return null;
-    const identifier = user?.email || user?.id || 'EduVerse';
+    const identifier = userEmail || 'EduVerse';
     const fingerprinted = embedFingerprint(lessonDetails.text_content, identifier);
     return parseHTMLContent(fingerprinted);
-  }, [lessonDetails.text_content, user, isTampered]);
+  }, [lessonDetails.text_content, userEmail, isTampered]);
 
   // Anti-Copy & Anti-Print Keyboard Shortcut Interceptor
   useEffect(() => {

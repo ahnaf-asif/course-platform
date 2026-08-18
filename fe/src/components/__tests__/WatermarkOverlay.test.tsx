@@ -22,7 +22,7 @@ describe('WatermarkOverlay Component', () => {
   });
 
   it('renders video watermark with user email and shifting coordinates', () => {
-    mockUseAuthContext.mockReturnValue({ user: mockUser });
+    mockUseAuthContext.mockReturnValue({ userEmail: 'student.protect@eduverse.org' });
 
     render(<WatermarkOverlay variant="video" />);
 
@@ -33,7 +33,7 @@ describe('WatermarkOverlay Component', () => {
   });
 
   it('renders reading watermark with repeating tiled text for reading notes', () => {
-    mockUseAuthContext.mockReturnValue({ user: mockUser });
+    mockUseAuthContext.mockReturnValue({ userEmail: 'student.protect@eduverse.org' });
 
     render(<WatermarkOverlay variant="reading" />);
 
@@ -43,7 +43,7 @@ describe('WatermarkOverlay Component', () => {
   });
 
   it('falls back to default protection label when no user is logged in', () => {
-    mockUseAuthContext.mockReturnValue({ user: null });
+    mockUseAuthContext.mockReturnValue({ userEmail: null });
 
     render(<WatermarkOverlay variant="video" />);
 
@@ -52,7 +52,7 @@ describe('WatermarkOverlay Component', () => {
   });
 
   it('triggers onTamper callback when watermark node is removed from DOM', async () => {
-    mockUseAuthContext.mockReturnValue({ user: mockUser });
+    mockUseAuthContext.mockReturnValue({ userEmail: 'student.protect@eduverse.org' });
     const onTamper = vi.fn();
 
     const { container } = render(
@@ -78,7 +78,7 @@ describe('WatermarkOverlay Component', () => {
   });
 
   it('triggers onTamper callback when watermark style is altered to display: none', async () => {
-    mockUseAuthContext.mockReturnValue({ user: mockUser });
+    mockUseAuthContext.mockReturnValue({ userEmail: 'student.protect@eduverse.org' });
     const onTamper = vi.fn();
 
     render(

@@ -44,7 +44,7 @@ const mockAttempt = {
 describe('QuizReview Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseAuthContext.mockReturnValue({ user: mockUser });
+    mockUseAuthContext.mockReturnValue({ userEmail: 'reviewer@eduverse.org' });
   });
 
   it('renders score and question explanations with anti-copy styling', () => {

@@ -17,14 +17,14 @@ export function WatermarkOverlay({
   className,
   style,
 }: WatermarkOverlayProps) {
-  const { user } = useAuthContext();
+  const { userEmail } = useAuthContext();
   const watermarkRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Dynamic position coordinates for video mode (top %, left %)
   const [videoCoords, setVideoCoords] = useState({ top: 20, left: 25 });
 
-  const watermarkText = user?.email || user?.id || 'EduVerse Protected Content';
+  const watermarkText = userEmail || 'EduVerse Protected Content';
 
   // Video mode: randomly shift coordinates every 18-24 seconds
   useEffect(() => {

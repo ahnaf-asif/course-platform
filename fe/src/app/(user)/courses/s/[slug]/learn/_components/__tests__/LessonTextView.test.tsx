@@ -24,7 +24,7 @@ describe('LessonTextView Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseAuthContext.mockReturnValue({ user: mockUser });
+    mockUseAuthContext.mockReturnValue({ userEmail: 'aspirant@eduverse.org' });
   });
 
   it('renders title and content correctly with anti-copy styling', () => {
