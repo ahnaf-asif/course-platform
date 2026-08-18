@@ -1,13 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@/test/test-utils';
 import { QuizReview } from '../_components/QuizReview';
+import { SubmitQuizResponse } from '@/api/model/components-schemas-assessment/submitQuizResponse';
 import React from 'react';
-
-const mockUser = {
-  id: 'usr-review-1',
-  email: 'reviewer@eduverse.org',
-  role: 'USER',
-};
 
 const mockUseAuthContext = vi.fn();
 
@@ -41,6 +36,8 @@ const mockAttempt = {
   ],
 };
 
+const typedAttempt = mockAttempt as unknown as SubmitQuizResponse;
+
 describe('QuizReview Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -48,7 +45,7 @@ describe('QuizReview Component', () => {
   });
 
   it('renders score and question explanations with anti-copy styling', () => {
-    render(<QuizReview activeAttempt={mockAttempt as any} setActiveAttempt={vi.fn()} />);
+    render(<QuizReview activeAttempt={typedAttempt} setActiveAttempt={vi.fn()} />);
 
     expect(screen.getByText('Quiz Passed!')).toBeInTheDocument();
     expect(screen.getByText('80%')).toBeInTheDocument();
@@ -60,7 +57,7 @@ describe('QuizReview Component', () => {
   });
 
   it('suppresses context menu and copy events on review container', () => {
-    render(<QuizReview activeAttempt={mockAttempt as any} setActiveAttempt={vi.fn()} />);
+    render(<QuizReview activeAttempt={typedAttempt} setActiveAttempt={vi.fn()} />);
 
     const container = screen.getByTestId('quiz-review-container');
 
@@ -72,7 +69,7 @@ describe('QuizReview Component', () => {
   });
 
   it('renders watermark overlay across review questions', () => {
-    render(<QuizReview activeAttempt={mockAttempt as any} setActiveAttempt={vi.fn()} />);
+    render(<QuizReview activeAttempt={typedAttempt} setActiveAttempt={vi.fn()} />);
 
     expect(screen.getByTestId('reading-watermark')).toBeInTheDocument();
   });

@@ -33,7 +33,6 @@ const mockQuestions: StudentQuestionResponse[] = [
 function TestWrapper({ initialQuestionIndex = 0 }: { initialQuestionIndex?: number }) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(initialQuestionIndex);
   const [userAnswers, setUserAnswers] = useState<Record<string, string[]>>({});
-  const [isAttempting, setIsAttempting] = useState(true);
 
   return (
     <QuizActiveAttempt
@@ -43,7 +42,7 @@ function TestWrapper({ initialQuestionIndex = 0 }: { initialQuestionIndex?: numb
       setCurrentQuestionIndex={setCurrentQuestionIndex}
       userAnswers={userAnswers}
       setUserAnswers={setUserAnswers}
-      setIsAttempting={setIsAttempting}
+      setIsAttempting={vi.fn()}
       submitAttemptMutation={{ mutate: vi.fn(), isPending: false }}
       setActiveAttempt={vi.fn()}
       refetchAttempts={vi.fn()}

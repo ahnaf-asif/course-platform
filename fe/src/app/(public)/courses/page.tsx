@@ -23,6 +23,36 @@ import { useAuthContext } from '@/context/AuthContext';
 import { CourseResponse } from '@/api/model/components-schemas-course/courseResponse';
 import { useState, useMemo } from 'react';
 
+const MOCK_COURSES = [
+  {
+    id: 'mock-1',
+    title: 'বাংলাদেশ বিষয়াবলি: প্রিলি মাস্টারক্লাস',
+    slug: 'bangladesh-affairs-masterclass',
+    description: 'বিসিএস প্রিলিমিনারি পরীক্ষার বাংলাদেশ বিষয়াবলির সম্পূর্ণ সিলেবাস কভার করে তৈরি করা আমাদের স্পেশাল কোর্স।',
+    price: '1200',
+    currency: 'BDT',
+    thumbnail_url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80',
+  },
+  {
+    id: 'mock-2',
+    title: 'ইংরেজি ভাষা ও সাহিত্য: প্রিলি ক্র্যাশ কোর্স',
+    slug: 'english-language-literature',
+    description: 'ইংরেজি গ্রামার এবং সাহিত্যের কঠিন বিষয়গুলো সহজে আয়ত্ত করার এক্সক্লুসিভ গাইডলাইন।',
+    price: '0.00',
+    currency: 'BDT',
+    thumbnail_url: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?auto=format&fit=crop&w=600&q=80',
+  },
+  {
+    id: 'mock-3',
+    title: 'গাণিতিক যুক্তি ও মানসিক দক্ষতা',
+    slug: 'math-mental-ability',
+    description: 'শর্টকাট টেকনিক ও বিগত বছরের প্রশ্ন সমাধানের মাধ্যমে গণিতে পূর্ণাঙ্গ প্রস্তুতি।',
+    price: '800',
+    currency: 'BDT',
+    thumbnail_url: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=600&q=80',
+  },
+];
+
 export default function CoursesPage() {
   const { isAuthenticated, isHydrated } = useAuthContext();
   const isUserLoggedIn = isHydrated && isAuthenticated;
@@ -55,36 +85,6 @@ export default function CoursesPage() {
     );
   }, [courses, search]);
 
-  const mockCourses = [
-    {
-      id: 'mock-1',
-      title: 'বাংলাদেশ বিষয়াবলি: প্রিলি মাস্টারক্লাস',
-      slug: 'bangladesh-affairs-masterclass',
-      description: 'বিসিএস প্রিলিমিনারি পরীক্ষার বাংলাদেশ বিষয়াবলির সম্পূর্ণ সিলেবাস কভার করে তৈরি করা আমাদের স্পেশাল কোর্স।',
-      price: '1200',
-      currency: 'BDT',
-      thumbnail_url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80',
-    },
-    {
-      id: 'mock-2',
-      title: 'ইংরেজি ভাষা ও সাহিত্য: প্রিলি ক্র্যাশ কোর্স',
-      slug: 'english-language-literature',
-      description: 'ইংরেজি গ্রামার এবং সাহিত্যের কঠিন বিষয়গুলো সহজে আয়ত্ত করার এক্সক্লুসিভ গাইডলাইন।',
-      price: '0.00',
-      currency: 'BDT',
-      thumbnail_url: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?auto=format&fit=crop&w=600&q=80',
-    },
-    {
-      id: 'mock-3',
-      title: 'গাণিতিক যুক্তি ও মানসিক দক্ষতা',
-      slug: 'math-mental-ability',
-      description: 'শর্টকাট টেকনিক ও বিগত বছরের প্রশ্ন সমাধানের মাধ্যমে গণিতে পূর্ণাঙ্গ প্রস্তুতি।',
-      price: '800',
-      currency: 'BDT',
-      thumbnail_url: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=600&q=80',
-    },
-  ];
-
   const renderCourses = useMemo(() => {
     if (courses.length > 0) {
       if (filteredCourses.length > 0) {
@@ -93,7 +93,7 @@ export default function CoursesPage() {
       return []; // search results empty
     }
     // Fallback to mock list if database has no courses yet
-    return mockCourses.filter(
+    return MOCK_COURSES.filter(
       (c) =>
         c.title.toLowerCase().includes(search.toLowerCase()) ||
         c.description.toLowerCase().includes(search.toLowerCase())

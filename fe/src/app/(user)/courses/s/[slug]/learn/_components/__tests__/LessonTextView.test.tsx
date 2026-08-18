@@ -3,12 +3,6 @@ import { render, screen, fireEvent } from '@/test/test-utils';
 import { LessonTextView } from '../LessonTextView';
 import React from 'react';
 
-const mockUser = {
-  id: 'usr-445566',
-  email: 'aspirant@eduverse.org',
-  role: 'USER',
-};
-
 const mockUseAuthContext = vi.fn();
 
 vi.mock('@/context/AuthContext', () => ({

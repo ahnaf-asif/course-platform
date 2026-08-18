@@ -3,12 +3,6 @@ import { render, screen, fireEvent, act } from '@/test/test-utils';
 import { LessonPlayer } from '../_components/LessonPlayer';
 import React from 'react';
 
-const mockUser = {
-  id: 'usr-vid-99',
-  email: 'video.student@eduverse.org',
-  role: 'USER',
-};
-
 const mockUseAuthContext = vi.fn();
 
 vi.mock('@/context/AuthContext', () => ({
@@ -21,17 +15,21 @@ vi.mock('@/lib/axios', () => ({
 }));
 
 vi.mock('hls.js', () => {
-  const MockHls = vi.fn().mockImplementation(() => ({
-    loadSource: vi.fn(),
-    attachMedia: vi.fn(),
-    on: vi.fn(),
-    destroy: vi.fn(),
-  }));
-  (MockHls as any).isSupported = vi.fn().mockReturnValue(true);
-  (MockHls as any).Events = {
-    MANIFEST_PARSED: 'manifestParsed',
-    ERROR: 'error',
-  };
+  const MockHls = Object.assign(
+    vi.fn().mockImplementation(() => ({
+      loadSource: vi.fn(),
+      attachMedia: vi.fn(),
+      on: vi.fn(),
+      destroy: vi.fn(),
+    })),
+    {
+      isSupported: vi.fn().mockReturnValue(true),
+      Events: {
+        MANIFEST_PARSED: 'manifestParsed',
+        ERROR: 'error',
+      },
+    }
+  );
   return { default: MockHls };
 });
 

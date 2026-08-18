@@ -3,12 +3,6 @@ import { render, screen, act } from '@/test/test-utils';
 import { WatermarkOverlay } from '../WatermarkOverlay';
 import React from 'react';
 
-const mockUser = {
-  id: 'usr-12345',
-  email: 'student.protect@eduverse.org',
-  role: 'USER',
-};
-
 const mockUseAuthContext = vi.fn();
 
 vi.mock('@/context/AuthContext', () => ({
@@ -55,7 +49,7 @@ describe('WatermarkOverlay Component', () => {
     mockUseAuthContext.mockReturnValue({ userEmail: 'student.protect@eduverse.org' });
     const onTamper = vi.fn();
 
-    const { container } = render(
+    render(
       <div id="parent-container">
         <WatermarkOverlay variant="video" onTamper={onTamper} />
       </div>

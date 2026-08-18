@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Box, Text } from '@mantine/core';
+import { Text } from '@mantine/core';
 import { useAuthContext } from '@/context/AuthContext';
 
 export interface WatermarkOverlayProps {

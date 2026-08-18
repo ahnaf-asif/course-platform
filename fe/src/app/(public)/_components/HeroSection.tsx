@@ -1,6 +1,6 @@
 'use client';
 
-import { Container, Title, Text, Button, Group, Stack, SimpleGrid, Box, ThemeIcon, Badge } from '@mantine/core';
+import { Container, Title, Text, Button, Group, Stack, SimpleGrid, Box, ThemeIcon } from '@mantine/core';
 import { IconArrowRight, IconBooks } from '@tabler/icons-react';
 import Link from 'next/link';
 
