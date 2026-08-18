@@ -7,6 +7,7 @@ import { MathJaxContent } from '@/components/MathJaxContent';
 import { WatermarkOverlay } from '@/components/WatermarkOverlay';
 import { useAuthContext } from '@/context/AuthContext';
 import { embedFingerprint } from '@/lib/steganography';
+import { useDevToolsDetector } from '@/lib/useDevToolsDetector';
 import { parseHTMLContent } from './utils';
 
 interface LessonTextViewProps {
@@ -33,13 +34,16 @@ export function LessonTextView({
   const [isTampered, setIsTampered] = useState(false);
   const isCompleted = currentTreeNode?.progress_status === 'COMPLETED';
 
+  // DevTools open detector: unmounts content if inspector is activated
+  useDevToolsDetector(() => setIsTampered(true));
+
   // Embed invisible forensic steganography into content
   const protectedHTML = useMemo(() => {
-    if (!lessonDetails.text_content) return null;
+    if (!lessonDetails.text_content || isTampered) return null;
     const identifier = user?.email || user?.id || 'EduVerse';
     const fingerprinted = embedFingerprint(lessonDetails.text_content, identifier);
     return parseHTMLContent(fingerprinted);
-  }, [lessonDetails.text_content, user]);
+  }, [lessonDetails.text_content, user, isTampered]);
 
   // Anti-Copy & Anti-Print Keyboard Shortcut Interceptor
   useEffect(() => {

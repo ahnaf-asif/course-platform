@@ -6,6 +6,7 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 import Hls from 'hls.js';
 import { axiosInstance } from '@/lib/axios';
 import { WatermarkOverlay } from '@/components/WatermarkOverlay';
+import { useDevToolsDetector } from '@/lib/useDevToolsDetector';
 
 interface LessonPlayerProps {
   videoId: string;
@@ -32,6 +33,9 @@ export function LessonPlayer({ videoId, onEnded }: LessonPlayerProps) {
       videoRef.current.pause();
     }
   };
+
+  // Detect DevTools opening and trigger tamper pause
+  useDevToolsDetector(handleTamper);
 
   useEffect(() => {
     let hls: Hls | null = null;
