@@ -522,6 +522,20 @@ func (h *QuizHandler) AttachQuizToNode(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
 
+	if h.cacheService != nil {
+		if ancestors, err := h.store.GetCourseTree(c.Request().Context(), nodeID); err == nil {
+			for _, a := range ancestors {
+				if a.NodeType == generated.NodeTypeCOURSE {
+					_ = h.cacheService.Delete(c.Request().Context(), "course:tree:id:"+a.ID.String())
+					if course, err := h.store.GetCourse(c.Request().Context(), a.ID); err == nil {
+						_ = h.cacheService.Delete(c.Request().Context(), "course:tree:slug:"+course.Slug)
+					}
+					break
+				}
+			}
+		}
+	}
+
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -577,6 +591,20 @@ func (h *QuizHandler) DetachQuizFromNode(c echo.Context) error {
 	if err != nil {
 		h.logger.Error("Failed to detach quiz from node", "error", err, "node_id", nodeID, "quiz_id", quizID)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	if h.cacheService != nil {
+		if ancestors, err := h.store.GetCourseTree(c.Request().Context(), nodeID); err == nil {
+			for _, a := range ancestors {
+				if a.NodeType == generated.NodeTypeCOURSE {
+					_ = h.cacheService.Delete(c.Request().Context(), "course:tree:id:"+a.ID.String())
+					if course, err := h.store.GetCourse(c.Request().Context(), a.ID); err == nil {
+						_ = h.cacheService.Delete(c.Request().Context(), "course:tree:slug:"+course.Slug)
+					}
+					break
+				}
+			}
+		}
 	}
 
 	return c.NoContent(http.StatusNoContent)

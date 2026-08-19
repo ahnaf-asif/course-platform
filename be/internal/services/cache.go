@@ -25,6 +25,12 @@ func NewCacheService(addr string, password string, db int) *CacheService {
 	}
 }
 
+func NewCacheServiceWithClient(client *redis.Client) *CacheService {
+	return &CacheService{
+		client: client,
+	}
+}
+
 func (s *CacheService) Ping(ctx context.Context) error {
 	return s.client.Ping(ctx).Err()
 }

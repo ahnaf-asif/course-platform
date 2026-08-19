@@ -10,10 +10,12 @@ import (
 	"os"
 	"testing"
 
+	"github.com/go-redis/redismock/v9"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/shafins-course/backend/internal/db/generated"
 	"github.com/shafins-course/backend/internal/middleware"
+	"github.com/shafins-course/backend/internal/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -217,6 +219,54 @@ func TestCurriculumHandler_GetCourseTreeBySlug(t *testing.T) {
 		assert.Len(t, resp, 2)
 		assert.Equal(t, "http://video.com", *resp[1].VideoURL)
 		assert.Equal(t, "Hello world", *resp[1].TextContent)
+	})
+
+	t.Run("Cache Hit - Serves from Redis without calling store GetCourseTreeHydratedBySlug", func(t *testing.T) {
+		rdb, redisMock := redismock.NewClientMock()
+		cacheService := services.NewCacheServiceWithClient(rdb)
+		mockStore := new(MockStore)
+		h := NewCurriculumHandler(mockStore, cacheService, logger)
+
+		slug := "cached-course"
+		courseID := uuid.New()
+		cachedData := CachedCourseTree{
+			CourseID: courseID.String(),
+			IsPaid:   false,
+			TreeNodes: []CourseTreeResponse{
+				{
+					ID:       courseID.String(),
+					NodeType: "COURSE",
+					Title:    "Cached Course Title",
+				},
+				{
+					ID:       uuid.New().String(),
+					NodeType: "LESSON",
+					Title:    "Cached Lesson 1",
+				},
+			},
+		}
+		dataBytes, _ := json.Marshal(cachedData)
+
+		redisMock.ExpectGet("course:tree:slug:" + slug).SetVal(string(dataBytes))
+
+		req := httptest.NewRequest(http.MethodGet, "/courses/s/"+slug+"/tree", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("slug")
+		c.SetParamValues(slug)
+
+		// mockStore should NOT receive any GetCourseTreeHydratedBySlug calls
+		err := h.GetCourseTreeBySlug(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var resp []CourseTreeResponse
+		json.Unmarshal(rec.Body.Bytes(), &resp)
+		assert.Len(t, resp, 2)
+		assert.Equal(t, "Cached Course Title", resp[0].Title)
+		assert.Equal(t, "Cached Lesson 1", resp[1].Title)
+
+		assert.NoError(t, redisMock.ExpectationsWereMet())
 	})
 }
 

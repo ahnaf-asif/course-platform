@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"log/slog"
 	"net/http"
@@ -104,6 +105,8 @@ func (h *CurriculumHandler) CreateSubject(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
 
+	h.invalidateCourseTreeCache(c.Request().Context(), parentID)
+
 	return c.JSON(http.StatusCreated, SubjectResponse{
 		ID:            subjectRow.ID.String(),
 		ParentID:      subjectRow.ParentID.UUID.String(),
@@ -150,6 +153,8 @@ func (h *CurriculumHandler) UpdateSubject(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
 
+	h.invalidateNodeCache(c.Request().Context(), id)
+
 	row, _ := h.store.GetSubject(c.Request().Context(), id)
 	return c.JSON(http.StatusOK, SubjectResponse{
 		ID:            row.ID.String(),
@@ -174,6 +179,8 @@ func (h *CurriculumHandler) DeleteSubject(c echo.Context) error {
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
+
+	h.invalidateNodeCache(c.Request().Context(), id)
 
 	if err := h.store.DeleteSubject(c.Request().Context(), id); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
@@ -239,6 +246,8 @@ func (h *CurriculumHandler) CreateChapter(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
 
+	h.invalidateNodeCache(c.Request().Context(), parentID)
+
 	return c.JSON(http.StatusCreated, ChapterResponse{
 		ID:            chapterRow.ID.String(),
 		ParentID:      chapterRow.ParentID.UUID.String(),
@@ -285,6 +294,8 @@ func (h *CurriculumHandler) UpdateChapter(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
 
+	h.invalidateNodeCache(c.Request().Context(), id)
+
 	row, _ := h.store.GetChapter(c.Request().Context(), id)
 	return c.JSON(http.StatusOK, ChapterResponse{
 		ID:            row.ID.String(),
@@ -309,6 +320,8 @@ func (h *CurriculumHandler) DeleteChapter(c echo.Context) error {
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
+
+	h.invalidateNodeCache(c.Request().Context(), id)
 
 	if err := h.store.DeleteChapter(c.Request().Context(), id); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
@@ -386,6 +399,8 @@ func (h *CurriculumHandler) CreateLesson(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
 
+	h.invalidateNodeCache(c.Request().Context(), parentID)
+
 	resp := LessonResponse{
 		ID:            lessonRow.ID.String(),
 		ParentID:      lessonRow.ParentID.UUID.String(),
@@ -447,6 +462,8 @@ func (h *CurriculumHandler) UpdateLesson(c echo.Context) error {
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
+
+	h.invalidateNodeCache(c.Request().Context(), id)
 
 	row, _ := h.store.GetLesson(c.Request().Context(), id)
 	resp := LessonResponse{
@@ -512,6 +529,8 @@ func (h *CurriculumHandler) DeleteLesson(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
 
+	h.invalidateNodeCache(c.Request().Context(), id)
+
 	if err := h.store.DeleteLesson(c.Request().Context(), id); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
@@ -542,6 +561,12 @@ type CourseQuizResponse struct {
 	IsPassed     bool   `json:"is_passed"`
 }
 
+type CachedCourseTree struct {
+	CourseID  string               `json:"course_id"`
+	IsPaid    bool                 `json:"is_paid"`
+	TreeNodes []CourseTreeResponse `json:"tree_nodes"`
+}
+
 type UpsertProgressRequest struct {
 	Status string `json:"status" validate:"required,oneof=STARTED COMPLETED"`
 }
@@ -553,6 +578,33 @@ type ProgressResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+func (h *CurriculumHandler) invalidateCourseTreeCache(ctx context.Context, courseID uuid.UUID) {
+	if h.cacheService == nil {
+		return
+	}
+	_ = h.cacheService.Delete(ctx, "course:tree:id:"+courseID.String())
+	if course, err := h.store.GetCourse(ctx, courseID); err == nil {
+		_ = h.cacheService.Delete(ctx, "course:tree:slug:"+course.Slug)
+		_ = h.cacheService.Delete(ctx, "course:public:slug:"+course.Slug)
+	}
+}
+
+func (h *CurriculumHandler) invalidateNodeCache(ctx context.Context, nodeID uuid.UUID) {
+	if h.cacheService == nil {
+		return
+	}
+	_ = h.cacheService.Delete(ctx, "lesson:content:"+nodeID.String())
+	ancestors, err := h.store.GetCourseTree(ctx, nodeID)
+	if err == nil {
+		for _, a := range ancestors {
+			if a.NodeType == generated.NodeTypeCOURSE {
+				h.invalidateCourseTreeCache(ctx, a.ID)
+				break
+			}
+		}
+	}
+}
+
 func (h *CurriculumHandler) GetCourseTree(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -560,118 +612,73 @@ func (h *CurriculumHandler) GetCourseTree(c echo.Context) error {
 	}
 
 	ctx := c.Request().Context()
-	rows, err := h.store.GetCourseTreeHydrated(ctx, id)
-	if err != nil {
-		h.logger.Error("Failed to get hydrated course tree", "error", err, "course_id", id)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
-	}
+	var cachedTree CachedCourseTree
+	var courseID uuid.UUID = id
+	var isPaid bool
+	var baseTree []CourseTreeResponse
+	cacheHit := false
 
-	if len(rows) == 0 {
-		return echo.NewHTTPError(http.StatusNotFound, "Course not found")
-	}
-
-	// Access control check and auth extraction
-	hasAccess := false
-	var userID uuid.UUID
-	var isUserLoggedIn bool
-	authUser := internalMiddleware.GetAuthUser(c)
-	if authUser.ID != "" {
-		if uID, err := uuid.Parse(authUser.ID); err == nil {
-			userID = uID
-			isUserLoggedIn = true
+	if h.cacheService != nil {
+		cacheKey := "course:tree:id:" + id.String()
+		if err := h.cacheService.Get(ctx, cacheKey, &cachedTree); err == nil && len(cachedTree.TreeNodes) > 0 {
+			isPaid = cachedTree.IsPaid
+			baseTree = cachedTree.TreeNodes
+			cacheHit = true
 		}
 	}
 
-	pg, pgErr := h.store.GetPaymentGateByNode(ctx, id)
-	isPaid := pgErr == nil && pg.Price != "0.00"
-
-	if !isPaid {
-		hasAccess = true
-	} else {
-		if authUser.Role == "ADMIN" {
-			hasAccess = true
-		} else if isUserLoggedIn {
-			ok, _ := h.store.CheckUserAccessToNode(ctx, generated.CheckUserAccessToNodeParams{
-				ID:     id,
-				UserID: userID,
-			})
-			hasAccess = ok
+	if !cacheHit {
+		rows, err := h.store.GetCourseTreeHydrated(ctx, id)
+		if err != nil {
+			h.logger.Error("Failed to get hydrated course tree", "error", err, "course_id", id)
+			return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 		}
-	}
 
-	// Fetch all quizzes for the lesson nodes
-	lessonIDs := make([]uuid.UUID, 0)
-	for _, row := range rows {
-		if row.NodeType == generated.NodeTypeLESSON {
-			lessonIDs = append(lessonIDs, row.ID)
+		if len(rows) == 0 {
+			return echo.NewHTTPError(http.StatusNotFound, "Course not found")
 		}
-	}
 
-	progressMap := make(map[uuid.UUID]string)
-	if isUserLoggedIn {
-		progressList, err := h.store.ListProgressByUser(ctx, userID)
-		if err == nil {
-			for _, p := range progressList {
-				progressMap[p.NodeID] = string(p.Status)
+		courseID = rows[0].ID
+		pg, pgErr := h.store.GetPaymentGateByNode(ctx, courseID)
+		isPaid = pgErr == nil && pg.Price != "0.00"
+
+		lessonIDs := make([]uuid.UUID, 0)
+		for _, row := range rows {
+			if row.NodeType == generated.NodeTypeLESSON {
+				lessonIDs = append(lessonIDs, row.ID)
 			}
 		}
-	}
 
-	quizzesMap := make(map[uuid.UUID][]CourseQuizResponse)
-	if len(lessonIDs) > 0 {
-		quizzes, err := h.store.GetQuizzesByNodes(ctx, lessonIDs)
-		if err == nil {
-			quizIDs := make([]uuid.UUID, 0)
-			for _, q := range quizzes {
-				quizIDs = append(quizIDs, q.QuizID)
-			}
-
-			passedQuizzesMap := make(map[uuid.UUID]bool)
-			if isUserLoggedIn && len(quizIDs) > 0 {
-				attempts, err := h.store.GetUserQuizAttemptsForQuizzes(ctx, generated.GetUserQuizAttemptsForQuizzesParams{
-					UserID:  userID,
-					QuizIds: quizIDs,
-				})
-				if err == nil {
-					for _, a := range attempts {
-						if a.IsPassed {
-							passedQuizzesMap[a.QuizID] = true
-						}
-					}
+		quizzesMap := make(map[uuid.UUID][]CourseQuizResponse)
+		if len(lessonIDs) > 0 {
+			quizzes, err := h.store.GetQuizzesByNodes(ctx, lessonIDs)
+			if err == nil {
+				for _, q := range quizzes {
+					quizzesMap[q.NodeID] = append(quizzesMap[q.NodeID], CourseQuizResponse{
+						ID:           q.QuizID.String(),
+						Title:        q.Title,
+						PassingScore: q.PassingScore,
+					})
 				}
+			} else {
+				h.logger.Error("Failed to get quizzes for nodes in course tree", "error", err)
 			}
+		}
 
-			for _, q := range quizzes {
-				quizzesMap[q.NodeID] = append(quizzesMap[q.NodeID], CourseQuizResponse{
-					ID:           q.QuizID.String(),
-					Title:        q.Title,
-					PassingScore: q.PassingScore,
-					IsPassed:     passedQuizzesMap[q.QuizID],
-				})
+		baseTree = h.mapToCourseTreeResponse(rows, true, quizzesMap, nil)
+
+		if h.cacheService != nil {
+			cachedData := CachedCourseTree{
+				CourseID:  courseID.String(),
+				IsPaid:    isPaid,
+				TreeNodes: baseTree,
 			}
-		} else {
-			h.logger.Error("Failed to get quizzes for nodes in course tree", "error", err)
+			_ = h.cacheService.Set(ctx, "course:tree:id:"+id.String(), cachedData, 24*time.Hour)
+			if course, err := h.store.GetCourse(ctx, courseID); err == nil {
+				_ = h.cacheService.Set(ctx, "course:tree:slug:"+course.Slug, cachedData, 24*time.Hour)
+			}
 		}
 	}
-
-	return c.JSON(http.StatusOK, h.mapToCourseTreeResponse(rows, hasAccess, quizzesMap, progressMap))
-}
-
-func (h *CurriculumHandler) GetCourseTreeBySlug(c echo.Context) error {
-	slug := c.Param("slug")
-	ctx := c.Request().Context()
-
-	rows, err := h.store.GetCourseTreeHydratedBySlug(ctx, slug)
-	if err != nil {
-		h.logger.Error("Failed to get hydrated course tree by slug", "error", err, "slug", slug)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
-	}
-
-	if len(rows) == 0 {
-		return echo.NewHTTPError(http.StatusNotFound, "Course not found")
-	}
-
-	courseID := rows[0].ID
 
 	// Access control check and auth extraction
 	hasAccess := false
@@ -684,9 +691,6 @@ func (h *CurriculumHandler) GetCourseTreeBySlug(c echo.Context) error {
 			isUserLoggedIn = true
 		}
 	}
-
-	pg, pgErr := h.store.GetPaymentGateByNode(ctx, courseID)
-	isPaid := pgErr == nil && pg.Price != "0.00"
 
 	if !isPaid {
 		hasAccess = true
@@ -702,15 +706,9 @@ func (h *CurriculumHandler) GetCourseTreeBySlug(c echo.Context) error {
 		}
 	}
 
-	// Fetch all quizzes for the lesson nodes
-	lessonIDs := make([]uuid.UUID, 0)
-	for _, row := range rows {
-		if row.NodeType == generated.NodeTypeLESSON {
-			lessonIDs = append(lessonIDs, row.ID)
-		}
-	}
-
 	progressMap := make(map[uuid.UUID]string)
+	passedQuizzesMap := make(map[uuid.UUID]bool)
+
 	if isUserLoggedIn {
 		progressList, err := h.store.ListProgressByUser(ctx, userID)
 		if err == nil {
@@ -718,46 +716,231 @@ func (h *CurriculumHandler) GetCourseTreeBySlug(c echo.Context) error {
 				progressMap[p.NodeID] = string(p.Status)
 			}
 		}
-	}
 
-	quizzesMap := make(map[uuid.UUID][]CourseQuizResponse)
-	if len(lessonIDs) > 0 {
-		quizzes, err := h.store.GetQuizzesByNodes(ctx, lessonIDs)
-		if err == nil {
-			quizIDs := make([]uuid.UUID, 0)
-			for _, q := range quizzes {
-				quizIDs = append(quizIDs, q.QuizID)
+		allQuizIDs := make([]uuid.UUID, 0)
+		for _, node := range baseTree {
+			for _, q := range node.Quizzes {
+				if qID, err := uuid.Parse(q.ID); err == nil {
+					allQuizIDs = append(allQuizIDs, qID)
+				}
 			}
+		}
 
-			passedQuizzesMap := make(map[uuid.UUID]bool)
-			if isUserLoggedIn && len(quizIDs) > 0 {
-				attempts, err := h.store.GetUserQuizAttemptsForQuizzes(ctx, generated.GetUserQuizAttemptsForQuizzesParams{
-					UserID:  userID,
-					QuizIds: quizIDs,
-				})
-				if err == nil {
-					for _, a := range attempts {
-						if a.IsPassed {
-							passedQuizzesMap[a.QuizID] = true
-						}
+		if len(allQuizIDs) > 0 {
+			attempts, err := h.store.GetUserQuizAttemptsForQuizzes(ctx, generated.GetUserQuizAttemptsForQuizzesParams{
+				UserID:  userID,
+				QuizIds: allQuizIDs,
+			})
+			if err == nil {
+				for _, a := range attempts {
+					if a.IsPassed {
+						passedQuizzesMap[a.QuizID] = true
 					}
 				}
 			}
-
-			for _, q := range quizzes {
-				quizzesMap[q.NodeID] = append(quizzesMap[q.NodeID], CourseQuizResponse{
-					ID:           q.QuizID.String(),
-					Title:        q.Title,
-					PassingScore: q.PassingScore,
-					IsPassed:     passedQuizzesMap[q.QuizID],
-				})
-			}
-		} else {
-			h.logger.Error("Failed to get quizzes for nodes in course tree", "error", err)
 		}
 	}
 
-	return c.JSON(http.StatusOK, h.mapToCourseTreeResponseBySlug(rows, hasAccess, quizzesMap, progressMap))
+	resp := make([]CourseTreeResponse, len(baseTree))
+	for i, node := range baseTree {
+		item := node
+		nodeID, _ := uuid.Parse(node.ID)
+
+		if status, ok := progressMap[nodeID]; ok {
+			statusStr := status
+			item.ProgressStatus = &statusStr
+		} else {
+			item.ProgressStatus = nil
+		}
+
+		if !hasAccess {
+			item.VideoURL = nil
+			item.TextContent = nil
+		}
+
+		if len(node.Quizzes) > 0 {
+			quizzes := make([]CourseQuizResponse, len(node.Quizzes))
+			for j, q := range node.Quizzes {
+				qCopy := q
+				qID, _ := uuid.Parse(q.ID)
+				qCopy.IsPassed = passedQuizzesMap[qID]
+				quizzes[j] = qCopy
+			}
+			item.Quizzes = quizzes
+		}
+
+		resp[i] = item
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
+func (h *CurriculumHandler) GetCourseTreeBySlug(c echo.Context) error {
+	slug := c.Param("slug")
+	ctx := c.Request().Context()
+
+	var cachedTree CachedCourseTree
+	var courseID uuid.UUID
+	var isPaid bool
+	var baseTree []CourseTreeResponse
+	cacheHit := false
+
+	if h.cacheService != nil {
+		cacheKey := "course:tree:slug:" + slug
+		if err := h.cacheService.Get(ctx, cacheKey, &cachedTree); err == nil && len(cachedTree.TreeNodes) > 0 {
+			if parsedID, err := uuid.Parse(cachedTree.CourseID); err == nil {
+				courseID = parsedID
+				isPaid = cachedTree.IsPaid
+				baseTree = cachedTree.TreeNodes
+				cacheHit = true
+			}
+		}
+	}
+
+	if !cacheHit {
+		rows, err := h.store.GetCourseTreeHydratedBySlug(ctx, slug)
+		if err != nil {
+			h.logger.Error("Failed to get hydrated course tree by slug", "error", err, "slug", slug)
+			return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+		}
+
+		if len(rows) == 0 {
+			return echo.NewHTTPError(http.StatusNotFound, "Course not found")
+		}
+
+		courseID = rows[0].ID
+		pg, pgErr := h.store.GetPaymentGateByNode(ctx, courseID)
+		isPaid = pgErr == nil && pg.Price != "0.00"
+
+		lessonIDs := make([]uuid.UUID, 0)
+		for _, row := range rows {
+			if row.NodeType == generated.NodeTypeLESSON {
+				lessonIDs = append(lessonIDs, row.ID)
+			}
+		}
+
+		quizzesMap := make(map[uuid.UUID][]CourseQuizResponse)
+		if len(lessonIDs) > 0 {
+			quizzes, err := h.store.GetQuizzesByNodes(ctx, lessonIDs)
+			if err == nil {
+				for _, q := range quizzes {
+					quizzesMap[q.NodeID] = append(quizzesMap[q.NodeID], CourseQuizResponse{
+						ID:           q.QuizID.String(),
+						Title:        q.Title,
+						PassingScore: q.PassingScore,
+					})
+				}
+			} else {
+				h.logger.Error("Failed to get quizzes for nodes in course tree", "error", err)
+			}
+		}
+
+		baseTree = h.mapToCourseTreeResponseBySlug(rows, true, quizzesMap, nil)
+
+		if h.cacheService != nil {
+			cachedData := CachedCourseTree{
+				CourseID:  courseID.String(),
+				IsPaid:    isPaid,
+				TreeNodes: baseTree,
+			}
+			_ = h.cacheService.Set(ctx, "course:tree:slug:"+slug, cachedData, 24*time.Hour)
+			_ = h.cacheService.Set(ctx, "course:tree:id:"+courseID.String(), cachedData, 24*time.Hour)
+		}
+	}
+
+	// Access control check and auth extraction
+	hasAccess := false
+	var userID uuid.UUID
+	var isUserLoggedIn bool
+	authUser := internalMiddleware.GetAuthUser(c)
+	if authUser.ID != "" {
+		if uID, err := uuid.Parse(authUser.ID); err == nil {
+			userID = uID
+			isUserLoggedIn = true
+		}
+	}
+
+	if !isPaid {
+		hasAccess = true
+	} else {
+		if authUser.Role == "ADMIN" {
+			hasAccess = true
+		} else if isUserLoggedIn {
+			ok, _ := h.store.CheckUserAccessToNode(ctx, generated.CheckUserAccessToNodeParams{
+				ID:     courseID,
+				UserID: userID,
+			})
+			hasAccess = ok
+		}
+	}
+
+	progressMap := make(map[uuid.UUID]string)
+	passedQuizzesMap := make(map[uuid.UUID]bool)
+
+	if isUserLoggedIn {
+		progressList, err := h.store.ListProgressByUser(ctx, userID)
+		if err == nil {
+			for _, p := range progressList {
+				progressMap[p.NodeID] = string(p.Status)
+			}
+		}
+
+		allQuizIDs := make([]uuid.UUID, 0)
+		for _, node := range baseTree {
+			for _, q := range node.Quizzes {
+				if qID, err := uuid.Parse(q.ID); err == nil {
+					allQuizIDs = append(allQuizIDs, qID)
+				}
+			}
+		}
+
+		if len(allQuizIDs) > 0 {
+			attempts, err := h.store.GetUserQuizAttemptsForQuizzes(ctx, generated.GetUserQuizAttemptsForQuizzesParams{
+				UserID:  userID,
+				QuizIds: allQuizIDs,
+			})
+			if err == nil {
+				for _, a := range attempts {
+					if a.IsPassed {
+						passedQuizzesMap[a.QuizID] = true
+					}
+				}
+			}
+		}
+	}
+
+	resp := make([]CourseTreeResponse, len(baseTree))
+	for i, node := range baseTree {
+		item := node
+		nodeID, _ := uuid.Parse(node.ID)
+
+		if status, ok := progressMap[nodeID]; ok {
+			statusStr := status
+			item.ProgressStatus = &statusStr
+		} else {
+			item.ProgressStatus = nil
+		}
+
+		if !hasAccess {
+			item.VideoURL = nil
+			item.TextContent = nil
+		}
+
+		if len(node.Quizzes) > 0 {
+			quizzes := make([]CourseQuizResponse, len(node.Quizzes))
+			for j, q := range node.Quizzes {
+				qCopy := q
+				qID, _ := uuid.Parse(q.ID)
+				qCopy.IsPassed = passedQuizzesMap[qID]
+				quizzes[j] = qCopy
+			}
+			item.Quizzes = quizzes
+		}
+
+		resp[i] = item
+	}
+
+	return c.JSON(http.StatusOK, resp)
 }
 
 func (h *CurriculumHandler) GetUserLesson(c echo.Context) error {
@@ -822,6 +1005,15 @@ func (h *CurriculumHandler) GetUserLesson(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "Course purchase required to access this content")
 	}
 
+	// Check Redis cache for lesson content
+	if h.cacheService != nil {
+		var cachedResp LessonResponse
+		cacheKey := "lesson:content:" + id.String()
+		if err := h.cacheService.Get(ctx, cacheKey, &cachedResp); err == nil && cachedResp.ID != "" {
+			return c.JSON(http.StatusOK, cachedResp)
+		}
+	}
+
 	resp := LessonResponse{
 		ID:            row.ID.String(),
 		ParentID:      row.ParentID.UUID.String(),
@@ -835,6 +1027,11 @@ func (h *CurriculumHandler) GetUserLesson(c echo.Context) error {
 	}
 	if row.VideoUrl.Valid {
 		resp.VideoURL = &row.VideoUrl.String
+	}
+
+	if h.cacheService != nil {
+		cacheKey := "lesson:content:" + id.String()
+		_ = h.cacheService.Set(ctx, cacheKey, resp, 24*time.Hour)
 	}
 
 	return c.JSON(http.StatusOK, resp)

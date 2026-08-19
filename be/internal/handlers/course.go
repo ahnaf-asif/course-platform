@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -155,7 +156,17 @@ func (h *CourseHandler) CreateCourse(c echo.Context) error {
 
 func (h *CourseHandler) GetCourseBySlug(c echo.Context) error {
 	slug := c.Param("slug")
-	course, err := h.store.GetCourseBySlug(c.Request().Context(), slug)
+	ctx := c.Request().Context()
+	cacheKey := "course:public:slug:" + slug
+
+	if h.cacheService != nil {
+		var cachedCourse CourseResponse
+		if err := h.cacheService.Get(ctx, cacheKey, &cachedCourse); err == nil && cachedCourse.ID != "" {
+			return c.JSON(http.StatusOK, cachedCourse)
+		}
+	}
+
+	course, err := h.store.GetCourseBySlug(ctx, slug)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return echo.NewHTTPError(http.StatusNotFound, "Course not found")
@@ -164,7 +175,12 @@ func (h *CourseHandler) GetCourseBySlug(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
 
-	return c.JSON(http.StatusOK, h.mapToCourseResponse(generated.GetCourseRow(course)))
+	resp := h.mapToCourseResponse(generated.GetCourseRow(course))
+	if h.cacheService != nil {
+		_ = h.cacheService.Set(ctx, cacheKey, resp, 24*time.Hour)
+	}
+
+	return c.JSON(http.StatusOK, resp)
 }
 
 func (h *CourseHandler) ListCourses(c echo.Context) error {
@@ -309,6 +325,12 @@ func (h *CourseHandler) UpdateCourse(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
 
+	if h.cacheService != nil {
+		_ = h.cacheService.Delete(c.Request().Context(), "course:public:slug:"+courseRow.Slug)
+		_ = h.cacheService.Delete(c.Request().Context(), "course:tree:id:"+id.String())
+		_ = h.cacheService.Delete(c.Request().Context(), "course:tree:slug:"+courseRow.Slug)
+	}
+
 	return c.JSON(http.StatusOK, h.mapToCourseResponse(courseRow))
 }
 
@@ -338,7 +360,7 @@ func (h *CourseHandler) mapToCourseResponse(row generated.GetCourseRow) CourseRe
 	resp := CourseResponse{
 		ID:          row.ID.String(),
 		NodeType:    string(row.NodeType),
-		Title:       row.Title,
+		Title:         row.Title,
 		Slug:        row.Slug,
 		Description: row.Description.String,
 		IsPublished: row.IsPublished,
@@ -384,7 +406,7 @@ func (h *CourseHandler) DeleteCourse(c echo.Context) error {
 	}
 
 	// Check if exists first to return 404
-	_, err = h.store.GetCourse(c.Request().Context(), id)
+	course, err := h.store.GetCourse(c.Request().Context(), id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return echo.NewHTTPError(http.StatusNotFound, "Course not found")
@@ -397,6 +419,12 @@ func (h *CourseHandler) DeleteCourse(c echo.Context) error {
 	if err != nil {
 		h.logger.Error("Failed to delete course", "error", err, "course_id", id)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	if h.cacheService != nil {
+		_ = h.cacheService.Delete(c.Request().Context(), "course:public:slug:"+course.Slug)
+		_ = h.cacheService.Delete(c.Request().Context(), "course:tree:id:"+id.String())
+		_ = h.cacheService.Delete(c.Request().Context(), "course:tree:slug:"+course.Slug)
 	}
 
 	return c.NoContent(http.StatusNoContent)
