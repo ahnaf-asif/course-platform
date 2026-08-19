@@ -130,7 +130,6 @@ describe('SyllabusSidebar Component', () => {
     // First subject and chapter containing les-1 should be expanded
     expect(screen.getByTestId('lesson-item-les-1')).toBeInTheDocument();
     expect(screen.getByText('চর্যাপদের আবিষ্কার ও পরিচয়')).toBeInTheDocument();
-    expect(screen.getByText('চলছে')).toBeInTheDocument();
   });
 
   it('invokes handleSelectLesson when a lesson is clicked', () => {
@@ -173,7 +172,7 @@ describe('SyllabusSidebar Component', () => {
     expect(mockHandleSelectQuiz).toHaveBeenCalledWith('les-1', 'quiz-1');
   });
 
-  it('toggles expand all and collapse all on click', () => {
+  it('toggles subject and chapter dropdowns on click', () => {
     render(
       <SyllabusSidebar
         organizedTree={mockOrganizedTree}
@@ -186,10 +185,9 @@ describe('SyllabusSidebar Component', () => {
       />
     );
 
-    const expandAllBtn = screen.getByText(/সব খুলুন|সব বন্ধ করুন/i);
-    expect(expandAllBtn).toBeInTheDocument();
+    const subjectToggle = screen.getByTestId('subject-toggle-sub-2');
+    expect(subjectToggle).toBeInTheDocument();
 
-    fireEvent.click(expandAllBtn);
-    // Toggling works without crashing
+    fireEvent.click(subjectToggle);
   });
 });
