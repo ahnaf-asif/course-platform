@@ -94,7 +94,7 @@ describe('CoursePlayerPage Component', () => {
 
     // Verifies reading material content renders on the next slide
     await waitFor(() => {
-      expect(screen.getByTestId('protected-canvas-element')).toBeInTheDocument();
+      expect(screen.getByTestId('mathjax-content-container')).toBeInTheDocument();
     });
   });
 });
