@@ -105,9 +105,10 @@ describe('Orders Management Page', () => {
     render(<OrdersManagement />);
 
     expect(screen.getByText(/অর্ডার ও ট্রানজেকশন/i)).toBeInTheDocument();
-    expect(screen.getByText('মোট আয় (Revenue)')).toBeInTheDocument();
+    expect(screen.getByText('মোট আয়')).toBeInTheDocument();
+    expect(screen.getByText('Total Revenue')).toBeInTheDocument();
     expect(screen.getByText('৳45,000.00')).toBeInTheDocument();
-    expect(screen.getByText('সফল অর্ডার (Completed)')).toBeInTheDocument();
+    expect(screen.getByText('সফল অর্ডার')).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
   });
 
