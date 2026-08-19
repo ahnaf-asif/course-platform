@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 import { Box } from '@mantine/core';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 
 interface MathJaxContentProps {
   html: string;
@@ -11,7 +13,38 @@ export function MathJaxContent({ html }: MathJaxContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (containerRef.current && typeof window !== 'undefined' && window.MathJax) {
+    if (!containerRef.current) return;
+
+    // 1. Instantly render math nodes with KaTeX (replaces raw $latex$ with crisp math glyphs)
+    const mathElements = containerRef.current.querySelectorAll<HTMLElement>(
+      'span[data-type="math"], span.math, span.math-inline, span.math-display, div[data-type="math"]'
+    );
+
+    mathElements.forEach((el) => {
+      const latex =
+        el.getAttribute('data-latex') ||
+        el.textContent?.replace(/^\$+|\$+$/g, '').trim() ||
+        '';
+
+      if (latex) {
+        try {
+          const isDisplay =
+            el.tagName.toLowerCase() === 'div' ||
+            el.classList.contains('math-display') ||
+            (el.textContent || '').startsWith('$$');
+
+          katex.render(latex, el, {
+            throwOnError: false,
+            displayMode: isDisplay,
+          });
+        } catch (e) {
+          console.error('KaTeX rendering error:', e);
+        }
+      }
+    });
+
+    // 2. Typeset any additional TeX/MathML equations if MathJax is active
+    if (typeof window !== 'undefined' && window.MathJax) {
       window.MathJax.typesetPromise?.([containerRef.current]);
     }
   }, [html]);

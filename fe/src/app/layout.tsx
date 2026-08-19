@@ -35,11 +35,6 @@ export default function RootLayout({
       <head>
         <ColorSchemeScript defaultColorScheme="light" />
         <script
-          id="MathJax-script"
-          async
-          src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
-        ></script>
-        <script
           dangerouslySetInnerHTML={{
             __html: `
               window.MathJax = {
@@ -53,7 +48,12 @@ export default function RootLayout({
               };
             `,
           }}
-        ></script>
+        />
+        <script
+          id="MathJax-script"
+          async
+          src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+        />
         <style
           dangerouslySetInnerHTML={{
             __html: `

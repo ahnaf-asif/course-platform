@@ -1,4 +1,4 @@
-import { Node, mergeAttributes, nodeInputRule, nodePasteRule } from '@tiptap/core';
+import { Node, mergeAttributes, InputRule, nodePasteRule } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import MathNodeView from './MathNodeView';
 
@@ -75,20 +75,36 @@ export const MathExtension = Node.create<MathOptions>({
 
   addInputRules() {
     return [
-      // Matches inline $equation$ typed directly in the editor
-      nodeInputRule({
-        find: /(?:^|\s)\$([^$]+)\$$/,
-        type: this.type,
-        getAttributes: (match) => {
-          return { latex: match[1]?.trim() || '' };
+      // Matches block $$equation$$ typed directly in the editor and cleanly replaces the range
+      new InputRule({
+        find: /(?:^|\s)\$\$([^$]+)\$\$$/,
+        handler: ({ chain, range, match }) => {
+          const latex = match[1]?.trim();
+          if (!latex) return;
+
+          const start = range.from + (match[0].startsWith(' ') ? 1 : 0);
+          const end = range.to;
+
+          chain()
+            .deleteRange({ from: start, to: end })
+            .insertContentAt(start, { type: this.name, attrs: { latex } })
+            .run();
         },
       }),
-      // Matches block $$equation$$ typed directly in the editor
-      nodeInputRule({
-        find: /(?:^|\s)\$\$([^$]+)\$\$$/,
-        type: this.type,
-        getAttributes: (match) => {
-          return { latex: match[1]?.trim() || '' };
+      // Matches inline $equation$ typed directly in the editor and cleanly replaces the range
+      new InputRule({
+        find: /(?:^|\s)\$([^$]+)\$$/,
+        handler: ({ chain, range, match }) => {
+          const latex = match[1]?.trim();
+          if (!latex || /^\d+(\.\d+)?$/.test(latex)) return;
+
+          const start = range.from + (match[0].startsWith(' ') ? 1 : 0);
+          const end = range.to;
+
+          chain()
+            .deleteRange({ from: start, to: end })
+            .insertContentAt(start, { type: this.name, attrs: { latex } })
+            .run();
         },
       }),
     ];
