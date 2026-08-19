@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { RichTextEditor } from '@mantine/tiptap';
 import { useEditor } from '@tiptap/react';
-import { IconMathFunction, IconPhoto, IconFileTypeDocx, IconMarkdown } from '@tabler/icons-react';
+import { IconMathFunction, IconPhoto, IconFileTypeDocx, IconMarkdown, IconTable } from '@tabler/icons-react';
 import { Stack, Text, Box, FileButton } from '@mantine/core';
 import { editorExtensions } from './editorExtensions';
 import { handleImageUpload } from './uploadImage';
@@ -52,6 +52,10 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
     if (latex !== null && latex.trim() !== '') {
       editor?.chain().focus().setMath({ latex }).run();
     }
+  };
+
+  const addTable = () => {
+    editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   };
 
   const onImageUpload = (file: File | null) => {
@@ -145,6 +149,15 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
                 <IconMathFunction size={16} stroke={1.5} />
               </RichTextEditor.Control>
 
+              <RichTextEditor.Control
+                onClick={addTable}
+                aria-label="Insert Table"
+                title="Insert Table"
+                data-testid="editor-insert-table"
+              >
+                <IconTable size={16} stroke={1.5} />
+              </RichTextEditor.Control>
+
               <FileButton onChange={onImageUpload} accept="image/png,image/jpeg,image/gif,image/webp">
                 {(props) => (
                   <RichTextEditor.Control
@@ -189,6 +202,38 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
               <RichTextEditor.Redo />
             </RichTextEditor.ControlsGroup>
           </RichTextEditor.Toolbar>
+
+          <style>{`
+            .editor-table {
+              border-collapse: collapse;
+              table-layout: fixed;
+              width: 100%;
+              margin: 1rem 0;
+              overflow: hidden;
+            }
+            .editor-table td, .editor-table th {
+              min-width: 1em;
+              border: 1px solid #cbd5e1;
+              padding: 8px 12px;
+              vertical-align: top;
+              box-sizing: border-box;
+              position: relative;
+            }
+            .editor-table th {
+              font-weight: 700;
+              text-align: left;
+              background-color: #f1f5f9;
+              color: #0f172a;
+            }
+            .editor-table .selectedCell:after {
+              z-index: 2;
+              position: absolute;
+              content: "";
+              left: 0; right: 0; top: 0; bottom: 0;
+              background: rgba(200, 200, 255, 0.4);
+              pointer-events: none;
+            }
+          `}</style>
 
           <RichTextEditor.Content />
         </RichTextEditor>

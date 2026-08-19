@@ -5,7 +5,7 @@ import type { Editor } from '@tiptap/react';
 import { UploadDocxButton } from '../UploadDocxButton';
 import { UploadMarkdownButton } from '../UploadMarkdownButton';
 import { handleDocxUpload } from '../uploadDocx';
-import { handleMarkdownUpload, transformMathSyntaxToHtml } from '../uploadMarkdown';
+import { handleMarkdownUpload, transformMathSyntaxToHtml, uploadBase64ImagesInHtml } from '../uploadMarkdown';
 import mammoth from 'mammoth';
 import { marked } from 'marked';
 import { notifications } from '@mantine/notifications';
@@ -13,6 +13,9 @@ import { notifications } from '@mantine/notifications';
 vi.mock('mammoth', () => ({
   default: {
     convertToHtml: vi.fn(),
+    images: {
+      imgElement: vi.fn((fn) => fn),
+    },
   },
 }));
 
@@ -22,9 +25,14 @@ vi.mock('marked', () => ({
   },
 }));
 
+vi.mock('../uploadImage', () => ({
+  uploadImageFileToStorage: vi.fn().mockResolvedValue('/media-api/p/mocked_image.png'),
+}));
+
 vi.mock('@mantine/notifications', () => ({
   notifications: {
-    show: vi.fn(),
+    show: vi.fn().mockReturnValue('mock-notif-id'),
+    update: vi.fn(),
   },
 }));
 
@@ -60,7 +68,7 @@ describe('UploadDocx and UploadMarkdown', () => {
 
       expect(html).toBe('<h1>Parsed DOCX Header</h1><p>Lesson text from Word</p>');
       expect(mockSetContent).toHaveBeenCalledWith('<h1>Parsed DOCX Header</h1><p>Lesson text from Word</p>');
-      expect(notifications.show).toHaveBeenCalledWith(
+      expect(notifications.update).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'DOCX ফাইল আপলোড সফল',
           color: 'green',
@@ -78,7 +86,7 @@ describe('UploadDocx and UploadMarkdown', () => {
       const html = await handleDocxUpload(mockFile);
 
       expect(html).toBeNull();
-      expect(notifications.show).toHaveBeenCalledWith(
+      expect(notifications.update).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'DOCX ফাইল লোড ব্যর্থ',
           color: 'red',
@@ -111,7 +119,7 @@ describe('UploadDocx and UploadMarkdown', () => {
 
       expect(html).toBe('<h1>Markdown Title</h1><p><strong>Bold Text</strong></p>');
       expect(mockSetContent).toHaveBeenCalledWith('<h1>Markdown Title</h1><p><strong>Bold Text</strong></p>');
-      expect(notifications.show).toHaveBeenCalledWith(
+      expect(notifications.update).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Markdown ফাইল আপলোড সফল',
           color: 'green',
@@ -129,7 +137,7 @@ describe('UploadDocx and UploadMarkdown', () => {
       const html = await handleMarkdownUpload(mockFile);
 
       expect(html).toBeNull();
-      expect(notifications.show).toHaveBeenCalledWith(
+      expect(notifications.update).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Markdown ফাইল লোড ব্যর্থ',
           color: 'red',
@@ -169,6 +177,16 @@ describe('UploadDocx and UploadMarkdown', () => {
       const transformed = transformMathSyntaxToHtml(raw);
 
       expect(transformed).toBe('Price: $100 and $25.50');
+    });
+  });
+
+  describe('uploadBase64ImagesInHtml', () => {
+    it('replaces base64 data URIs with storage URLs', async () => {
+      const htmlWithBase64 = '<p>Test</p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=" alt="dot" />';
+      const result = await uploadBase64ImagesInHtml(htmlWithBase64);
+
+      expect(result).toContain('src="/media-api/p/mocked_image.png"');
+      expect(result).not.toContain('data:image/png;base64');
     });
   });
 });

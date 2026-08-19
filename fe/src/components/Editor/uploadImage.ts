@@ -3,6 +3,36 @@ import { axiosInstance } from '@/lib/axios';
 import axios from 'axios';
 import { Editor } from '@tiptap/react';
 
+/**
+ * Uploads an image file or Blob to MinIO storage and returns its proxied URL.
+ */
+export async function uploadImageFileToStorage(file: File | Blob, customFileName?: string): Promise<string> {
+  const formData = new FormData();
+  if (file instanceof File) {
+    formData.append('file', file);
+  } else {
+    formData.append('file', file, customFileName || 'image.png');
+  }
+
+  // 1. Get a Temporary Upload Token from Go Backend (Authenticated)
+  const authRes = await axiosInstance<{ token: string }>({
+    url: '/admin/media/upload-token',
+    method: 'GET',
+  });
+  
+  const { token } = authRes;
+
+  // 2. Use the proxied /media-api route with public visibility and temporary token
+  const response = await axios.post(`/media-api/upload?visibility=public&upload_token=${token}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+
+  const fileName = response.data.file_name;
+  return `/media-api/p/${fileName}`;
+}
+
 export const handleImageUpload = async (file: File | null, editor: Editor | null) => {
   if (!file) return;
 
@@ -16,9 +46,6 @@ export const handleImageUpload = async (file: File | null, editor: Editor | null
     return;
   }
 
-  const formData = new FormData();
-  formData.append('file', file);
-
   const id = notifications.show({
     loading: true,
     title: 'Uploading image',
@@ -28,25 +55,7 @@ export const handleImageUpload = async (file: File | null, editor: Editor | null
   });
 
   try {
-    // 1. Get a Temporary Upload Token from Go Backend (Authenticated)
-    // This hides the master API_KEY from the browser
-    const authRes = await axiosInstance<{ token: string }>({
-      url: '/admin/media/upload-token',
-      method: 'GET',
-    });
-    
-    const { token } = authRes;
-
-    // 2. Use the proxied /media-api route with public visibility and temporary token
-    const response = await axios.post(`/media-api/upload?visibility=public&upload_token=${token}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    // Get the file name from response and construct the proxy path
-    const fileName = response.data.file_name;
-    const proxiedUrl = `/media-api/p/${fileName}`;
+    const proxiedUrl = await uploadImageFileToStorage(file);
 
     if (editor) {
       editor.chain().focus().setImage({ src: proxiedUrl }).run();
