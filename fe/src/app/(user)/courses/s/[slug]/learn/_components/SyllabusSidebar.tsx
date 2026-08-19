@@ -190,25 +190,48 @@ export function SyllabusSidebar({
                 acc + chap.children.filter((l) => l.progress_status === 'COMPLETED').length,
               0
             );
-            const isSubjectCompleted =
-              totalSubjectLessons > 0 && completedSubjectLessons === totalSubjectLessons;
+            const subjectPercent =
+              totalSubjectLessons > 0
+                ? Math.round((completedSubjectLessons / totalSubjectLessons) * 100)
+                : 0;
 
             return (
               <Box key={subject.id} style={{ borderBottom: '1px solid #f8fafc' }}>
-                {/* Clean Subject Dropdown Header */}
+                {/* Clean Subject Dropdown Header with Full-Width Progress Fill */}
                 <UnstyledButton
                   onClick={() => toggleSubject(subject.id)}
                   style={{
+                    position: 'relative',
                     width: '100%',
                     padding: '10px 16px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     backgroundColor: isSubOpen ? '#f8fafc' : 'transparent',
+                    overflow: 'hidden',
                     transition: 'background-color 0.15s ease',
                   }}
                   data-testid={`subject-toggle-${subject.id}`}
                 >
+                  {/* Light green progress fill across the subject header width */}
+                  {subjectPercent > 0 && (
+                    <Box
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        bottom: 0,
+                        width: `${subjectPercent}%`,
+                        backgroundColor: 'rgba(16, 185, 129, 0.14)',
+                        borderRight: subjectPercent < 100 ? '2px solid rgba(16, 185, 129, 0.35)' : 'none',
+                        pointerEvents: 'none',
+                        transition: 'width 0.3s ease',
+                        zIndex: 0,
+                      }}
+                      data-testid={`subject-progress-fill-${subject.id}`}
+                    />
+                  )}
+
                   <Text
                     size="13px"
                     fw={700}
@@ -219,21 +242,21 @@ export function SyllabusSidebar({
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
+                      position: 'relative',
+                      zIndex: 1,
                     }}
                   >
                     {subject.title}
                   </Text>
 
-                  <Group gap={8} align="center">
+                  <Group gap={8} align="center" style={{ position: 'relative', zIndex: 1 }}>
                     <Text
                       size="11px"
                       fw={600}
-                      c={isSubjectCompleted ? 'green.6' : 'dimmed'}
+                      c={subjectPercent === 100 ? 'green.7' : subjectPercent > 0 ? 'teal.7' : 'dimmed'}
                       data-testid={`subject-progress-${subject.id}`}
                     >
-                      {isSubjectCompleted
-                        ? 'সম্পূর্ণ'
-                        : `${completedSubjectLessons}/${totalSubjectLessons}`}
+                      {subjectPercent}% সম্পন্ন
                     </Text>
                     <IconChevronDown
                       size={14}

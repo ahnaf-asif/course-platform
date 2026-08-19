@@ -113,9 +113,10 @@ describe('SyllabusSidebar Component', () => {
     expect(screen.getByText('বাংলা ভাষা ও সাহিত্য')).toBeInTheDocument();
     expect(screen.getByText('ইংরেজি ভাষা ও সাহিত্য')).toBeInTheDocument();
 
-    // Subject-wise completion status
-    expect(screen.getByTestId('subject-progress-sub-1')).toHaveTextContent('1/2');
-    expect(screen.getByTestId('subject-progress-sub-2')).toHaveTextContent('0/1');
+    // Subject-wise completion status and progress fill
+    expect(screen.getByTestId('subject-progress-sub-1')).toHaveTextContent('50% সম্পন্ন');
+    expect(screen.getByTestId('subject-progress-sub-2')).toHaveTextContent('0% সম্পন্ন');
+    expect(screen.getByTestId('subject-progress-fill-sub-1')).toHaveStyle({ width: '50%' });
   });
 
   it('auto-expands the subject and chapter containing the selected lesson', () => {
