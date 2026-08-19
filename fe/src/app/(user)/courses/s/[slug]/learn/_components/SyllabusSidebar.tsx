@@ -381,11 +381,11 @@ export function SyllabusSidebar({
                                         alignItems: 'center',
                                         gap: '10px',
                                         width: '100%',
-                                        padding: '7px 12px 7px 36px',
+                                        padding: '8px 12px 8px 24px',
                                         borderRadius: '6px',
-                                        fontSize: '12px',
-                                        backgroundColor: isQuizActive ? '#f5f3ff' : 'transparent',
-                                        color: isQuizActive ? '#6d28d9' : '#475569',
+                                        fontSize: '12.5px',
+                                        backgroundColor: isQuizActive ? '#eff6ff' : 'transparent',
+                                        color: isQuizActive ? '#1d4ed8' : '#334155',
                                         fontWeight: isQuizActive ? 600 : 400,
                                         transition: 'background-color 0.12s ease',
                                       }}
@@ -393,14 +393,14 @@ export function SyllabusSidebar({
                                     >
                                       <Box style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                                         {isQuizPassed ? (
-                                          <IconCheck size={13} color="#10b981" stroke={2.5} />
+                                          <IconCheck size={14} color="#10b981" stroke={2.5} />
                                         ) : (
-                                          <IconHelpCircle size={13} color={isQuizActive ? '#7c3aed' : '#94a3b8'} />
+                                          <IconHelpCircle size={13} color={isQuizActive ? '#2563eb' : '#94a3b8'} />
                                         )}
                                       </Box>
 
                                       <Text
-                                        size="12px"
+                                        size="12.5px"
                                         style={{
                                           flex: 1,
                                           lineHeight: 1.35,
@@ -411,9 +411,10 @@ export function SyllabusSidebar({
                                       </Text>
 
                                       <Text
-                                        size="10px"
+                                        size="11px"
                                         fw={600}
-                                        c={isQuizPassed ? 'green.6' : isQuizActive ? 'violet.6' : 'dimmed'}
+                                        c={isQuizPassed ? 'green.6' : isQuizActive ? 'blue.6' : 'dimmed'}
+                                        style={{ flexShrink: 0 }}
                                       >
                                         {isQuizPassed ? 'পাস' : 'কুইজ'}
                                       </Text>
