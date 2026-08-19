@@ -360,7 +360,7 @@ func (h *CourseHandler) mapToCourseResponse(row generated.GetCourseRow) CourseRe
 	resp := CourseResponse{
 		ID:          row.ID.String(),
 		NodeType:    string(row.NodeType),
-		Title:         row.Title,
+		Title:       row.Title,
 		Slug:        row.Slug,
 		Description: row.Description.String,
 		IsPublished: row.IsPublished,
