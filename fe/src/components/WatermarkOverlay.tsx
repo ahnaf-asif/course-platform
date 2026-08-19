@@ -147,7 +147,7 @@ export function WatermarkOverlay({
         position: 'absolute',
         inset: 0,
         pointerEvents: 'none',
-        zIndex: 5,
+        zIndex: 20,
         overflow: 'hidden',
         ...style,
       }}
@@ -163,27 +163,28 @@ export function WatermarkOverlay({
           height: '140%',
           display: 'flex',
           flexWrap: 'wrap',
-          gap: '120px 80px',
+          gap: '100px 60px',
           alignContent: 'flex-start',
           justifyContent: 'space-around',
           transform: 'rotate(-25deg)',
-          opacity: 0.055,
+          opacity: 0.08,
           userSelect: 'none',
           WebkitUserSelect: 'none',
           pointerEvents: 'none',
         }}
       >
-        {Array.from({ length: 18 }).map((_, i) => (
+        {Array.from({ length: 48 }).map((_, i) => (
           <Text
             key={i}
             size="xs"
             fw={800}
-            c="dark"
+            c="dark.4"
             style={{
               whiteSpace: 'nowrap',
               letterSpacing: '1px',
               textTransform: 'uppercase',
-              fontSize: '12px',
+              fontSize: '13px',
+              userSelect: 'none',
             }}
           >
             {watermarkText}

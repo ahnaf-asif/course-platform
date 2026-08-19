@@ -175,20 +175,23 @@ export function ProtectedCanvasView({
 
     ctx.scale(dpr, dpr);
 
-    // Background fill
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, containerWidth, totalHeight);
+    // Transparent background so WatermarkOverlay shows through naturally
+    ctx.clearRect(0, 0, containerWidth, totalHeight);
 
-    // Draw repeating subtle watermark directly on canvas pixels
+    // Draw repeating crisp watermark directly into canvas pixel buffer
     const stamp = userEmail || 'EduVerse Protected Content';
+    const angle = (-25 * Math.PI) / 180;
     ctx.save();
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.08)';
-    ctx.font = '15px sans-serif';
-    ctx.rotate((-25 * Math.PI) / 180);
+    ctx.fillStyle = 'rgba(100, 116, 139, 0.12)';
+    ctx.font = 'bold 15px sans-serif';
 
-    for (let x = -totalHeight; x < containerWidth * 2; x += 260) {
-      for (let y = -containerWidth; y < totalHeight * 2; y += 140) {
-        ctx.fillText(stamp, x, y);
+    for (let y = 30; y < totalHeight + 100; y += 120) {
+      for (let x = -80; x < containerWidth + 180; x += 250) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.fillText(stamp, 0, 0);
+        ctx.restore();
       }
     }
     ctx.restore();
