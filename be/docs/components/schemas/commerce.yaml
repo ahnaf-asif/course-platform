@@ -261,3 +261,187 @@ UpdateOrderStatusRequest:
       type: string
       enum: [PENDING, COMPLETED, REFUNDED]
 
+DashboardKPIs:
+  type: object
+  required:
+    - total_users
+    - users_this_month
+    - published_courses
+    - total_courses
+    - total_lessons
+    - total_quizzes
+    - total_enrollments
+    - total_orders
+    - completed_orders
+    - pending_orders
+    - refunded_orders
+    - total_revenue
+    - revenue_this_month
+    - revenue_this_week
+  properties:
+    total_users:
+      type: integer
+    users_this_month:
+      type: integer
+    published_courses:
+      type: integer
+    total_courses:
+      type: integer
+    total_lessons:
+      type: integer
+    total_quizzes:
+      type: integer
+    total_enrollments:
+      type: integer
+    total_orders:
+      type: integer
+    completed_orders:
+      type: integer
+    pending_orders:
+      type: integer
+    refunded_orders:
+      type: integer
+    total_revenue:
+      type: string
+    revenue_this_month:
+      type: string
+    revenue_this_week:
+      type: string
+
+RevenueTrendPoint:
+  type: object
+  required:
+    - date
+    - display_label
+    - revenue
+    - total_orders
+    - completed_orders
+  properties:
+    date:
+      type: string
+    display_label:
+      type: string
+    revenue:
+      type: number
+    total_orders:
+      type: integer
+    completed_orders:
+      type: integer
+
+UserTrendPoint:
+  type: object
+  required:
+    - date
+    - new_users
+  properties:
+    date:
+      type: string
+    new_users:
+      type: integer
+
+TopCourseItem:
+  type: object
+  required:
+    - id
+    - title
+    - slug
+    - total_revenue
+    - total_orders
+    - total_students
+  properties:
+    id:
+      type: string
+      format: uuid
+    title:
+      type: string
+    slug:
+      type: string
+    total_revenue:
+      type: number
+    total_orders:
+      type: integer
+    total_students:
+      type: integer
+
+PaymentDistributionItem:
+  type: object
+  required:
+    - provider
+    - order_count
+    - total_amount
+  properties:
+    provider:
+      type: string
+    order_count:
+      type: integer
+    total_amount:
+      type: number
+
+RecentUserItem:
+  type: object
+  required:
+    - id
+    - email
+    - full_name
+    - role
+    - avatar_url
+    - created_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    email:
+      type: string
+    full_name:
+      type: string
+    role:
+      type: string
+    avatar_url:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+
+AdminDashboardAnalyticsResponse:
+  type: object
+  required:
+    - kpis
+    - daily_revenue_trends
+    - monthly_revenue_trends
+    - daily_user_trends
+    - top_courses
+    - payment_distribution
+    - recent_orders
+    - recent_users
+  properties:
+    kpis:
+      $ref: '#/DashboardKPIs'
+    daily_revenue_trends:
+      type: array
+      items:
+        $ref: '#/RevenueTrendPoint'
+    monthly_revenue_trends:
+      type: array
+      items:
+        $ref: '#/RevenueTrendPoint'
+    daily_user_trends:
+      type: array
+      items:
+        $ref: '#/UserTrendPoint'
+    top_courses:
+      type: array
+      items:
+        $ref: '#/TopCourseItem'
+    payment_distribution:
+      type: array
+      items:
+        $ref: '#/PaymentDistributionItem'
+    recent_orders:
+      type: array
+      items:
+        $ref: '#/AdminOrderResponse'
+    recent_users:
+      type: array
+      items:
+        $ref: '#/RecentUserItem'
+

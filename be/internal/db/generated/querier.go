@@ -13,8 +13,15 @@ import (
 type Querier interface {
 	// Prerequisites
 	AddPrerequisite(ctx context.Context, arg AddPrerequisiteParams) error
+	AdminGetDailyRevenueAndOrders(ctx context.Context) ([]AdminGetDailyRevenueAndOrdersRow, error)
+	AdminGetDailyUserRegistrations(ctx context.Context) ([]AdminGetDailyUserRegistrationsRow, error)
+	AdminGetDashboardStats(ctx context.Context) (AdminGetDashboardStatsRow, error)
+	AdminGetMonthlyRevenueAndOrders(ctx context.Context) ([]AdminGetMonthlyRevenueAndOrdersRow, error)
 	AdminGetOrderByID(ctx context.Context, id uuid.UUID) (AdminGetOrderByIDRow, error)
 	AdminGetOrderSummary(ctx context.Context) (AdminGetOrderSummaryRow, error)
+	AdminGetPaymentProviderDistribution(ctx context.Context) ([]AdminGetPaymentProviderDistributionRow, error)
+	AdminGetRecentUsers(ctx context.Context) ([]AdminGetRecentUsersRow, error)
+	AdminGetTopPerformingCourses(ctx context.Context) ([]AdminGetTopPerformingCoursesRow, error)
 	AdminListOrders(ctx context.Context, arg AdminListOrdersParams) ([]AdminListOrdersRow, error)
 	AttachQuizToNode(ctx context.Context, arg AttachQuizToNodeParams) error
 	AttachTagToNode(ctx context.Context, arg AttachTagToNodeParams) error

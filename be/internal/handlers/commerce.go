@@ -845,3 +845,252 @@ func (h *CommerceHandler) AdminUpdateOrderStatus(c echo.Context) error {
 		"status": updatedOrder.Status,
 	})
 }
+
+// Dashboard Analytics
+
+type DashboardKPIs struct {
+	TotalUsers       int64  `json:"total_users"`
+	UsersThisMonth   int64  `json:"users_this_month"`
+	PublishedCourses int64  `json:"published_courses"`
+	TotalCourses     int64  `json:"total_courses"`
+	TotalLessons     int64  `json:"total_lessons"`
+	TotalQuizzes     int64  `json:"total_quizzes"`
+	TotalEnrollments int64  `json:"total_enrollments"`
+	TotalOrders      int64  `json:"total_orders"`
+	CompletedOrders  int64  `json:"completed_orders"`
+	PendingOrders    int64  `json:"pending_orders"`
+	RefundedOrders   int64  `json:"refunded_orders"`
+	TotalRevenue     string `json:"total_revenue"`
+	RevenueThisMonth string `json:"revenue_this_month"`
+	RevenueThisWeek  string `json:"revenue_this_week"`
+}
+
+type RevenueTrendPoint struct {
+	Date            string  `json:"date"`
+	DisplayLabel    string  `json:"display_label"`
+	Revenue         float64 `json:"revenue"`
+	TotalOrders     int64   `json:"total_orders"`
+	CompletedOrders int64   `json:"completed_orders"`
+}
+
+type UserTrendPoint struct {
+	Date     string `json:"date"`
+	NewUsers int64  `json:"new_users"`
+}
+
+type TopCourseItem struct {
+	ID            string  `json:"id"`
+	Title         string  `json:"title"`
+	Slug          string  `json:"slug"`
+	TotalRevenue  float64 `json:"total_revenue"`
+	TotalOrders   int64   `json:"total_orders"`
+	TotalStudents int64   `json:"total_students"`
+}
+
+type PaymentDistributionItem struct {
+	Provider    string  `json:"provider"`
+	OrderCount  int64   `json:"order_count"`
+	TotalAmount float64 `json:"total_amount"`
+}
+
+type RecentUserItem struct {
+	ID        string `json:"id"`
+	Email     string `json:"email"`
+	FullName  string `json:"full_name"`
+	Role      string `json:"role"`
+	AvatarURL string `json:"avatar_url"`
+	CreatedAt string `json:"created_at"`
+}
+
+type AdminDashboardAnalyticsResponse struct {
+	KPIs                 DashboardKPIs             `json:"kpis"`
+	DailyRevenueTrends   []RevenueTrendPoint       `json:"daily_revenue_trends"`
+	MonthlyRevenueTrends []RevenueTrendPoint       `json:"monthly_revenue_trends"`
+	DailyUserTrends      []UserTrendPoint          `json:"daily_user_trends"`
+	TopCourses           []TopCourseItem           `json:"top_courses"`
+	PaymentDistribution  []PaymentDistributionItem `json:"payment_distribution"`
+	RecentOrders         []AdminOrderResponse      `json:"recent_orders"`
+	RecentUsers          []RecentUserItem          `json:"recent_users"`
+}
+
+func (h *CommerceHandler) AdminGetDashboardAnalytics(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	stats, err := h.store.AdminGetDashboardStats(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get dashboard stats: "+err.Error())
+	}
+
+	dailyRows, err := h.store.AdminGetDailyRevenueAndOrders(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get daily revenue: "+err.Error())
+	}
+
+	dailyTrends := make([]RevenueTrendPoint, 0, len(dailyRows))
+	for _, r := range dailyRows {
+		rev, _ := strconv.ParseFloat(r.Revenue, 64)
+		dailyTrends = append(dailyTrends, RevenueTrendPoint{
+			Date:            r.DateLabel,
+			DisplayLabel:    r.DateLabel,
+			Revenue:         rev,
+			TotalOrders:     r.TotalOrders,
+			CompletedOrders: r.CompletedOrders,
+		})
+	}
+
+	monthlyRows, err := h.store.AdminGetMonthlyRevenueAndOrders(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get monthly revenue: "+err.Error())
+	}
+
+	monthlyTrends := make([]RevenueTrendPoint, 0, len(monthlyRows))
+	for _, r := range monthlyRows {
+		rev, _ := strconv.ParseFloat(r.Revenue, 64)
+		monthlyTrends = append(monthlyTrends, RevenueTrendPoint{
+			Date:            r.MonthLabel,
+			DisplayLabel:    r.DisplayLabel,
+			Revenue:         rev,
+			TotalOrders:     r.TotalOrders,
+			CompletedOrders: r.CompletedOrders,
+		})
+	}
+
+	userRows, err := h.store.AdminGetDailyUserRegistrations(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get user trends: "+err.Error())
+	}
+
+	userTrends := make([]UserTrendPoint, 0, len(userRows))
+	for _, r := range userRows {
+		userTrends = append(userTrends, UserTrendPoint{
+			Date:     r.DateLabel,
+			NewUsers: r.NewUsers,
+		})
+	}
+
+	topCourseRows, err := h.store.AdminGetTopPerformingCourses(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get top courses: "+err.Error())
+	}
+
+	topCourses := make([]TopCourseItem, 0, len(topCourseRows))
+	for _, r := range topCourseRows {
+		rev, _ := strconv.ParseFloat(r.TotalRevenue, 64)
+		topCourses = append(topCourses, TopCourseItem{
+			ID:            r.NodeID.String(),
+			Title:         r.Title,
+			Slug:          r.Slug,
+			TotalRevenue:  rev,
+			TotalOrders:   r.TotalOrders,
+			TotalStudents: r.TotalStudents,
+		})
+	}
+
+	distRows, err := h.store.AdminGetPaymentProviderDistribution(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get payment distribution: "+err.Error())
+	}
+
+	paymentDist := make([]PaymentDistributionItem, 0, len(distRows))
+	for _, r := range distRows {
+		amt, _ := strconv.ParseFloat(r.TotalAmount, 64)
+		paymentDist = append(paymentDist, PaymentDistributionItem{
+			Provider:    r.PaymentProvider,
+			OrderCount:  r.OrderCount,
+			TotalAmount: amt,
+		})
+	}
+
+	recentUserRows, err := h.store.AdminGetRecentUsers(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get recent users: "+err.Error())
+	}
+
+	recentUsers := make([]RecentUserItem, 0, len(recentUserRows))
+	for _, r := range recentUserRows {
+		recentUsers = append(recentUsers, RecentUserItem{
+			ID:        r.ID.String(),
+			Email:     r.Email,
+			FullName:  r.FullName,
+			Role:      string(r.Role),
+			AvatarURL: r.AvatarUrl,
+			CreatedAt: r.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	recentOrderRows, err := h.store.AdminListOrders(ctx, generated.AdminListOrdersParams{
+		Limit:  5,
+		Offset: 0,
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get recent orders: "+err.Error())
+	}
+
+	recentOrders := make([]AdminOrderResponse, 0, len(recentOrderRows))
+	for _, r := range recentOrderRows {
+		var couponID *string
+		if r.CouponID.Valid {
+			cidStr := r.CouponID.UUID.String()
+			couponID = &cidStr
+		}
+		var couponCode *string
+		if r.CouponCode.Valid {
+			couponCode = &r.CouponCode.String
+		}
+		var discountType *generated.DiscountType
+		if r.CouponDiscountType.Valid {
+			dt := r.CouponDiscountType.DiscountType
+			discountType = &dt
+		}
+		var discountValue *string
+		if r.CouponDiscountValue.Valid {
+			discountValue = &r.CouponDiscountValue.String
+		}
+
+		recentOrders = append(recentOrders, AdminOrderResponse{
+			ID:                  r.ID.String(),
+			UserID:              r.UserID.String(),
+			UserName:            r.UserName,
+			UserEmail:           r.UserEmail,
+			NodeID:              r.NodeID.String(),
+			CourseTitle:         r.CourseTitle,
+			CourseSlug:          r.CourseSlug,
+			AmountPaid:          r.AmountPaid,
+			Currency:            r.Currency,
+			Status:              r.Status,
+			PaymentProvider:     r.PaymentProvider,
+			ProviderReference:   r.ProviderReference,
+			CouponID:            couponID,
+			CouponCode:          couponCode,
+			CouponDiscountType:  discountType,
+			CouponDiscountValue: discountValue,
+			CreatedAt:           r.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	return c.JSON(http.StatusOK, AdminDashboardAnalyticsResponse{
+		KPIs: DashboardKPIs{
+			TotalUsers:       stats.TotalUsers,
+			UsersThisMonth:   stats.UsersThisMonth,
+			PublishedCourses: stats.PublishedCourses,
+			TotalCourses:     stats.TotalCourses,
+			TotalLessons:     stats.TotalLessons,
+			TotalQuizzes:     stats.TotalQuizzes,
+			TotalEnrollments: stats.TotalEnrollments,
+			TotalOrders:      stats.TotalOrders,
+			CompletedOrders:  stats.CompletedOrders,
+			PendingOrders:    stats.PendingOrders,
+			RefundedOrders:   stats.RefundedOrders,
+			TotalRevenue:     stats.TotalRevenue,
+			RevenueThisMonth: stats.RevenueThisMonth,
+			RevenueThisWeek:  stats.RevenueThisWeek,
+		},
+		DailyRevenueTrends:   dailyTrends,
+		MonthlyRevenueTrends: monthlyTrends,
+		DailyUserTrends:      userTrends,
+		TopCourses:           topCourses,
+		PaymentDistribution:  paymentDist,
+		RecentOrders:         recentOrders,
+		RecentUsers:          recentUsers,
+	})
+}

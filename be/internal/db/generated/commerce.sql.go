@@ -13,6 +13,216 @@ import (
 	"github.com/google/uuid"
 )
 
+const adminGetDailyRevenueAndOrders = `-- name: AdminGetDailyRevenueAndOrders :many
+SELECT
+    TO_CHAR(d.day, 'YYYY-MM-DD')::text as date_label,
+    COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.amount_paid ELSE 0 END), 0)::numeric(12,2) as revenue,
+    COUNT(o.id)::bigint as total_orders,
+    COUNT(CASE WHEN o.status = 'COMPLETED' THEN 1 END)::bigint as completed_orders
+FROM (
+    SELECT generate_series(
+        CURRENT_DATE - INTERVAL '29 days',
+        CURRENT_DATE,
+        '1 day'::interval
+    )::date as day
+) d
+LEFT JOIN orders o ON DATE(o.created_at) = d.day
+GROUP BY d.day
+ORDER BY d.day ASC
+`
+
+type AdminGetDailyRevenueAndOrdersRow struct {
+	DateLabel       string `json:"date_label"`
+	Revenue         string `json:"revenue"`
+	TotalOrders     int64  `json:"total_orders"`
+	CompletedOrders int64  `json:"completed_orders"`
+}
+
+func (q *Queries) AdminGetDailyRevenueAndOrders(ctx context.Context) ([]AdminGetDailyRevenueAndOrdersRow, error) {
+	rows, err := q.db.QueryContext(ctx, adminGetDailyRevenueAndOrders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminGetDailyRevenueAndOrdersRow
+	for rows.Next() {
+		var i AdminGetDailyRevenueAndOrdersRow
+		if err := rows.Scan(
+			&i.DateLabel,
+			&i.Revenue,
+			&i.TotalOrders,
+			&i.CompletedOrders,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const adminGetDailyUserRegistrations = `-- name: AdminGetDailyUserRegistrations :many
+SELECT
+    TO_CHAR(d.day, 'YYYY-MM-DD')::text as date_label,
+    COUNT(u.id)::bigint as new_users
+FROM (
+    SELECT generate_series(
+        CURRENT_DATE - INTERVAL '29 days',
+        CURRENT_DATE,
+        '1 day'::interval
+    )::date as day
+) d
+LEFT JOIN users u ON DATE(u.created_at) = d.day
+GROUP BY d.day
+ORDER BY d.day ASC
+`
+
+type AdminGetDailyUserRegistrationsRow struct {
+	DateLabel string `json:"date_label"`
+	NewUsers  int64  `json:"new_users"`
+}
+
+func (q *Queries) AdminGetDailyUserRegistrations(ctx context.Context) ([]AdminGetDailyUserRegistrationsRow, error) {
+	rows, err := q.db.QueryContext(ctx, adminGetDailyUserRegistrations)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminGetDailyUserRegistrationsRow
+	for rows.Next() {
+		var i AdminGetDailyUserRegistrationsRow
+		if err := rows.Scan(&i.DateLabel, &i.NewUsers); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const adminGetDashboardStats = `-- name: AdminGetDashboardStats :one
+SELECT
+    (SELECT COUNT(*)::bigint FROM users) as total_users,
+    (SELECT COUNT(*)::bigint FROM users WHERE created_at >= NOW() - INTERVAL '30 days') as users_this_month,
+    (SELECT COUNT(*)::bigint FROM courses WHERE is_published = true) as published_courses,
+    (SELECT COUNT(*)::bigint FROM courses) as total_courses,
+    (SELECT COUNT(*)::bigint FROM lessons) as total_lessons,
+    (SELECT COUNT(*)::bigint FROM quizzes) as total_quizzes,
+    (SELECT COUNT(*)::bigint FROM enrollments) as total_enrollments,
+    (SELECT COUNT(*)::bigint FROM orders) as total_orders,
+    (SELECT COUNT(*)::bigint FROM orders WHERE status = 'COMPLETED') as completed_orders,
+    (SELECT COUNT(*)::bigint FROM orders WHERE status = 'PENDING') as pending_orders,
+    (SELECT COUNT(*)::bigint FROM orders WHERE status = 'REFUNDED') as refunded_orders,
+    (SELECT COALESCE(SUM(amount_paid), 0)::numeric(12,2) FROM orders WHERE status = 'COMPLETED') as total_revenue,
+    (SELECT COALESCE(SUM(amount_paid), 0)::numeric(12,2) FROM orders WHERE status = 'COMPLETED' AND created_at >= NOW() - INTERVAL '30 days') as revenue_this_month,
+    (SELECT COALESCE(SUM(amount_paid), 0)::numeric(12,2) FROM orders WHERE status = 'COMPLETED' AND created_at >= NOW() - INTERVAL '7 days') as revenue_this_week
+`
+
+type AdminGetDashboardStatsRow struct {
+	TotalUsers       int64  `json:"total_users"`
+	UsersThisMonth   int64  `json:"users_this_month"`
+	PublishedCourses int64  `json:"published_courses"`
+	TotalCourses     int64  `json:"total_courses"`
+	TotalLessons     int64  `json:"total_lessons"`
+	TotalQuizzes     int64  `json:"total_quizzes"`
+	TotalEnrollments int64  `json:"total_enrollments"`
+	TotalOrders      int64  `json:"total_orders"`
+	CompletedOrders  int64  `json:"completed_orders"`
+	PendingOrders    int64  `json:"pending_orders"`
+	RefundedOrders   int64  `json:"refunded_orders"`
+	TotalRevenue     string `json:"total_revenue"`
+	RevenueThisMonth string `json:"revenue_this_month"`
+	RevenueThisWeek  string `json:"revenue_this_week"`
+}
+
+func (q *Queries) AdminGetDashboardStats(ctx context.Context) (AdminGetDashboardStatsRow, error) {
+	row := q.db.QueryRowContext(ctx, adminGetDashboardStats)
+	var i AdminGetDashboardStatsRow
+	err := row.Scan(
+		&i.TotalUsers,
+		&i.UsersThisMonth,
+		&i.PublishedCourses,
+		&i.TotalCourses,
+		&i.TotalLessons,
+		&i.TotalQuizzes,
+		&i.TotalEnrollments,
+		&i.TotalOrders,
+		&i.CompletedOrders,
+		&i.PendingOrders,
+		&i.RefundedOrders,
+		&i.TotalRevenue,
+		&i.RevenueThisMonth,
+		&i.RevenueThisWeek,
+	)
+	return i, err
+}
+
+const adminGetMonthlyRevenueAndOrders = `-- name: AdminGetMonthlyRevenueAndOrders :many
+SELECT
+    TO_CHAR(m.month, 'YYYY-MM')::text as month_label,
+    TO_CHAR(m.month, 'Mon YYYY')::text as display_label,
+    COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.amount_paid ELSE 0 END), 0)::numeric(12,2) as revenue,
+    COUNT(o.id)::bigint as total_orders,
+    COUNT(CASE WHEN o.status = 'COMPLETED' THEN 1 END)::bigint as completed_orders
+FROM (
+    SELECT generate_series(
+        DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months',
+        DATE_TRUNC('month', CURRENT_DATE),
+        '1 month'::interval
+    )::date as month
+) m
+LEFT JOIN orders o ON DATE_TRUNC('month', o.created_at) = m.month
+GROUP BY m.month
+ORDER BY m.month ASC
+`
+
+type AdminGetMonthlyRevenueAndOrdersRow struct {
+	MonthLabel      string `json:"month_label"`
+	DisplayLabel    string `json:"display_label"`
+	Revenue         string `json:"revenue"`
+	TotalOrders     int64  `json:"total_orders"`
+	CompletedOrders int64  `json:"completed_orders"`
+}
+
+func (q *Queries) AdminGetMonthlyRevenueAndOrders(ctx context.Context) ([]AdminGetMonthlyRevenueAndOrdersRow, error) {
+	rows, err := q.db.QueryContext(ctx, adminGetMonthlyRevenueAndOrders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminGetMonthlyRevenueAndOrdersRow
+	for rows.Next() {
+		var i AdminGetMonthlyRevenueAndOrdersRow
+		if err := rows.Scan(
+			&i.MonthLabel,
+			&i.DisplayLabel,
+			&i.Revenue,
+			&i.TotalOrders,
+			&i.CompletedOrders,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const adminGetOrderByID = `-- name: AdminGetOrderByID :one
 SELECT 
     o.id,
@@ -125,6 +335,153 @@ func (q *Queries) AdminGetOrderSummary(ctx context.Context) (AdminGetOrderSummar
 		&i.RefundedOrders,
 	)
 	return i, err
+}
+
+const adminGetPaymentProviderDistribution = `-- name: AdminGetPaymentProviderDistribution :many
+SELECT
+    o.payment_provider,
+    COUNT(o.id)::bigint as order_count,
+    COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.amount_paid ELSE 0 END), 0)::numeric(12,2) as total_amount
+FROM orders o
+GROUP BY o.payment_provider
+ORDER BY order_count DESC
+`
+
+type AdminGetPaymentProviderDistributionRow struct {
+	PaymentProvider string `json:"payment_provider"`
+	OrderCount      int64  `json:"order_count"`
+	TotalAmount     string `json:"total_amount"`
+}
+
+func (q *Queries) AdminGetPaymentProviderDistribution(ctx context.Context) ([]AdminGetPaymentProviderDistributionRow, error) {
+	rows, err := q.db.QueryContext(ctx, adminGetPaymentProviderDistribution)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminGetPaymentProviderDistributionRow
+	for rows.Next() {
+		var i AdminGetPaymentProviderDistributionRow
+		if err := rows.Scan(&i.PaymentProvider, &i.OrderCount, &i.TotalAmount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const adminGetRecentUsers = `-- name: AdminGetRecentUsers :many
+SELECT
+    u.id,
+    u.email,
+    u.role,
+    u.created_at,
+    COALESCE(up.full_name, 'Unknown')::text as full_name,
+    COALESCE(up.avatar_url, '')::text as avatar_url
+FROM users u
+LEFT JOIN user_profiles up ON u.id = up.user_id
+ORDER BY u.created_at DESC
+LIMIT 5
+`
+
+type AdminGetRecentUsersRow struct {
+	ID        uuid.UUID `json:"id"`
+	Email     string    `json:"email"`
+	Role      UserRole  `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+	FullName  string    `json:"full_name"`
+	AvatarUrl string    `json:"avatar_url"`
+}
+
+func (q *Queries) AdminGetRecentUsers(ctx context.Context) ([]AdminGetRecentUsersRow, error) {
+	rows, err := q.db.QueryContext(ctx, adminGetRecentUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminGetRecentUsersRow
+	for rows.Next() {
+		var i AdminGetRecentUsersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Role,
+			&i.CreatedAt,
+			&i.FullName,
+			&i.AvatarUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const adminGetTopPerformingCourses = `-- name: AdminGetTopPerformingCourses :many
+SELECT
+    c.node_id,
+    c.title,
+    c.slug,
+    COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.amount_paid ELSE 0 END), 0)::numeric(12,2) as total_revenue,
+    COUNT(DISTINCT o.id)::bigint as total_orders,
+    COUNT(DISTINCT e.user_id)::bigint as total_students
+FROM courses c
+LEFT JOIN orders o ON c.node_id = o.node_id
+LEFT JOIN enrollments e ON c.node_id = e.node_id
+GROUP BY c.node_id, c.title, c.slug
+ORDER BY total_revenue DESC, total_students DESC
+LIMIT 5
+`
+
+type AdminGetTopPerformingCoursesRow struct {
+	NodeID        uuid.UUID `json:"node_id"`
+	Title         string    `json:"title"`
+	Slug          string    `json:"slug"`
+	TotalRevenue  string    `json:"total_revenue"`
+	TotalOrders   int64     `json:"total_orders"`
+	TotalStudents int64     `json:"total_students"`
+}
+
+func (q *Queries) AdminGetTopPerformingCourses(ctx context.Context) ([]AdminGetTopPerformingCoursesRow, error) {
+	rows, err := q.db.QueryContext(ctx, adminGetTopPerformingCourses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminGetTopPerformingCoursesRow
+	for rows.Next() {
+		var i AdminGetTopPerformingCoursesRow
+		if err := rows.Scan(
+			&i.NodeID,
+			&i.Title,
+			&i.Slug,
+			&i.TotalRevenue,
+			&i.TotalOrders,
+			&i.TotalStudents,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const adminListOrders = `-- name: AdminListOrders :many

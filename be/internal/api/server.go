@@ -324,6 +324,9 @@ func (s *Server) registerRoutes() {
 	adminOrders.GET("/summary", commerceHandler.AdminGetOrderSummary)
 	adminOrders.GET("/:id", commerceHandler.AdminGetOrderByID)
 	adminOrders.PATCH("/:id/status", commerceHandler.AdminUpdateOrderStatus)
+
+	// Admin Dashboard Analytics
+	admin.GET("/dashboard/analytics", commerceHandler.AdminGetDashboardAnalytics)
 }
 
 func (s *Server) GetEcho() *echo.Echo {

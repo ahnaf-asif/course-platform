@@ -249,3 +249,107 @@ LEFT JOIN courses c ON n.id = c.node_id
 LEFT JOIN coupons cp ON o.coupon_id = cp.id
 WHERE o.id = $1
 LIMIT 1;
+
+-- name: AdminGetDashboardStats :one
+SELECT
+    (SELECT COUNT(*)::bigint FROM users) as total_users,
+    (SELECT COUNT(*)::bigint FROM users WHERE created_at >= NOW() - INTERVAL '30 days') as users_this_month,
+    (SELECT COUNT(*)::bigint FROM courses WHERE is_published = true) as published_courses,
+    (SELECT COUNT(*)::bigint FROM courses) as total_courses,
+    (SELECT COUNT(*)::bigint FROM lessons) as total_lessons,
+    (SELECT COUNT(*)::bigint FROM quizzes) as total_quizzes,
+    (SELECT COUNT(*)::bigint FROM enrollments) as total_enrollments,
+    (SELECT COUNT(*)::bigint FROM orders) as total_orders,
+    (SELECT COUNT(*)::bigint FROM orders WHERE status = 'COMPLETED') as completed_orders,
+    (SELECT COUNT(*)::bigint FROM orders WHERE status = 'PENDING') as pending_orders,
+    (SELECT COUNT(*)::bigint FROM orders WHERE status = 'REFUNDED') as refunded_orders,
+    (SELECT COALESCE(SUM(amount_paid), 0)::numeric(12,2) FROM orders WHERE status = 'COMPLETED') as total_revenue,
+    (SELECT COALESCE(SUM(amount_paid), 0)::numeric(12,2) FROM orders WHERE status = 'COMPLETED' AND created_at >= NOW() - INTERVAL '30 days') as revenue_this_month,
+    (SELECT COALESCE(SUM(amount_paid), 0)::numeric(12,2) FROM orders WHERE status = 'COMPLETED' AND created_at >= NOW() - INTERVAL '7 days') as revenue_this_week;
+
+-- name: AdminGetDailyRevenueAndOrders :many
+SELECT
+    TO_CHAR(d.day, 'YYYY-MM-DD')::text as date_label,
+    COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.amount_paid ELSE 0 END), 0)::numeric(12,2) as revenue,
+    COUNT(o.id)::bigint as total_orders,
+    COUNT(CASE WHEN o.status = 'COMPLETED' THEN 1 END)::bigint as completed_orders
+FROM (
+    SELECT generate_series(
+        CURRENT_DATE - INTERVAL '29 days',
+        CURRENT_DATE,
+        '1 day'::interval
+    )::date as day
+) d
+LEFT JOIN orders o ON DATE(o.created_at) = d.day
+GROUP BY d.day
+ORDER BY d.day ASC;
+
+-- name: AdminGetMonthlyRevenueAndOrders :many
+SELECT
+    TO_CHAR(m.month, 'YYYY-MM')::text as month_label,
+    TO_CHAR(m.month, 'Mon YYYY')::text as display_label,
+    COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.amount_paid ELSE 0 END), 0)::numeric(12,2) as revenue,
+    COUNT(o.id)::bigint as total_orders,
+    COUNT(CASE WHEN o.status = 'COMPLETED' THEN 1 END)::bigint as completed_orders
+FROM (
+    SELECT generate_series(
+        DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months',
+        DATE_TRUNC('month', CURRENT_DATE),
+        '1 month'::interval
+    )::date as month
+) m
+LEFT JOIN orders o ON DATE_TRUNC('month', o.created_at) = m.month
+GROUP BY m.month
+ORDER BY m.month ASC;
+
+-- name: AdminGetDailyUserRegistrations :many
+SELECT
+    TO_CHAR(d.day, 'YYYY-MM-DD')::text as date_label,
+    COUNT(u.id)::bigint as new_users
+FROM (
+    SELECT generate_series(
+        CURRENT_DATE - INTERVAL '29 days',
+        CURRENT_DATE,
+        '1 day'::interval
+    )::date as day
+) d
+LEFT JOIN users u ON DATE(u.created_at) = d.day
+GROUP BY d.day
+ORDER BY d.day ASC;
+
+-- name: AdminGetTopPerformingCourses :many
+SELECT
+    c.node_id,
+    c.title,
+    c.slug,
+    COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.amount_paid ELSE 0 END), 0)::numeric(12,2) as total_revenue,
+    COUNT(DISTINCT o.id)::bigint as total_orders,
+    COUNT(DISTINCT e.user_id)::bigint as total_students
+FROM courses c
+LEFT JOIN orders o ON c.node_id = o.node_id
+LEFT JOIN enrollments e ON c.node_id = e.node_id
+GROUP BY c.node_id, c.title, c.slug
+ORDER BY total_revenue DESC, total_students DESC
+LIMIT 5;
+
+-- name: AdminGetPaymentProviderDistribution :many
+SELECT
+    o.payment_provider,
+    COUNT(o.id)::bigint as order_count,
+    COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.amount_paid ELSE 0 END), 0)::numeric(12,2) as total_amount
+FROM orders o
+GROUP BY o.payment_provider
+ORDER BY order_count DESC;
+
+-- name: AdminGetRecentUsers :many
+SELECT
+    u.id,
+    u.email,
+    u.role,
+    u.created_at,
+    COALESCE(up.full_name, 'Unknown')::text as full_name,
+    COALESCE(up.avatar_url, '')::text as avatar_url
+FROM users u
+LEFT JOIN user_profiles up ON u.id = up.user_id
+ORDER BY u.created_at DESC
+LIMIT 5;

@@ -1,0 +1,14 @@
+/admin/dashboard/analytics:
+  get:
+    tags:
+      - Admin Analytics
+    summary: Get admin dashboard analytics and trends
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Dashboard metrics, charts data and recent activity
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/commerce.yaml#/AdminDashboardAnalyticsResponse'

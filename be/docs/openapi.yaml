@@ -71,6 +71,8 @@ paths:
     $ref: './paths/admin_orders.yaml#/~1admin~1orders~1{id}'
   /admin/orders/{id}/status:
     $ref: './paths/admin_orders.yaml#/~1admin~1orders~1{id}~1status'
+  /admin/dashboard/analytics:
+    $ref: './paths/admin_dashboard.yaml#/~1admin~1dashboard~1analytics'
   /courses:
     $ref: './paths/courses.yaml'
   /courses/{id}/tree:
