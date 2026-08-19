@@ -117,7 +117,7 @@ export default function CoursePlayerPage() {
       <Box
         visibleFrom="md"
         style={{
-          width: '300px',
+          width: '320px',
           height: '100%',
           backgroundColor: '#ffffff',
           borderRight: '1px solid #e2e8f0',
@@ -158,7 +158,7 @@ export default function CoursePlayerPage() {
       <Drawer
         opened={mobileSidebarOpen}
         onClose={() => setMobileSidebarOpen(false)}
-        size="310px"
+        size="320px"
         padding={0}
         withCloseButton={false}
         position="left"
