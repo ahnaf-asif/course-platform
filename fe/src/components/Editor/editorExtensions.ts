@@ -17,11 +17,20 @@ export const editorExtensions = [
     resizable: true,
     HTMLAttributes: {
       class: 'editor-table',
+      style: 'border-collapse: collapse; width: 100%; border: 1px solid #94a3b8; margin: 1rem 0;',
     },
   }),
   TableRow,
-  TableHeader,
-  TableCell,
+  TableHeader.configure({
+    HTMLAttributes: {
+      style: 'border: 1px solid #94a3b8; padding: 8px 12px; background-color: #f1f5f9; font-weight: 700; text-align: left;',
+    },
+  }),
+  TableCell.configure({
+    HTMLAttributes: {
+      style: 'border: 1px solid #94a3b8; padding: 8px 12px; min-width: 60px;',
+    },
+  }),
   ImageResize.configure({
     HTMLAttributes: {
       style: 'border-radius: 4px; display: inline-block;',

@@ -204,33 +204,54 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
           </RichTextEditor.Toolbar>
 
           <style>{`
-            .editor-table {
-              border-collapse: collapse;
-              table-layout: fixed;
-              width: 100%;
-              margin: 1rem 0;
-              overflow: hidden;
+            .mantine-RichTextEditor-root table,
+            .mantine-RichTextEditor-content table,
+            .ProseMirror table,
+            table.editor-table {
+              border-collapse: collapse !important;
+              table-layout: auto !important;
+              width: 100% !important;
+              margin: 1rem 0 !important;
+              overflow: hidden !important;
+              border: 1.5px solid #64748b !important;
             }
-            .editor-table td, .editor-table th {
-              min-width: 1em;
-              border: 1px solid #cbd5e1;
-              padding: 8px 12px;
-              vertical-align: top;
-              box-sizing: border-box;
-              position: relative;
+            .mantine-RichTextEditor-root th,
+            .mantine-RichTextEditor-root td,
+            .mantine-RichTextEditor-content th,
+            .mantine-RichTextEditor-content td,
+            .ProseMirror th,
+            .ProseMirror td {
+              min-width: 60px !important;
+              border: 1px solid #94a3b8 !important;
+              padding: 8px 12px !important;
+              vertical-align: top !important;
+              box-sizing: border-box !important;
+              position: relative !important;
             }
-            .editor-table th {
-              font-weight: 700;
-              text-align: left;
-              background-color: #f1f5f9;
-              color: #0f172a;
+            .mantine-RichTextEditor-root th,
+            .mantine-RichTextEditor-content th,
+            .ProseMirror th {
+              font-weight: 700 !important;
+              text-align: left !important;
+              background-color: #f1f5f9 !important;
+              color: #0f172a !important;
+              border-bottom: 2px solid #64748b !important;
             }
-            .editor-table .selectedCell:after {
+            .ProseMirror .selectedCell:after {
               z-index: 2;
               position: absolute;
               content: "";
               left: 0; right: 0; top: 0; bottom: 0;
-              background: rgba(200, 200, 255, 0.4);
+              background: rgba(59, 130, 246, 0.2);
+              pointer-events: none;
+            }
+            .ProseMirror .column-resize-handle {
+              position: absolute;
+              right: -2px;
+              top: 0;
+              bottom: -2px;
+              width: 4px;
+              background-color: #2563eb;
               pointer-events: none;
             }
           `}</style>
