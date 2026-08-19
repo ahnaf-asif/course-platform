@@ -181,6 +181,18 @@ export function SyllabusSidebar({
           {organizedTree.map((subject) => {
             const isSubOpen = !!expandedSubjects[subject.id];
 
+            const totalSubjectLessons = subject.children.reduce(
+              (acc, chap) => acc + chap.children.length,
+              0
+            );
+            const completedSubjectLessons = subject.children.reduce(
+              (acc, chap) =>
+                acc + chap.children.filter((l) => l.progress_status === 'COMPLETED').length,
+              0
+            );
+            const isSubjectCompleted =
+              totalSubjectLessons > 0 && completedSubjectLessons === totalSubjectLessons;
+
             return (
               <Box key={subject.id} style={{ borderBottom: '1px solid #f8fafc' }}>
                 {/* Clean Subject Dropdown Header */}
@@ -212,9 +224,16 @@ export function SyllabusSidebar({
                     {subject.title}
                   </Text>
 
-                  <Group gap={8}>
-                    <Text size="11px" c="dimmed">
-                      {subject.children.length} অধ্যায়
+                  <Group gap={8} align="center">
+                    <Text
+                      size="11px"
+                      fw={600}
+                      c={isSubjectCompleted ? 'green.6' : 'dimmed'}
+                      data-testid={`subject-progress-${subject.id}`}
+                    >
+                      {isSubjectCompleted
+                        ? 'সম্পূর্ণ'
+                        : `${completedSubjectLessons}/${totalSubjectLessons}`}
                     </Text>
                     <IconChevronDown
                       size={14}
