@@ -3,10 +3,12 @@
 import { useEffect } from 'react';
 import { RichTextEditor } from '@mantine/tiptap';
 import { useEditor } from '@tiptap/react';
-import { IconMathFunction, IconPhoto } from '@tabler/icons-react';
+import { IconMathFunction, IconPhoto, IconFileTypeDocx, IconMarkdown } from '@tabler/icons-react';
 import { Stack, Text, Box, FileButton } from '@mantine/core';
 import { editorExtensions } from './editorExtensions';
 import { handleImageUpload } from './uploadImage';
+import { handleDocxUpload } from './uploadDocx';
+import { handleMarkdownUpload } from './uploadMarkdown';
 
 interface EditorProps {
   content?: string;
@@ -53,6 +55,14 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
 
   const onImageUpload = (file: File | null) => {
     handleImageUpload(file, editor);
+  };
+
+  const onDocxUpload = (file: File | null) => {
+    handleDocxUpload(file, editor);
+  };
+
+  const onMarkdownUpload = (file: File | null) => {
+    handleMarkdownUpload(file, editor);
   };
 
   return (
@@ -142,6 +152,32 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
                     title="Upload Image"
                   >
                     <IconPhoto size={16} stroke={1.5} />
+                  </RichTextEditor.Control>
+                )}
+              </FileButton>
+
+              <FileButton onChange={onDocxUpload} accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                {(props) => (
+                  <RichTextEditor.Control
+                    {...props}
+                    aria-label="Upload DOCX Document"
+                    title="Upload DOCX Document"
+                    data-testid="editor-upload-docx"
+                  >
+                    <IconFileTypeDocx size={16} stroke={1.5} />
+                  </RichTextEditor.Control>
+                )}
+              </FileButton>
+
+              <FileButton onChange={onMarkdownUpload} accept=".md,.markdown,text/markdown,text/plain">
+                {(props) => (
+                  <RichTextEditor.Control
+                    {...props}
+                    aria-label="Upload Markdown File"
+                    title="Upload Markdown File"
+                    data-testid="editor-upload-markdown"
+                  >
+                    <IconMarkdown size={16} stroke={1.5} />
                   </RichTextEditor.Control>
                 )}
               </FileButton>
