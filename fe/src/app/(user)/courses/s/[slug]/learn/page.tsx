@@ -238,9 +238,9 @@ export default function CoursePlayerPage() {
             overflowY: 'auto',
             backgroundColor: '#f8fafc',
           }}
-          p={{ base: '8px', sm: '16px' }}
+          p={{ base: '8px', sm: '16px', md: '20px' }}
         >
-          <Container size="xl" p={0} style={{ maxWidth: '1100px', width: '100%' }}>
+          <Container size="100%" p={0} style={{ maxWidth: '1200px', width: '100%' }}>
             <Stack gap="md">
               {/* Main Content Player Container */}
               <Box style={{ width: '100%', borderRadius: '16px', overflow: 'hidden' }}>

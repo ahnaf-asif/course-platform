@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Box, Button, Divider, Stack, Text, Title, Container, Alert } from '@mantine/core';
+import { Box, Button, Divider, Stack, Text, Title, Alert } from '@mantine/core';
 import { IconCheck, IconAlertTriangle } from '@tabler/icons-react';
 import { MathJaxContent } from '@/components/MathJaxContent';
 import { WatermarkOverlay } from '@/components/WatermarkOverlay';
@@ -72,8 +72,7 @@ export function LessonTextView({
 
   return (
     <Box
-      py={{ base: 'xs', sm: 'md' }}
-      px={0}
+      p={{ base: 'md', sm: 'xl', md: '28px' }}
       style={{
         width: '100%',
         backgroundColor: '#ffffff',
@@ -92,7 +91,7 @@ export function LessonTextView({
       {/* Background forensic watermark overlay with MutationObserver guard */}
       <WatermarkOverlay variant="reading" onTamper={() => setIsTampered(true)} />
 
-      <Container size="md" px={{ base: 'xs', sm: 'md' }} style={{ maxWidth: '840px', width: '100%', position: 'relative', zIndex: 10 }}>
+      <Box style={{ width: '100%', position: 'relative', zIndex: 10 }}>
         <Stack gap="md">
           <Box>
             <Text size="xs" fw={800} c="blue.6" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
@@ -166,7 +165,7 @@ export function LessonTextView({
             </Button>
           </Box>
         </Stack>
-      </Container>
+      </Box>
     </Box>
   );
 }

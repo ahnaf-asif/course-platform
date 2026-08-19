@@ -132,12 +132,12 @@ export function ProtectedCanvasView({
     const blocks = parseContentToBlocks(content);
     const dpr = window.devicePixelRatio || 2;
     const containerWidth = container.clientWidth || 800;
-    const padding = 24;
-    const contentWidth = containerWidth - padding * 2;
+    const padding = 0;
+    const contentWidth = containerWidth;
 
     // First pass: measure total required height
     ctx.font = '16px "Hind Siliguri", "Segoe UI", sans-serif';
-    let totalHeight = padding * 2;
+    let totalHeight = 24;
 
     for (const block of blocks) {
       if (block.type === 'h1') {
@@ -165,7 +165,7 @@ export function ProtectedCanvasView({
       }
     }
 
-    totalHeight = Math.max(totalHeight, 300);
+    totalHeight = Math.max(totalHeight, 180);
 
     // Set canvas dimensions with DPR scaling for Retina displays
     canvas.width = containerWidth * dpr;
@@ -194,7 +194,7 @@ export function ProtectedCanvasView({
     ctx.restore();
 
     // Draw typography blocks
-    let currentY = padding + 20;
+    let currentY = 22;
 
     for (const block of blocks) {
       if (block.type === 'h1') {
@@ -268,7 +268,7 @@ export function ProtectedCanvasView({
       style={{
         width: '100%',
         display: 'flex',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         userSelect: 'none',
         WebkitUserSelect: 'none',
       }}
@@ -281,9 +281,8 @@ export function ProtectedCanvasView({
         data-testid="protected-canvas-element"
         style={{
           display: 'block',
+          width: '100%',
           maxWidth: '100%',
-          borderRadius: '8px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
           userSelect: 'none',
           WebkitUserSelect: 'none',
           pointerEvents: 'none',
