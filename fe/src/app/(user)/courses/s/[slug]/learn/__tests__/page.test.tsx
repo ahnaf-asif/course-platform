@@ -31,9 +31,12 @@ vi.mock('@/lib/axios', () => ({
   updateAccessToken: vi.fn(),
 }));
 
+let mockSearchParams = new URLSearchParams('');
+
 vi.mock('next/navigation', () => ({
   useParams: () => ({ slug: 'test-course' }),
   useRouter: () => ({ push: mockPush }),
+  useSearchParams: () => mockSearchParams,
 }));
 
 describe('CoursePlayerPage Component', () => {
@@ -95,6 +98,27 @@ describe('CoursePlayerPage Component', () => {
     // Verifies reading material content renders on the next slide
     await waitFor(() => {
       expect(screen.getByTestId('mathjax-content-container')).toBeInTheDocument();
+    });
+  });
+
+  it('restores selected lesson from url nodeId query param', async () => {
+    mockSearchParams = new URLSearchParams('nodeId=les-1');
+    mockUseCheckAccess.mockReturnValue({ data: { has_access: true }, isLoading: false });
+    mockUseGetUserLesson.mockReturnValue({
+      data: {
+        id: 'les-1',
+        title: 'Directly Linked Lesson',
+        video_url: 'https://stream.com/video1.mp4',
+        text_content: 'Content'
+      },
+      isLoading: false
+    });
+
+    render(<CoursePlayerPage />);
+
+    await waitFor(() => {
+      expect(mockUseGetUserLesson).toHaveBeenCalledWith('les-1');
+      expect(screen.getByText('Directly Linked Lesson')).toBeInTheDocument();
     });
   });
 });

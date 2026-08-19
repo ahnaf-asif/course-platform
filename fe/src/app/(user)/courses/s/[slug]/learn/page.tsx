@@ -24,6 +24,7 @@ import {
   IconBook,
   IconBooks,
 } from '@tabler/icons-react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
 
 // Refactored Sub-Components & Hooks
@@ -34,7 +35,7 @@ import { FooterNavBar } from './_components/FooterNavBar';
 import { QuizArea } from './_components/QuizArea';
 import { useCoursePlayer } from './_components/useCoursePlayer';
 
-export default function CoursePlayerPage() {
+function CoursePlayerContent() {
   const {
     slug,
     selectedLessonId,
@@ -356,5 +357,27 @@ export default function CoursePlayerPage() {
         )}
       </Box>
     </Box>
+  );
+}
+
+function CoursePlayerLoading() {
+  return (
+    <Box py="xl" style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+      <Container size="xl">
+        <Stack gap="xl">
+          <Skeleton height={50} radius="md" />
+          <Skeleton height={420} radius="xl" />
+          <Skeleton height={150} radius="lg" />
+        </Stack>
+      </Container>
+    </Box>
+  );
+}
+
+export default function CoursePlayerPage() {
+  return (
+    <Suspense fallback={<CoursePlayerLoading />}>
+      <CoursePlayerContent />
+    </Suspense>
   );
 }

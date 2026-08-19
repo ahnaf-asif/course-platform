@@ -1,4 +1,4 @@
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useGetCourseBySlug, useGetCourseTreeBySlug } from '@/api/generated/course/course';
 import { useCheckAccess, useGetUserLesson } from '@/api/generated/commerce/commerce';
@@ -17,6 +17,11 @@ import { ExtendedNode } from './utils';
 export function useCoursePlayer() {
   const router = useRouter();
   const { slug } = useParams() as { slug: string };
+  const searchParams = useSearchParams();
+
+  const urlNodeId = searchParams ? (searchParams.get('nodeId') || searchParams.get('node') || searchParams.get('lessonId')) : null;
+  const urlQuizId = searchParams ? (searchParams.get('quizId') || searchParams.get('quiz')) : null;
+  const urlSlide = searchParams ? searchParams.get('slide') : null;
 
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [currentSubSlideIndex, setCurrentSubSlideIndex] = useState<number>(0);
@@ -145,10 +150,24 @@ export function useCoursePlayer() {
     return roots.sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
   }, [tree]);
 
-  // Set default selected lesson
+  // Set default selected lesson or restore from URL
   useEffect(() => {
     if (organizedTree.length > 0 && !selectedLessonId) {
-      // Find the first lesson in the tree
+      // 1. If nodeId is in URL and exists in tree, restore it
+      if (urlNodeId) {
+        const matchingNode = tree?.find((n) => n.id === urlNodeId);
+        if (matchingNode) {
+          const timer = setTimeout(() => {
+            setSelectedLessonId(urlNodeId);
+            if (urlQuizId) {
+              setActiveQuizId(urlQuizId);
+            }
+          }, 0);
+          return () => clearTimeout(timer);
+        }
+      }
+
+      // 2. Otherwise find the first lesson in the tree
       for (const subject of organizedTree) {
         for (const chapter of subject.children) {
           if (chapter.children.length > 0) {
@@ -161,7 +180,7 @@ export function useCoursePlayer() {
         }
       }
     }
-  }, [organizedTree, selectedLessonId]);
+  }, [organizedTree, selectedLessonId, tree, urlNodeId, urlQuizId]);
 
   // Flat lessons list
   const flatLessons = useMemo(() => {
@@ -215,6 +234,50 @@ export function useCoursePlayer() {
 
   const activeSlideType = activeSubSlides[currentSubSlideIndex] || 'text';
   const isVideoSlide = activeSlideType === 'video';
+
+  // Restore slide from URL if specified on initial load
+  useEffect(() => {
+    if (urlSlide && activeSubSlides.length > 0) {
+      const slideIdx = activeSubSlides.indexOf(urlSlide as ('video' | 'text' | 'quiz'));
+      if (slideIdx !== -1 && currentSubSlideIndex !== slideIdx) {
+        const timer = setTimeout(() => {
+          setCurrentSubSlideIndex(slideIdx);
+        }, 0);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [urlSlide, activeSubSlides, currentSubSlideIndex]);
+
+  // Update browser URL query parameters seamlessly without reloading the page
+  const updateUrl = useCallback(
+    (nodeId: string | null, quizId: string | null = null, slide?: string | null) => {
+      if (typeof window === 'undefined' || !nodeId) return;
+      const params = new URLSearchParams(window.location.search);
+      params.set('nodeId', nodeId);
+      if (quizId) {
+        params.set('quizId', quizId);
+      } else {
+        params.delete('quizId');
+        params.delete('quiz');
+      }
+      if (slide && slide !== 'text') {
+        params.set('slide', slide);
+      } else {
+        params.delete('slide');
+      }
+      const queryString = params.toString();
+      const newRelativePathQuery = queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
+      window.history.replaceState(null, '', newRelativePathQuery);
+    },
+    []
+  );
+
+  // Synchronize URL on lesson/quiz/slide changes
+  useEffect(() => {
+    if (selectedLessonId) {
+      updateUrl(selectedLessonId, activeQuizId, activeSlideType);
+    }
+  }, [selectedLessonId, activeQuizId, activeSlideType, updateUrl]);
 
   // Auto-select quiz if there is only one quiz for this lesson
   useEffect(() => {
