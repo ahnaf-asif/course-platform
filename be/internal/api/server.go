@@ -317,6 +317,13 @@ func (s *Server) registerRoutes() {
 	adminMedia.GET("/token/:videoId", curriculumHandler.GetMediaStreamToken)
 	adminMedia.POST("/transcode", curriculumHandler.TriggerMediaTranscode)
 	adminMedia.GET("/tasks/:taskID", curriculumHandler.GetMediaTaskStatus)
+
+	// Admin Orders routes
+	adminOrders := admin.Group("/orders")
+	adminOrders.GET("", commerceHandler.AdminListOrders)
+	adminOrders.GET("/summary", commerceHandler.AdminGetOrderSummary)
+	adminOrders.GET("/:id", commerceHandler.AdminGetOrderByID)
+	adminOrders.PATCH("/:id/status", commerceHandler.AdminUpdateOrderStatus)
 }
 
 func (s *Server) GetEcho() *echo.Echo {

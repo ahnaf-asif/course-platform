@@ -63,6 +63,14 @@ paths:
     $ref: './paths/admin_users.yaml#/~1admin~1users'
   /admin/users/{id}/role:
     $ref: './paths/admin_users.yaml#/~1admin~1users~1{id}~1role'
+  /admin/orders:
+    $ref: './paths/admin_orders.yaml#/~1admin~1orders'
+  /admin/orders/summary:
+    $ref: './paths/admin_orders.yaml#/~1admin~1orders~1summary'
+  /admin/orders/{id}:
+    $ref: './paths/admin_orders.yaml#/~1admin~1orders~1{id}'
+  /admin/orders/{id}/status:
+    $ref: './paths/admin_orders.yaml#/~1admin~1orders~1{id}~1status'
   /courses:
     $ref: './paths/courses.yaml'
   /courses/{id}/tree:

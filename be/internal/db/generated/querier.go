@@ -13,6 +13,9 @@ import (
 type Querier interface {
 	// Prerequisites
 	AddPrerequisite(ctx context.Context, arg AddPrerequisiteParams) error
+	AdminGetOrderByID(ctx context.Context, id uuid.UUID) (AdminGetOrderByIDRow, error)
+	AdminGetOrderSummary(ctx context.Context) (AdminGetOrderSummaryRow, error)
+	AdminListOrders(ctx context.Context, arg AdminListOrdersParams) ([]AdminListOrdersRow, error)
 	AttachQuizToNode(ctx context.Context, arg AttachQuizToNodeParams) error
 	AttachTagToNode(ctx context.Context, arg AttachTagToNodeParams) error
 	CheckUserAccessToNode(ctx context.Context, arg CheckUserAccessToNodeParams) (bool, error)

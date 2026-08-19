@@ -528,3 +528,320 @@ func (h *CommerceHandler) GetEnrolledCourses(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, resp)
 }
+
+// Admin Commerce Handlers
+
+type AdminOrderResponse struct {
+	ID                  string                  `json:"id"`
+	UserID              string                  `json:"user_id"`
+	UserName            string                  `json:"user_name"`
+	UserEmail           string                  `json:"user_email"`
+	NodeID              string                  `json:"node_id"`
+	CourseTitle         string                  `json:"course_title"`
+	CourseSlug          string                  `json:"course_slug"`
+	AmountPaid          string                  `json:"amount_paid"`
+	Currency            string                  `json:"currency"`
+	Status              generated.OrderStatus   `json:"status"`
+	PaymentProvider     string                  `json:"payment_provider"`
+	ProviderReference   string                  `json:"provider_reference"`
+	CouponID            *string                 `json:"coupon_id,omitempty"`
+	CouponCode          *string                 `json:"coupon_code,omitempty"`
+	CouponDiscountType  *generated.DiscountType `json:"coupon_discount_type,omitempty"`
+	CouponDiscountValue *string                 `json:"coupon_discount_value,omitempty"`
+	CreatedAt           string                  `json:"created_at"`
+}
+
+type AdminOrderListResponse struct {
+	Orders     []AdminOrderResponse `json:"orders"`
+	TotalCount int64                `json:"total_count"`
+	Page       int                  `json:"page"`
+	Limit      int                  `json:"limit"`
+	TotalPages int                  `json:"total_pages"`
+}
+
+type AdminOrderSummaryResponse struct {
+	TotalOrders     int64  `json:"total_orders"`
+	TotalRevenue    string `json:"total_revenue"`
+	CompletedOrders int64  `json:"completed_orders"`
+	PendingOrders   int64  `json:"pending_orders"`
+	RefundedOrders  int64  `json:"refunded_orders"`
+}
+
+type AdminOrderDetailResponse struct {
+	ID                  string                  `json:"id"`
+	UserID              string                  `json:"user_id"`
+	UserName            string                  `json:"user_name"`
+	UserEmail           string                  `json:"user_email"`
+	UserRole            generated.UserRole      `json:"user_role"`
+	NodeID              string                  `json:"node_id"`
+	NodeType            generated.NodeType      `json:"node_type"`
+	CourseTitle         string                  `json:"course_title"`
+	CourseSlug          string                  `json:"course_slug"`
+	CourseThumbnailURL  string                  `json:"course_thumbnail_url"`
+	AmountPaid          string                  `json:"amount_paid"`
+	Currency            string                  `json:"currency"`
+	Status              generated.OrderStatus   `json:"status"`
+	PaymentProvider     string                  `json:"payment_provider"`
+	ProviderReference   string                  `json:"provider_reference"`
+	CouponID            *string                 `json:"coupon_id,omitempty"`
+	CouponCode          *string                 `json:"coupon_code,omitempty"`
+	CouponDiscountType  *generated.DiscountType `json:"coupon_discount_type,omitempty"`
+	CouponDiscountValue *string                 `json:"coupon_discount_value,omitempty"`
+	CreatedAt           string                  `json:"created_at"`
+}
+
+type UpdateOrderStatusRequest struct {
+	Status generated.OrderStatus `json:"status" validate:"required,oneof=PENDING COMPLETED REFUNDED"`
+}
+
+func (h *CommerceHandler) AdminListOrders(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	page, _ := strconv.Atoi(c.QueryParam("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(c.QueryParam("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	offset := (page - 1) * limit
+
+	var statusParam generated.NullOrderStatus
+	statusStr := c.QueryParam("status")
+	if statusStr != "" {
+		statusParam = generated.NullOrderStatus{
+			OrderStatus: generated.OrderStatus(statusStr),
+			Valid:       true,
+		}
+	}
+
+	var providerParam sql.NullString
+	providerStr := c.QueryParam("payment_provider")
+	if providerStr != "" {
+		providerParam = sql.NullString{String: providerStr, Valid: true}
+	}
+
+	var searchParam sql.NullString
+	searchStr := c.QueryParam("search")
+	if searchStr != "" {
+		searchParam = sql.NullString{String: searchStr, Valid: true}
+	}
+
+	rows, err := h.store.AdminListOrders(ctx, generated.AdminListOrdersParams{
+		Status:          statusParam,
+		PaymentProvider: providerParam,
+		Search:          searchParam,
+		Limit:           int32(limit),
+		Offset:          int32(offset),
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to list orders: "+err.Error())
+	}
+
+	var totalCount int64
+	orders := make([]AdminOrderResponse, 0, len(rows))
+
+	for _, r := range rows {
+		totalCount = r.TotalCount
+
+		var couponID *string
+		if r.CouponID.Valid {
+			cidStr := r.CouponID.UUID.String()
+			couponID = &cidStr
+		}
+
+		var couponCode *string
+		if r.CouponCode.Valid {
+			couponCode = &r.CouponCode.String
+		}
+
+		var discountType *generated.DiscountType
+		if r.CouponDiscountType.Valid {
+			dt := r.CouponDiscountType.DiscountType
+			discountType = &dt
+		}
+
+		var discountValue *string
+		if r.CouponDiscountValue.Valid {
+			discountValue = &r.CouponDiscountValue.String
+		}
+
+		orders = append(orders, AdminOrderResponse{
+			ID:                  r.ID.String(),
+			UserID:              r.UserID.String(),
+			UserName:            r.UserName,
+			UserEmail:           r.UserEmail,
+			NodeID:              r.NodeID.String(),
+			CourseTitle:         r.CourseTitle,
+			CourseSlug:          r.CourseSlug,
+			AmountPaid:          r.AmountPaid,
+			Currency:            r.Currency,
+			Status:              r.Status,
+			PaymentProvider:     r.PaymentProvider,
+			ProviderReference:   r.ProviderReference,
+			CouponID:            couponID,
+			CouponCode:          couponCode,
+			CouponDiscountType:  discountType,
+			CouponDiscountValue: discountValue,
+			CreatedAt:           r.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	totalPages := 0
+	if totalCount > 0 {
+		totalPages = int(math.Ceil(float64(totalCount) / float64(limit)))
+	}
+
+	return c.JSON(http.StatusOK, AdminOrderListResponse{
+		Orders:     orders,
+		TotalCount: totalCount,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: totalPages,
+	})
+}
+
+func (h *CommerceHandler) AdminGetOrderSummary(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	summary, err := h.store.AdminGetOrderSummary(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get order summary: "+err.Error())
+	}
+
+	return c.JSON(http.StatusOK, AdminOrderSummaryResponse{
+		TotalOrders:     summary.TotalOrders,
+		TotalRevenue:    summary.TotalRevenue,
+		CompletedOrders: summary.CompletedOrders,
+		PendingOrders:   summary.PendingOrders,
+		RefundedOrders:  summary.RefundedOrders,
+	})
+}
+
+func (h *CommerceHandler) AdminGetOrderByID(c echo.Context) error {
+	ctx := c.Request().Context()
+	idStr := c.Param("id")
+
+	orderUUID, err := uuid.Parse(idStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid order ID")
+	}
+
+	r, err := h.store.AdminGetOrderByID(ctx, orderUUID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusNotFound, "Order not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get order details: "+err.Error())
+	}
+
+	var couponID *string
+	if r.CouponID.Valid {
+		cidStr := r.CouponID.UUID.String()
+		couponID = &cidStr
+	}
+
+	var couponCode *string
+	if r.CouponCode.Valid {
+		couponCode = &r.CouponCode.String
+	}
+
+	var discountType *generated.DiscountType
+	if r.CouponDiscountType.Valid {
+		dt := r.CouponDiscountType.DiscountType
+		discountType = &dt
+	}
+
+	var discountValue *string
+	if r.CouponDiscountValue.Valid {
+		discountValue = &r.CouponDiscountValue.String
+	}
+
+	return c.JSON(http.StatusOK, AdminOrderDetailResponse{
+		ID:                  r.ID.String(),
+		UserID:              r.UserID.String(),
+		UserName:            r.UserName,
+		UserEmail:           r.UserEmail,
+		UserRole:            r.UserRole,
+		NodeID:              r.NodeID.String(),
+		NodeType:            r.NodeType,
+		CourseTitle:         r.CourseTitle,
+		CourseSlug:          r.CourseSlug,
+		CourseThumbnailURL:  r.CourseThumbnailUrl,
+		AmountPaid:          r.AmountPaid,
+		Currency:            r.Currency,
+		Status:              r.Status,
+		PaymentProvider:     r.PaymentProvider,
+		ProviderReference:   r.ProviderReference,
+		CouponID:            couponID,
+		CouponCode:          couponCode,
+		CouponDiscountType:  discountType,
+		CouponDiscountValue: discountValue,
+		CreatedAt:           r.CreatedAt.Format(time.RFC3339),
+	})
+}
+
+func (h *CommerceHandler) AdminUpdateOrderStatus(c echo.Context) error {
+	ctx := c.Request().Context()
+	idStr := c.Param("id")
+
+	orderUUID, err := uuid.Parse(idStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid order ID")
+	}
+
+	var req UpdateOrderStatusRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
+	}
+
+	var updatedOrder generated.Order
+	txErr := h.store.WithTx(ctx, func(q generated.Querier) error {
+		existing, err := q.GetOrderByID(ctx, orderUUID)
+		if err != nil {
+			return err
+		}
+
+		o, err := q.UpdateOrderStatus(ctx, generated.UpdateOrderStatusParams{
+			ID:     orderUUID,
+			Status: req.Status,
+		})
+		if err != nil {
+			return err
+		}
+		updatedOrder = o
+
+		// If transitioning to COMPLETED, create enrollment and increment coupon
+		if req.Status == generated.OrderStatusCOMPLETED && existing.Status != generated.OrderStatusCOMPLETED {
+			_, _ = q.CreateEnrollment(ctx, generated.CreateEnrollmentParams{
+				UserID: existing.UserID,
+				NodeID: existing.NodeID,
+			})
+
+			if existing.CouponID.Valid {
+				_ = q.IncrementCouponUsage(ctx, existing.CouponID.UUID)
+			}
+		}
+
+		return nil
+	})
+
+	if txErr != nil {
+		if txErr == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusNotFound, "Order not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to update order status: "+txErr.Error())
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"id":     updatedOrder.ID.String(),
+		"status": updatedOrder.Status,
+	})
+}

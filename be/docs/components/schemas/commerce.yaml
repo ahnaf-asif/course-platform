@@ -73,3 +73,191 @@ EnrolledCourseResponse:
       type: string
       format: date-time
 
+AdminOrderResponse:
+  type: object
+  required:
+    - id
+    - user_id
+    - user_name
+    - user_email
+    - node_id
+    - course_title
+    - course_slug
+    - amount_paid
+    - currency
+    - status
+    - payment_provider
+    - provider_reference
+    - created_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    user_name:
+      type: string
+    user_email:
+      type: string
+      format: email
+    node_id:
+      type: string
+      format: uuid
+    course_title:
+      type: string
+    course_slug:
+      type: string
+    amount_paid:
+      type: string
+    currency:
+      type: string
+    status:
+      type: string
+      enum: [PENDING, COMPLETED, REFUNDED]
+    payment_provider:
+      type: string
+    provider_reference:
+      type: string
+    coupon_id:
+      type: string
+      format: uuid
+      nullable: true
+    coupon_code:
+      type: string
+      nullable: true
+    coupon_discount_type:
+      type: string
+      enum: [PERCENTAGE, FIXED]
+      nullable: true
+    coupon_discount_value:
+      type: string
+      nullable: true
+    created_at:
+      type: string
+      format: date-time
+
+AdminOrderListResponse:
+  type: object
+  required:
+    - orders
+    - total_count
+    - page
+    - limit
+    - total_pages
+  properties:
+    orders:
+      type: array
+      items:
+        $ref: '#/AdminOrderResponse'
+    total_count:
+      type: integer
+    page:
+      type: integer
+    limit:
+      type: integer
+    total_pages:
+      type: integer
+
+AdminOrderSummaryResponse:
+  type: object
+  required:
+    - total_orders
+    - total_revenue
+    - completed_orders
+    - pending_orders
+    - refunded_orders
+  properties:
+    total_orders:
+      type: integer
+    total_revenue:
+      type: string
+    completed_orders:
+      type: integer
+    pending_orders:
+      type: integer
+    refunded_orders:
+      type: integer
+
+AdminOrderDetailResponse:
+  type: object
+  required:
+    - id
+    - user_id
+    - user_name
+    - user_email
+    - user_role
+    - node_id
+    - node_type
+    - course_title
+    - course_slug
+    - course_thumbnail_url
+    - amount_paid
+    - currency
+    - status
+    - payment_provider
+    - provider_reference
+    - created_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    user_name:
+      type: string
+    user_email:
+      type: string
+    user_role:
+      type: string
+      enum: [ADMIN, USER]
+    node_id:
+      type: string
+      format: uuid
+    node_type:
+      type: string
+    course_title:
+      type: string
+    course_slug:
+      type: string
+    course_thumbnail_url:
+      type: string
+    amount_paid:
+      type: string
+    currency:
+      type: string
+    status:
+      type: string
+      enum: [PENDING, COMPLETED, REFUNDED]
+    payment_provider:
+      type: string
+    provider_reference:
+      type: string
+    coupon_id:
+      type: string
+      format: uuid
+      nullable: true
+    coupon_code:
+      type: string
+      nullable: true
+    coupon_discount_type:
+      type: string
+      enum: [PERCENTAGE, FIXED]
+      nullable: true
+    coupon_discount_value:
+      type: string
+      nullable: true
+    created_at:
+      type: string
+      format: date-time
+
+UpdateOrderStatusRequest:
+  type: object
+  required:
+    - status
+  properties:
+    status:
+      type: string
+      enum: [PENDING, COMPLETED, REFUNDED]
+

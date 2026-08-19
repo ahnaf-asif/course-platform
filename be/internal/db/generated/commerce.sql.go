@@ -13,6 +13,239 @@ import (
 	"github.com/google/uuid"
 )
 
+const adminGetOrderByID = `-- name: AdminGetOrderByID :one
+SELECT 
+    o.id,
+    o.user_id,
+    COALESCE(up.full_name, 'Unknown')::text as user_name,
+    u.email as user_email,
+    u.role as user_role,
+    o.node_id,
+    n.node_type,
+    COALESCE(c.title, n.node_type::text)::text as course_title,
+    COALESCE(c.slug, '')::text as course_slug,
+    COALESCE(c.thumbnail_url, '')::text as course_thumbnail_url,
+    o.amount_paid,
+    o.currency,
+    o.status,
+    o.payment_provider,
+    o.provider_reference,
+    o.coupon_id,
+    cp.code as coupon_code,
+    cp.discount_type as coupon_discount_type,
+    cp.discount_value as coupon_discount_value,
+    o.created_at
+FROM orders o
+JOIN users u ON o.user_id = u.id
+LEFT JOIN user_profiles up ON u.id = up.user_id
+JOIN nodes n ON o.node_id = n.id
+LEFT JOIN courses c ON n.id = c.node_id
+LEFT JOIN coupons cp ON o.coupon_id = cp.id
+WHERE o.id = $1
+LIMIT 1
+`
+
+type AdminGetOrderByIDRow struct {
+	ID                  uuid.UUID        `json:"id"`
+	UserID              uuid.UUID        `json:"user_id"`
+	UserName            string           `json:"user_name"`
+	UserEmail           string           `json:"user_email"`
+	UserRole            UserRole         `json:"user_role"`
+	NodeID              uuid.UUID        `json:"node_id"`
+	NodeType            NodeType         `json:"node_type"`
+	CourseTitle         string           `json:"course_title"`
+	CourseSlug          string           `json:"course_slug"`
+	CourseThumbnailUrl  string           `json:"course_thumbnail_url"`
+	AmountPaid          string           `json:"amount_paid"`
+	Currency            string           `json:"currency"`
+	Status              OrderStatus      `json:"status"`
+	PaymentProvider     string           `json:"payment_provider"`
+	ProviderReference   string           `json:"provider_reference"`
+	CouponID            uuid.NullUUID    `json:"coupon_id"`
+	CouponCode          sql.NullString   `json:"coupon_code"`
+	CouponDiscountType  NullDiscountType `json:"coupon_discount_type"`
+	CouponDiscountValue sql.NullString   `json:"coupon_discount_value"`
+	CreatedAt           time.Time        `json:"created_at"`
+}
+
+func (q *Queries) AdminGetOrderByID(ctx context.Context, id uuid.UUID) (AdminGetOrderByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, adminGetOrderByID, id)
+	var i AdminGetOrderByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.UserName,
+		&i.UserEmail,
+		&i.UserRole,
+		&i.NodeID,
+		&i.NodeType,
+		&i.CourseTitle,
+		&i.CourseSlug,
+		&i.CourseThumbnailUrl,
+		&i.AmountPaid,
+		&i.Currency,
+		&i.Status,
+		&i.PaymentProvider,
+		&i.ProviderReference,
+		&i.CouponID,
+		&i.CouponCode,
+		&i.CouponDiscountType,
+		&i.CouponDiscountValue,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const adminGetOrderSummary = `-- name: AdminGetOrderSummary :one
+SELECT
+    COUNT(*)::bigint as total_orders,
+    COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN amount_paid ELSE 0 END), 0)::numeric(12,2) as total_revenue,
+    COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END)::bigint as completed_orders,
+    COUNT(CASE WHEN status = 'PENDING' THEN 1 END)::bigint as pending_orders,
+    COUNT(CASE WHEN status = 'REFUNDED' THEN 1 END)::bigint as refunded_orders
+FROM orders
+`
+
+type AdminGetOrderSummaryRow struct {
+	TotalOrders     int64  `json:"total_orders"`
+	TotalRevenue    string `json:"total_revenue"`
+	CompletedOrders int64  `json:"completed_orders"`
+	PendingOrders   int64  `json:"pending_orders"`
+	RefundedOrders  int64  `json:"refunded_orders"`
+}
+
+func (q *Queries) AdminGetOrderSummary(ctx context.Context) (AdminGetOrderSummaryRow, error) {
+	row := q.db.QueryRowContext(ctx, adminGetOrderSummary)
+	var i AdminGetOrderSummaryRow
+	err := row.Scan(
+		&i.TotalOrders,
+		&i.TotalRevenue,
+		&i.CompletedOrders,
+		&i.PendingOrders,
+		&i.RefundedOrders,
+	)
+	return i, err
+}
+
+const adminListOrders = `-- name: AdminListOrders :many
+SELECT 
+    o.id,
+    o.user_id,
+    COALESCE(up.full_name, 'Unknown')::text as user_name,
+    u.email as user_email,
+    o.node_id,
+    COALESCE(c.title, n.node_type::text)::text as course_title,
+    COALESCE(c.slug, '')::text as course_slug,
+    o.amount_paid,
+    o.currency,
+    o.status,
+    o.payment_provider,
+    o.provider_reference,
+    o.coupon_id,
+    cp.code as coupon_code,
+    cp.discount_type as coupon_discount_type,
+    cp.discount_value as coupon_discount_value,
+    o.created_at,
+    COUNT(*) OVER() as total_count
+FROM orders o
+JOIN users u ON o.user_id = u.id
+LEFT JOIN user_profiles up ON u.id = up.user_id
+JOIN nodes n ON o.node_id = n.id
+LEFT JOIN courses c ON n.id = c.node_id
+LEFT JOIN coupons cp ON o.coupon_id = cp.id
+WHERE 
+    ($1::order_status IS NULL OR o.status = $1)
+    AND ($2::text IS NULL OR o.payment_provider = $2)
+    AND (
+        $3::text IS NULL 
+        OR u.email ILIKE '%' || $3 || '%'
+        OR up.full_name ILIKE '%' || $3 || '%'
+        OR c.title ILIKE '%' || $3 || '%'
+        OR o.provider_reference ILIKE '%' || $3 || '%'
+        OR o.id::text ILIKE '%' || $3 || '%'
+    )
+ORDER BY o.created_at DESC
+LIMIT $5
+OFFSET $4
+`
+
+type AdminListOrdersParams struct {
+	Status          NullOrderStatus `json:"status"`
+	PaymentProvider sql.NullString  `json:"payment_provider"`
+	Search          sql.NullString  `json:"search"`
+	Offset          int32           `json:"offset"`
+	Limit           int32           `json:"limit"`
+}
+
+type AdminListOrdersRow struct {
+	ID                  uuid.UUID        `json:"id"`
+	UserID              uuid.UUID        `json:"user_id"`
+	UserName            string           `json:"user_name"`
+	UserEmail           string           `json:"user_email"`
+	NodeID              uuid.UUID        `json:"node_id"`
+	CourseTitle         string           `json:"course_title"`
+	CourseSlug          string           `json:"course_slug"`
+	AmountPaid          string           `json:"amount_paid"`
+	Currency            string           `json:"currency"`
+	Status              OrderStatus      `json:"status"`
+	PaymentProvider     string           `json:"payment_provider"`
+	ProviderReference   string           `json:"provider_reference"`
+	CouponID            uuid.NullUUID    `json:"coupon_id"`
+	CouponCode          sql.NullString   `json:"coupon_code"`
+	CouponDiscountType  NullDiscountType `json:"coupon_discount_type"`
+	CouponDiscountValue sql.NullString   `json:"coupon_discount_value"`
+	CreatedAt           time.Time        `json:"created_at"`
+	TotalCount          int64            `json:"total_count"`
+}
+
+func (q *Queries) AdminListOrders(ctx context.Context, arg AdminListOrdersParams) ([]AdminListOrdersRow, error) {
+	rows, err := q.db.QueryContext(ctx, adminListOrders,
+		arg.Status,
+		arg.PaymentProvider,
+		arg.Search,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminListOrdersRow
+	for rows.Next() {
+		var i AdminListOrdersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.UserName,
+			&i.UserEmail,
+			&i.NodeID,
+			&i.CourseTitle,
+			&i.CourseSlug,
+			&i.AmountPaid,
+			&i.Currency,
+			&i.Status,
+			&i.PaymentProvider,
+			&i.ProviderReference,
+			&i.CouponID,
+			&i.CouponCode,
+			&i.CouponDiscountType,
+			&i.CouponDiscountValue,
+			&i.CreatedAt,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const checkUserAccessToNode = `-- name: CheckUserAccessToNode :one
 WITH RECURSIVE ancestors AS (
     -- Anchor: start from the specific node

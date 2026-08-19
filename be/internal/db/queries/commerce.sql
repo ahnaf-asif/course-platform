@@ -168,3 +168,84 @@ JOIN nodes n ON ec.course_id = n.id
 JOIN courses c ON n.id = c.node_id
 LEFT JOIN payment_gates pg ON n.id = pg.node_id
 ORDER BY ec.enrolled_at DESC;
+
+-- name: AdminListOrders :many
+SELECT 
+    o.id,
+    o.user_id,
+    COALESCE(up.full_name, 'Unknown')::text as user_name,
+    u.email as user_email,
+    o.node_id,
+    COALESCE(c.title, n.node_type::text)::text as course_title,
+    COALESCE(c.slug, '')::text as course_slug,
+    o.amount_paid,
+    o.currency,
+    o.status,
+    o.payment_provider,
+    o.provider_reference,
+    o.coupon_id,
+    cp.code as coupon_code,
+    cp.discount_type as coupon_discount_type,
+    cp.discount_value as coupon_discount_value,
+    o.created_at,
+    COUNT(*) OVER() as total_count
+FROM orders o
+JOIN users u ON o.user_id = u.id
+LEFT JOIN user_profiles up ON u.id = up.user_id
+JOIN nodes n ON o.node_id = n.id
+LEFT JOIN courses c ON n.id = c.node_id
+LEFT JOIN coupons cp ON o.coupon_id = cp.id
+WHERE 
+    (sqlc.narg('status')::order_status IS NULL OR o.status = sqlc.narg('status'))
+    AND (sqlc.narg('payment_provider')::text IS NULL OR o.payment_provider = sqlc.narg('payment_provider'))
+    AND (
+        sqlc.narg('search')::text IS NULL 
+        OR u.email ILIKE '%' || sqlc.narg('search') || '%'
+        OR up.full_name ILIKE '%' || sqlc.narg('search') || '%'
+        OR c.title ILIKE '%' || sqlc.narg('search') || '%'
+        OR o.provider_reference ILIKE '%' || sqlc.narg('search') || '%'
+        OR o.id::text ILIKE '%' || sqlc.narg('search') || '%'
+    )
+ORDER BY o.created_at DESC
+LIMIT sqlc.arg('limit')
+OFFSET sqlc.arg('offset');
+
+-- name: AdminGetOrderSummary :one
+SELECT
+    COUNT(*)::bigint as total_orders,
+    COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN amount_paid ELSE 0 END), 0)::numeric(12,2) as total_revenue,
+    COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END)::bigint as completed_orders,
+    COUNT(CASE WHEN status = 'PENDING' THEN 1 END)::bigint as pending_orders,
+    COUNT(CASE WHEN status = 'REFUNDED' THEN 1 END)::bigint as refunded_orders
+FROM orders;
+
+-- name: AdminGetOrderByID :one
+SELECT 
+    o.id,
+    o.user_id,
+    COALESCE(up.full_name, 'Unknown')::text as user_name,
+    u.email as user_email,
+    u.role as user_role,
+    o.node_id,
+    n.node_type,
+    COALESCE(c.title, n.node_type::text)::text as course_title,
+    COALESCE(c.slug, '')::text as course_slug,
+    COALESCE(c.thumbnail_url, '')::text as course_thumbnail_url,
+    o.amount_paid,
+    o.currency,
+    o.status,
+    o.payment_provider,
+    o.provider_reference,
+    o.coupon_id,
+    cp.code as coupon_code,
+    cp.discount_type as coupon_discount_type,
+    cp.discount_value as coupon_discount_value,
+    o.created_at
+FROM orders o
+JOIN users u ON o.user_id = u.id
+LEFT JOIN user_profiles up ON u.id = up.user_id
+JOIN nodes n ON o.node_id = n.id
+LEFT JOIN courses c ON n.id = c.node_id
+LEFT JOIN coupons cp ON o.coupon_id = cp.id
+WHERE o.id = $1
+LIMIT 1;
