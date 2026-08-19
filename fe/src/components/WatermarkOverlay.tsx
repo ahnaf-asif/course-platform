@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Text } from '@mantine/core';
 import { useAuthContext } from '@/context/AuthContext';
 
 export interface WatermarkOverlayProps {
@@ -138,7 +137,9 @@ export function WatermarkOverlay({
     );
   }
 
-  // Reading Notes Variant: subtle repeating tiled grid
+  // Reading Notes Variant: subtle repeating SVG pattern background spanning 100% of height and width
+  const svgPattern = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="360" height="200" viewBox="0 0 360 200"><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" transform="rotate(-25 180 100)" fill="rgba(100,116,139,0.12)" font-family="sans-serif" font-size="13px" font-weight="700" letter-spacing="1px">${encodeURIComponent(watermarkText)}</text></svg>`;
+
   return (
     <div
       ref={containerRef}
@@ -146,6 +147,9 @@ export function WatermarkOverlay({
       style={{
         position: 'absolute',
         inset: 0,
+        width: '100%',
+        height: '100%',
+        minHeight: '100%',
         pointerEvents: 'none',
         zIndex: 20,
         overflow: 'hidden',
@@ -158,38 +162,20 @@ export function WatermarkOverlay({
         data-testid="reading-watermark"
         style={{
           position: 'absolute',
-          inset: '-20%',
-          width: '140%',
-          height: '140%',
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '100px 60px',
-          alignContent: 'flex-start',
-          justifyContent: 'space-around',
-          transform: 'rotate(-25deg)',
-          opacity: 0.08,
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          backgroundImage: `url("${svgPattern}")`,
+          backgroundRepeat: 'repeat',
+          backgroundSize: '360px 200px',
+          pointerEvents: 'none',
           userSelect: 'none',
           WebkitUserSelect: 'none',
-          pointerEvents: 'none',
         }}
       >
-        {Array.from({ length: 48 }).map((_, i) => (
-          <Text
-            key={i}
-            size="xs"
-            fw={800}
-            c="dark.4"
-            style={{
-              whiteSpace: 'nowrap',
-              letterSpacing: '1px',
-              textTransform: 'uppercase',
-              fontSize: '13px',
-              userSelect: 'none',
-            }}
-          >
-            {watermarkText}
-          </Text>
-        ))}
+        <span style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', opacity: 0 }}>
+          {watermarkText}
+        </span>
       </div>
     </div>
   );

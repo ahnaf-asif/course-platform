@@ -183,10 +183,11 @@ export function ProtectedCanvasView({
     const angle = (-25 * Math.PI) / 180;
     ctx.save();
     ctx.fillStyle = 'rgba(100, 116, 139, 0.12)';
-    ctx.font = 'bold 15px sans-serif';
+    const stepX = 360;
+    const stepY = 200;
 
-    for (let y = 30; y < totalHeight + 100; y += 120) {
-      for (let x = -80; x < containerWidth + 180; x += 250) {
+    for (let y = 80; y < totalHeight + 150; y += stepY) {
+      for (let x = -100; x < containerWidth + 200; x += stepX) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
