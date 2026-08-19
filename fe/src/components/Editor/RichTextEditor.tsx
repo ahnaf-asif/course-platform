@@ -3,8 +3,22 @@
 import { useEffect } from 'react';
 import { RichTextEditor } from '@mantine/tiptap';
 import { useEditor } from '@tiptap/react';
-import { IconMathFunction, IconPhoto, IconFileTypeDocx, IconMarkdown, IconTable } from '@tabler/icons-react';
-import { Stack, Text, Box, FileButton } from '@mantine/core';
+import {
+  IconMathFunction,
+  IconPhoto,
+  IconFileTypeDocx,
+  IconMarkdown,
+  IconTable,
+  IconTablePlus,
+  IconRowInsertTop,
+  IconRowInsertBottom,
+  IconRowRemove,
+  IconColumnInsertLeft,
+  IconColumnInsertRight,
+  IconColumnRemove,
+  IconTrash,
+} from '@tabler/icons-react';
+import { Stack, Text, Box, FileButton, Menu } from '@mantine/core';
 import { editorExtensions } from './editorExtensions';
 import { handleImageUpload } from './uploadImage';
 import { handleDocxUpload } from './uploadDocx';
@@ -149,14 +163,87 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
                 <IconMathFunction size={16} stroke={1.5} />
               </RichTextEditor.Control>
 
-              <RichTextEditor.Control
-                onClick={addTable}
-                aria-label="Insert Table"
-                title="Insert Table"
-                data-testid="editor-insert-table"
-              >
-                <IconTable size={16} stroke={1.5} />
-              </RichTextEditor.Control>
+              <Menu shadow="md" width={220} position="bottom-start" withArrow>
+                <Menu.Target>
+                  <RichTextEditor.Control
+                    aria-label="Table Actions"
+                    title="Table Actions (Insert / Rows / Columns)"
+                    data-testid="editor-insert-table"
+                  >
+                    <IconTable size={16} stroke={1.5} />
+                  </RichTextEditor.Control>
+                </Menu.Target>
+
+                <Menu.Dropdown>
+                  <Menu.Label>Table Operations</Menu.Label>
+                  <Menu.Item
+                    leftSection={<IconTablePlus size={15} />}
+                    onClick={addTable}
+                  >
+                    Insert Table (3x3)
+                  </Menu.Item>
+
+                  <Menu.Divider />
+                  <Menu.Label>Rows</Menu.Label>
+                  <Menu.Item
+                    leftSection={<IconRowInsertTop size={15} />}
+                    onClick={() => editor?.chain().focus().addRowBefore().run()}
+                    disabled={!editor?.can().addRowBefore()}
+                  >
+                    Add Row Above
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<IconRowInsertBottom size={15} />}
+                    onClick={() => editor?.chain().focus().addRowAfter().run()}
+                    disabled={!editor?.can().addRowAfter()}
+                  >
+                    Add Row Below
+                  </Menu.Item>
+                  <Menu.Item
+                    color="red"
+                    leftSection={<IconRowRemove size={15} />}
+                    onClick={() => editor?.chain().focus().deleteRow().run()}
+                    disabled={!editor?.can().deleteRow()}
+                  >
+                    Delete Row
+                  </Menu.Item>
+
+                  <Menu.Divider />
+                  <Menu.Label>Columns</Menu.Label>
+                  <Menu.Item
+                    leftSection={<IconColumnInsertLeft size={15} />}
+                    onClick={() => editor?.chain().focus().addColumnBefore().run()}
+                    disabled={!editor?.can().addColumnBefore()}
+                  >
+                    Add Column Left
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<IconColumnInsertRight size={15} />}
+                    onClick={() => editor?.chain().focus().addColumnAfter().run()}
+                    disabled={!editor?.can().addColumnAfter()}
+                  >
+                    Add Column Right
+                  </Menu.Item>
+                  <Menu.Item
+                    color="red"
+                    leftSection={<IconColumnRemove size={15} />}
+                    onClick={() => editor?.chain().focus().deleteColumn().run()}
+                    disabled={!editor?.can().deleteColumn()}
+                  >
+                    Delete Column
+                  </Menu.Item>
+
+                  <Menu.Divider />
+                  <Menu.Item
+                    color="red"
+                    leftSection={<IconTrash size={15} />}
+                    onClick={() => editor?.chain().focus().deleteTable().run()}
+                    disabled={!editor?.can().deleteTable()}
+                  >
+                    Delete Table
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
 
               <FileButton onChange={onImageUpload} accept="image/png,image/jpeg,image/gif,image/webp">
                 {(props) => (
@@ -196,6 +283,60 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
                 )}
               </FileButton>
             </RichTextEditor.ControlsGroup>
+
+            {editor?.isActive('table') && (
+              <RichTextEditor.ControlsGroup>
+                <RichTextEditor.Control
+                  onClick={() => editor?.chain().focus().addRowBefore().run()}
+                  aria-label="Add Row Above"
+                  title="Add Row Above"
+                >
+                  <IconRowInsertTop size={16} stroke={1.5} />
+                </RichTextEditor.Control>
+                <RichTextEditor.Control
+                  onClick={() => editor?.chain().focus().addRowAfter().run()}
+                  aria-label="Add Row Below"
+                  title="Add Row Below"
+                >
+                  <IconRowInsertBottom size={16} stroke={1.5} />
+                </RichTextEditor.Control>
+                <RichTextEditor.Control
+                  onClick={() => editor?.chain().focus().deleteRow().run()}
+                  aria-label="Delete Row"
+                  title="Delete Row"
+                >
+                  <IconRowRemove size={16} stroke={1.5} color="var(--mantine-color-red-6)" />
+                </RichTextEditor.Control>
+                <RichTextEditor.Control
+                  onClick={() => editor?.chain().focus().addColumnBefore().run()}
+                  aria-label="Add Column Left"
+                  title="Add Column Left"
+                >
+                  <IconColumnInsertLeft size={16} stroke={1.5} />
+                </RichTextEditor.Control>
+                <RichTextEditor.Control
+                  onClick={() => editor?.chain().focus().addColumnAfter().run()}
+                  aria-label="Add Column Right"
+                  title="Add Column Right"
+                >
+                  <IconColumnInsertRight size={16} stroke={1.5} />
+                </RichTextEditor.Control>
+                <RichTextEditor.Control
+                  onClick={() => editor?.chain().focus().deleteColumn().run()}
+                  aria-label="Delete Column"
+                  title="Delete Column"
+                >
+                  <IconColumnRemove size={16} stroke={1.5} color="var(--mantine-color-red-6)" />
+                </RichTextEditor.Control>
+                <RichTextEditor.Control
+                  onClick={() => editor?.chain().focus().deleteTable().run()}
+                  aria-label="Delete Table"
+                  title="Delete Table"
+                >
+                  <IconTrash size={16} stroke={1.5} color="var(--mantine-color-red-6)" />
+                </RichTextEditor.Control>
+              </RichTextEditor.ControlsGroup>
+            )}
 
             <RichTextEditor.ControlsGroup>
               <RichTextEditor.Undo />
