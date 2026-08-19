@@ -5,7 +5,7 @@ import type { Editor } from '@tiptap/react';
 import { UploadDocxButton } from '../UploadDocxButton';
 import { UploadMarkdownButton } from '../UploadMarkdownButton';
 import { handleDocxUpload } from '../uploadDocx';
-import { handleMarkdownUpload } from '../uploadMarkdown';
+import { handleMarkdownUpload, transformMathSyntaxToHtml } from '../uploadMarkdown';
 import mammoth from 'mammoth';
 import { marked } from 'marked';
 import { notifications } from '@mantine/notifications';
@@ -151,6 +151,24 @@ describe('UploadDocx and UploadMarkdown', () => {
       render(<UploadMarkdownButton label="Import Markdown File" />);
       expect(screen.getByText('Import Markdown File')).toBeInTheDocument();
       expect(screen.getByTestId('upload-markdown-button')).toBeInTheDocument();
+    });
+  });
+
+  describe('transformMathSyntaxToHtml', () => {
+    it('transforms inline $...$ and display $$...$$ into math span elements', () => {
+      const raw = 'Formula: $E=mc^2$ and display: $$\\int_0^1 x dx$$';
+      const transformed = transformMathSyntaxToHtml(raw);
+
+      expect(transformed).toContain('data-type="math"');
+      expect(transformed).toContain('data-latex="E=mc^2"');
+      expect(transformed).toContain('data-latex="\\int_0^1 x dx"');
+    });
+
+    it('ignores plain currency values like $100', () => {
+      const raw = 'Price: $100 and $25.50';
+      const transformed = transformMathSyntaxToHtml(raw);
+
+      expect(transformed).toBe('Price: $100 and $25.50');
     });
   });
 });

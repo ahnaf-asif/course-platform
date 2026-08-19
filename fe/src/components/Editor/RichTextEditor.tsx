@@ -8,7 +8,7 @@ import { Stack, Text, Box, FileButton } from '@mantine/core';
 import { editorExtensions } from './editorExtensions';
 import { handleImageUpload } from './uploadImage';
 import { handleDocxUpload } from './uploadDocx';
-import { handleMarkdownUpload } from './uploadMarkdown';
+import { handleMarkdownUpload, transformMathSyntaxToHtml } from './uploadMarkdown';
 
 interface EditorProps {
   content?: string;
@@ -21,7 +21,7 @@ interface EditorProps {
 export default function CustomRichTextEditor({ content, onChange, label, minHeight = 400, compact }: EditorProps) {
   const editor = useEditor({
     extensions: editorExtensions,
-    content: content || '',
+    content: transformMathSyntaxToHtml(content || ''),
     immediatelyRender: false,
     onUpdate({ editor }) {
       onChange(editor.getHTML());
@@ -41,7 +41,8 @@ export default function CustomRichTextEditor({ content, onChange, label, minHeig
     if (editor && content !== undefined && content !== editor.getHTML()) {
       // Use queueMicrotask to avoid React warning: flushSync was called from inside a lifecycle method
       queueMicrotask(() => {
-        editor.commands.setContent(content || '');
+        const transformed = transformMathSyntaxToHtml(content || '');
+        editor.commands.setContent(transformed);
       });
     }
   }, [content, editor]);

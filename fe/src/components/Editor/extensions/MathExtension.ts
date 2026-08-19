@@ -1,4 +1,4 @@
-import { Node, mergeAttributes } from '@tiptap/core';
+import { Node, mergeAttributes, nodeInputRule, nodePasteRule } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import MathNodeView from './MathNodeView';
 
@@ -34,7 +34,25 @@ export const MathExtension = Node.create<MathOptions>({
       {
         tag: 'span[data-type="math"]',
         getAttrs: (element) => ({
-          latex: (element as HTMLElement).getAttribute('data-latex'),
+          latex: (element as HTMLElement).getAttribute('data-latex') || (element as HTMLElement).textContent?.replace(/^\$+|\$+$/g, '') || '',
+        }),
+      },
+      {
+        tag: 'span.math',
+        getAttrs: (element) => ({
+          latex: (element as HTMLElement).getAttribute('data-latex') || (element as HTMLElement).textContent?.replace(/^\$+|\$+$/g, '') || '',
+        }),
+      },
+      {
+        tag: 'span.math-inline',
+        getAttrs: (element) => ({
+          latex: (element as HTMLElement).textContent?.replace(/^\$+|\$+$/g, '') || '',
+        }),
+      },
+      {
+        tag: 'span.math-display',
+        getAttrs: (element) => ({
+          latex: (element as HTMLElement).textContent?.replace(/^\$+|\$+$/g, '') || '',
         }),
       },
     ];
@@ -53,6 +71,51 @@ export const MathExtension = Node.create<MathOptions>({
 
   addNodeView() {
     return ReactNodeViewRenderer(MathNodeView);
+  },
+
+  addInputRules() {
+    return [
+      // Matches inline $equation$ typed directly in the editor
+      nodeInputRule({
+        find: /(?:^|\s)\$([^$]+)\$$/,
+        type: this.type,
+        getAttributes: (match) => {
+          return { latex: match[1]?.trim() || '' };
+        },
+      }),
+      // Matches block $$equation$$ typed directly in the editor
+      nodeInputRule({
+        find: /(?:^|\s)\$\$([^$]+)\$\$$/,
+        type: this.type,
+        getAttributes: (match) => {
+          return { latex: match[1]?.trim() || '' };
+        },
+      }),
+    ];
+  },
+
+  addPasteRules() {
+    return [
+      // Automatically parses pasted $equation$ or $$equation$$ into interactive math nodes
+      nodePasteRule({
+        find: /\$\$([^$]+?)\$\$/g,
+        type: this.type,
+        getAttributes: (match) => {
+          return { latex: match[1]?.trim() || '' };
+        },
+      }),
+      nodePasteRule({
+        find: /(?:^|[^\\])\$([^$\n\r]+?)\$/g,
+        type: this.type,
+        getAttributes: (match) => {
+          const formula = match[1]?.trim() || '';
+          if (!formula || /^\d+(\.\d+)?$/.test(formula)) {
+            return null; // Ignore plain dollar currency like $100
+          }
+          return { latex: formula };
+        },
+      }),
+    ];
   },
 
   addCommands() {
