@@ -570,7 +570,7 @@ func (h *ReferralHandler) AdminListPayouts(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to list payouts: "+err.Error())
 	}
 
-	var totalCount int64 = 0
+	var totalCount int64
 	if len(rows) > 0 {
 		totalCount = rows[0].TotalCount
 	}
@@ -749,7 +749,7 @@ func (h *ReferralHandler) AdminListAllReferralEarnings(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to list referral earnings: "+err.Error())
 	}
 
-	var totalCount int64 = 0
+	var totalCount int64
 	if len(rows) > 0 {
 		totalCount = rows[0].TotalCount
 	}
