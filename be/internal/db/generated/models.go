@@ -186,6 +186,49 @@ func (ns NullOrderStatus) Value() (driver.Value, error) {
 	return string(ns.OrderStatus), nil
 }
 
+type PayoutStatus string
+
+const (
+	PayoutStatusPENDING  PayoutStatus = "PENDING"
+	PayoutStatusAPPROVED PayoutStatus = "APPROVED"
+	PayoutStatusREJECTED PayoutStatus = "REJECTED"
+)
+
+func (e *PayoutStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PayoutStatus(s)
+	case string:
+		*e = PayoutStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PayoutStatus: %T", src)
+	}
+	return nil
+}
+
+type NullPayoutStatus struct {
+	PayoutStatus PayoutStatus `json:"payout_status"`
+	Valid        bool         `json:"valid"` // Valid is true if PayoutStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPayoutStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.PayoutStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PayoutStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPayoutStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PayoutStatus), nil
+}
+
 type ProgressStatus string
 
 const (
@@ -268,6 +311,48 @@ func (ns NullQuestionType) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.QuestionType), nil
+}
+
+type ReferralEarningStatus string
+
+const (
+	ReferralEarningStatusCOMMISSIONEARNED ReferralEarningStatus = "COMMISSION_EARNED"
+	ReferralEarningStatusREFUNDEDREVOKED  ReferralEarningStatus = "REFUNDED_REVOKED"
+)
+
+func (e *ReferralEarningStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ReferralEarningStatus(s)
+	case string:
+		*e = ReferralEarningStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ReferralEarningStatus: %T", src)
+	}
+	return nil
+}
+
+type NullReferralEarningStatus struct {
+	ReferralEarningStatus ReferralEarningStatus `json:"referral_earning_status"`
+	Valid                 bool                  `json:"valid"` // Valid is true if ReferralEarningStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullReferralEarningStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ReferralEarningStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ReferralEarningStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullReferralEarningStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ReferralEarningStatus), nil
 }
 
 type UserRole string
@@ -408,16 +493,17 @@ type Notification struct {
 }
 
 type Order struct {
-	ID                uuid.UUID     `json:"id"`
-	UserID            uuid.UUID     `json:"user_id"`
-	NodeID            uuid.UUID     `json:"node_id"`
-	CouponID          uuid.NullUUID `json:"coupon_id"`
-	AmountPaid        string        `json:"amount_paid"`
-	Currency          string        `json:"currency"`
-	Status            OrderStatus   `json:"status"`
-	PaymentProvider   string        `json:"payment_provider"`
-	ProviderReference string        `json:"provider_reference"`
-	CreatedAt         time.Time     `json:"created_at"`
+	ID                uuid.UUID      `json:"id"`
+	UserID            uuid.UUID      `json:"user_id"`
+	NodeID            uuid.UUID      `json:"node_id"`
+	CouponID          uuid.NullUUID  `json:"coupon_id"`
+	AmountPaid        string         `json:"amount_paid"`
+	Currency          string         `json:"currency"`
+	Status            OrderStatus    `json:"status"`
+	PaymentProvider   string         `json:"payment_provider"`
+	ProviderReference string         `json:"provider_reference"`
+	CreatedAt         time.Time      `json:"created_at"`
+	ReferralCode      sql.NullString `json:"referral_code"`
 }
 
 type PaymentGate struct {
@@ -464,6 +550,52 @@ type QuizAttemptAnswer struct {
 	AttemptID  uuid.UUID     `json:"attempt_id"`
 	QuestionID uuid.UUID     `json:"question_id"`
 	AnswerID   uuid.NullUUID `json:"answer_id"`
+}
+
+type ReferralCode struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Code      string    `json:"code"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ReferralEarning struct {
+	ID                   uuid.UUID             `json:"id"`
+	ReferrerUserID       uuid.UUID             `json:"referrer_user_id"`
+	ReferredUserID       uuid.UUID             `json:"referred_user_id"`
+	OrderID              uuid.UUID             `json:"order_id"`
+	NodeID               uuid.UUID             `json:"node_id"`
+	OrderAmount          string                `json:"order_amount"`
+	CommissionPercentage string                `json:"commission_percentage"`
+	CommissionEarned     string                `json:"commission_earned"`
+	Currency             string                `json:"currency"`
+	Status               ReferralEarningStatus `json:"status"`
+	CreatedAt            time.Time             `json:"created_at"`
+}
+
+type ReferralPayout struct {
+	ID             uuid.UUID      `json:"id"`
+	UserID         uuid.UUID      `json:"user_id"`
+	Amount         string         `json:"amount"`
+	Currency       string         `json:"currency"`
+	PaymentMethod  string         `json:"payment_method"`
+	AccountNumber  string         `json:"account_number"`
+	AccountType    string         `json:"account_type"`
+	Status         PayoutStatus   `json:"status"`
+	TransactionRef sql.NullString `json:"transaction_ref"`
+	AdminNote      sql.NullString `json:"admin_note"`
+	ProcessedAt    sql.NullTime   `json:"processed_at"`
+	CreatedAt      time.Time      `json:"created_at"`
+}
+
+type ReferralSetting struct {
+	ID                      int32     `json:"id"`
+	CommissionPercentage    string    `json:"commission_percentage"`
+	BuyerDiscountPercentage string    `json:"buyer_discount_percentage"`
+	MinPayoutAmount         string    `json:"min_payout_amount"`
+	IsEnabled               bool      `json:"is_enabled"`
+	TermsAndConditions      string    `json:"terms_and_conditions"`
+	UpdatedAt               time.Time `json:"updated_at"`
 }
 
 type RefreshToken struct {

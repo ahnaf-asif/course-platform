@@ -23,12 +23,14 @@ import {
 } from '@/api/generated/admin-course/admin-course';
 import { CreateCourseRequest } from '@/api/model/components-schemas-course/createCourseRequest';
 import { CourseResponse } from '@/api/model/components-schemas-course/courseResponse';
+import { useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useState } from 'react';
 import { CourseCard } from './CourseCard';
 import { CourseModal } from './CourseModal';
 
 export default function CoursesManagement() {
+  const queryClient = useQueryClient();
   const { data: courses, isPending, isError, refetch } = useGetAdminCourses();
   const { mutateAsync: createCourse, isPending: isCreating } = usePostAdminCourses();
   const { mutateAsync: updateCourse, isPending: isUpdating } = usePatchAdminCoursesId();
@@ -44,8 +46,9 @@ export default function CoursesManagement() {
 
   const handleCreateOrUpdate = async (values: CreateCourseRequest & { slug?: string }) => {
     try {
-      const payload: CreateCourseRequest & { slug?: string } = {
-        ...values,
+      const payload: CreateCourseRequest = {
+        title: values.title,
+        description: values.description || '',
         slug: values.slug || undefined,
         thumbnail_url: values.thumbnail_url || undefined,
       };
@@ -59,6 +62,9 @@ export default function CoursesManagement() {
       }
       close();
       refetch();
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
     } catch (error) {
       let message = 'Failed to save course';
       if (axios.isAxiosError(error)) {
@@ -78,6 +84,9 @@ export default function CoursesManagement() {
           color: 'blue',
         });
         refetch();
+        queryClient.invalidateQueries({ queryKey: ['courses'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-courses'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
       } catch (error) {
         let message = 'Failed to delete course';
         if (axios.isAxiosError(error)) {

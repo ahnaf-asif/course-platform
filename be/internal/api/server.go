@@ -120,6 +120,7 @@ func (s *Server) registerRoutes() {
 
 	sslcommerzService := services.NewSSLCommerzService()
 	commerceHandler := handlers.NewCommerceHandler(s.store, sslcommerzService)
+	referralHandler := handlers.NewReferralHandler(s.store, s.logger)
 
 	// API v1 Group
 	v1 := s.echo.Group("/api/v1")
@@ -242,12 +243,19 @@ func (s *Server) registerRoutes() {
 	protected.GET("/quizzes/:id/attempts", quizHandler.StudentListQuizAttempts)
 	protected.GET("/attempts/:id", quizHandler.StudentGetAttemptDetails)
 
-	// Curriculum Public routes
+	// Student Referral routes
+	referrals := protected.Group("/referrals")
+	referrals.GET("/overview", referralHandler.GetReferralOverview)
+	referrals.GET("/earnings", referralHandler.GetReferralEarnings)
+	referrals.GET("/payouts", referralHandler.GetReferralPayouts)
+	referrals.POST("/payout-requests", referralHandler.CreatePayoutRequest)
+
 	// Public Course Routes
 	v1.GET("/courses", courseHandler.ListPublishedCourses)
 	v1.GET("/courses/s/:slug", courseHandler.GetCourseBySlug)
 	v1.GET("/courses/s/:slug/tree", curriculumHandler.GetCourseTreeBySlug, internalMiddleware.OptionalJWTMiddleware(jwtSecret))
 	v1.GET("/courses/:id/tree", curriculumHandler.GetCourseTree, internalMiddleware.OptionalJWTMiddleware(jwtSecret))
+	v1.GET("/referrals/validate", referralHandler.ValidateReferralCode, internalMiddleware.OptionalJWTMiddleware(jwtSecret))
 
 	// Admin Routes
 	admin := v1.Group("/admin")
@@ -327,6 +335,15 @@ func (s *Server) registerRoutes() {
 
 	// Admin Dashboard Analytics
 	admin.GET("/dashboard/analytics", commerceHandler.AdminGetDashboardAnalytics)
+
+	// Admin Referral routes
+	adminReferrals := admin.Group("/referrals")
+	adminReferrals.GET("/settings", referralHandler.AdminGetReferralSettings)
+	adminReferrals.PUT("/settings", referralHandler.AdminUpdateReferralSettings)
+	adminReferrals.GET("/summary", referralHandler.AdminGetReferralSummary)
+	adminReferrals.GET("/payouts", referralHandler.AdminListPayouts)
+	adminReferrals.PATCH("/payouts/:id/status", referralHandler.AdminUpdatePayoutStatus)
+	adminReferrals.GET("/earnings", referralHandler.AdminListAllReferralEarnings)
 }
 
 func (s *Server) GetEcho() *echo.Echo {

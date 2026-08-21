@@ -1,0 +1,141 @@
+/admin/referrals/settings:
+  get:
+    tags:
+      - Admin Referral
+    summary: Get referral program settings
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Referral settings
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/referral.yaml#/AdminReferralSettingsResponse'
+  put:
+    tags:
+      - Admin Referral
+    summary: Update referral program settings
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/referral.yaml#/UpdateReferralSettingsRequest'
+    responses:
+      '200':
+        description: Updated settings
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/referral.yaml#/AdminReferralSettingsResponse'
+
+/admin/referrals/summary:
+  get:
+    tags:
+      - Admin Referral
+    summary: Get platform referral financial summary
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Summary metrics
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/referral.yaml#/AdminReferralSummaryResponse'
+
+/admin/referrals/payouts:
+  get:
+    tags:
+      - Admin Referral
+    summary: List all user payout requests
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+      - name: search
+        in: query
+        schema:
+          type: string
+    responses:
+      '200':
+        description: List of payouts
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/referral.yaml#/AdminListPayoutsResponse'
+
+/admin/referrals/payouts/{id}/status:
+  patch:
+    tags:
+      - Admin Referral
+    summary: Approve or reject a payout request
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/referral.yaml#/AdminUpdatePayoutStatusRequest'
+    responses:
+      '200':
+        description: Updated payout
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/referral.yaml#/PayoutItem'
+
+/admin/referrals/earnings:
+  get:
+    tags:
+      - Admin Referral
+    summary: List all referral earnings across the platform
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+      - name: search
+        in: query
+        schema:
+          type: string
+    responses:
+      '200':
+        description: List of all referral earnings
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/referral.yaml#/AdminListAllReferralEarningsResponse'

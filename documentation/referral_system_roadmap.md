@@ -7,21 +7,22 @@ This document outlines the end-to-end architecture, database schema, business ru
 ## 1. System Rules & Core Specifications
 
 1. **Referral Code Format**:
-   - Exactly **6 uppercase alphanumeric characters** `[A-Z0-9]` (e.g. `K7X9B2`, `PRO88M`, `9X7A4Q`).
-   - Globally unique across all users.
-   - Generated automatically for each user or generated on first visit to their referral portal.
+   - **Core Format**: 6-character alphanumeric uppercase code (e.g. `K7X9B2`).
+   - **Clean Input-Only Workflow**: Pure 6-character code input on course checkout (no URL query tracking or cookie links required).
 
-2. **Commission & Attribution Logic**:
-   - When a student visits with `?ref=CODE` or enters the referral code at checkout:
-     - Self-referral is disallowed (a user cannot use their own referral code).
-     - When the order transitions to `COMPLETED`, a referral earning record is created for the referrer.
-     - Earnings amount = `(Amount Paid * Commission Percentage) / 100`.
+2. **Two-Sided Incentive (Win-Win)**:
+   - **Referrer (Affiliate)**: Receives cash commission (e.g. 10%) credited to balance upon completed order.
+   - **Buyer (Student)**: Enters 6-character code to receive instant discount (e.g. 5%) on course purchase with real-time redacted price preview and transaction confirmation modal.
+   - **Attribution Logic**:
+     - Self-referral is strictly disallowed (a user cannot use their own referral code).
+     - When the order transitions to `COMPLETED`, a referral earning record is created for the referrer based on actual `order_amount` paid.
 
 3. **Admin Referral Settings**:
-   - Configurable **Commission Percentage** (e.g. `10.00%`).
+   - Configurable **Referrer Commission Percentage** (e.g. `10.00%`).
+   - Configurable **Buyer Discount Percentage** (e.g. `5.00%`).
    - Configurable **Minimum Payout Threshold** (e.g. `৳500.00`).
    - **Referral System Enable / Disable** switch.
-   - Custom instructions / guidelines for affiliates.
+   - Custom terms, conditions, and guidelines for affiliates.
 
 4. **Financial Balance Ledger for Affiliates**:
    - **Total Earned (সর্বমোট আয়)**: Sum of all completed referral earnings.
@@ -53,6 +54,7 @@ erDiagram
     referral_settings {
         int id PK
         numeric commission_percentage
+        numeric buyer_discount_percentage
         numeric min_payout_amount
         boolean is_enabled
         text terms_and_conditions

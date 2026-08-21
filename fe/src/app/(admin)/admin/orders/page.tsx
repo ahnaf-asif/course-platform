@@ -38,6 +38,7 @@ import {
   IconReceipt,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useGetAdminOrders,
   useGetAdminOrdersSummary,
@@ -51,6 +52,7 @@ import { OrderSummaryCards } from './OrderSummaryCards';
 import { OrderDetailModal } from './OrderDetailModal';
 
 export default function OrdersManagement() {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<string>('20');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -109,6 +111,9 @@ export default function OrdersManagement() {
       });
       refetchOrders();
       refetchSummary();
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
     } catch (error) {
       console.error('Failed to update status:', error);
       notifications.show({

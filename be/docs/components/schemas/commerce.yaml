@@ -8,6 +8,8 @@ CheckoutRequest:
       format: uuid
     coupon_code:
       type: string
+    referral_code:
+      type: string
 
 CheckoutResponse:
   type: object
@@ -133,6 +135,9 @@ AdminOrderResponse:
     coupon_discount_value:
       type: string
       nullable: true
+    referral_code:
+      type: string
+      nullable: true
     created_at:
       type: string
       format: date-time
@@ -246,6 +251,9 @@ AdminOrderDetailResponse:
       enum: [PERCENTAGE, FIXED]
       nullable: true
     coupon_discount_value:
+      type: string
+      nullable: true
+    referral_code:
       type: string
       nullable: true
     created_at:

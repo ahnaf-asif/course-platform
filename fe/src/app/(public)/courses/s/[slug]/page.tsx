@@ -18,9 +18,15 @@ import {
   SimpleGrid,
   Accordion,
   ThemeIcon,
+  Modal,
+  Paper,
+  Table,
+  Alert,
 } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { useGetCourseBySlug, useGetCourseTreeBySlug } from '@/api/generated/course/course';
 import { useCheckAccess, useCheckout } from '@/api/generated/commerce/commerce';
+import { useGetReferralsValidate } from '@/api/generated/referral/referral';
 import { useGetMe } from '@/api/generated/user/user';
 import {
   IconClock,
@@ -34,15 +40,19 @@ import {
   IconPlayerPlay,
   IconAward,
   IconChevronRight,
-  IconTag,
+  IconGift,
   IconDeviceLaptop,
+  IconCreditCard,
+  IconLock,
+  IconSparkles,
 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { CourseTreeResponse } from '@/api/model/components-schemas-curriculum/courseTreeResponse';
+import type { CourseTreeResponse } from '@/api/model/components-schemas-curriculum/courseTreeResponse';
 
 interface ExtendedNode extends CourseTreeResponse {
   children: ExtendedNode[];
+  has_quiz?: boolean;
 }
 
 export default function PublicCoursePage() {
@@ -50,8 +60,28 @@ export default function PublicCoursePage() {
   const router = useRouter();
   const slug = params.slug as string;
 
-  const [couponCode, setCouponCode] = useState('');
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [confirmModalOpened, { open: openConfirmModal, close: closeConfirmModal }] = useDisclosure(false);
+
+  const [referralInput, setReferralInput] = useState('');
+  const [appliedReferralCode, setAppliedReferralCode] = useState('');
+  const [referralError, setReferralError] = useState<string | null>(null);
+
+  // Validate applied referral code
+  const {
+    data: validationResult,
+    isLoading: isValidatingReferral,
+  } = useGetReferralsValidate(
+    { code: appliedReferralCode },
+    {
+      query: {
+        enabled: !!appliedReferralCode && appliedReferralCode.trim().length === 6,
+      },
+    }
+  );
+
+  const isReferralValid = !!(appliedReferralCode && validationResult?.valid);
+  const buyerDiscountPct = isReferralValid ? validationResult.buyer_discount_percentage : 0;
 
   const { data: user } = useGetMe();
   const { data: course, isLoading: isLoadingCourse, isError: isCourseError } = useGetCourseBySlug(slug);
@@ -89,7 +119,46 @@ export default function PublicCoursePage() {
 
   const { mutateAsync: checkout, isPending: isCheckingOut } = useCheckout();
 
-  const handleEnroll = async () => {
+  // Financial calculations
+  const isPaid = !!course?.price && parseFloat(course.price) > 0;
+  const rawPrice = isPaid ? parseFloat(course.price as string) : 0;
+  const discountAmount = isReferralValid ? (rawPrice * buyerDiscountPct) / 100 : 0;
+  const finalPayable = Math.max(0, rawPrice - discountAmount);
+  const currency = course?.currency || 'BDT';
+
+  const handleApplyReferral = () => {
+    const clean = referralInput.trim().toUpperCase();
+    if (clean.length !== 6) {
+      setReferralError('রেফারাল কোডটি অবশ্যই ৬ অক্ষরের হতে হবে');
+      return;
+    }
+    setReferralError(null);
+    setAppliedReferralCode(clean);
+  };
+
+  const handleClearReferral = () => {
+    setAppliedReferralCode('');
+    setReferralInput('');
+    setReferralError(null);
+  };
+
+  const handleEnrollClick = () => {
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+    if (!course?.id) return;
+
+    if (!isPaid || finalPayable <= 0) {
+      // Free course or 100% discount, execute directly
+      handleConfirmCheckout();
+    } else {
+      // Open transaction confirmation modal
+      openConfirmModal();
+    }
+  };
+
+  const handleConfirmCheckout = async () => {
     if (!user) {
       router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
       return;
@@ -100,11 +169,12 @@ export default function PublicCoursePage() {
       const res = await checkout({
         data: {
           node_id: course.id,
-          coupon_code: couponCode,
+          referral_code: isReferralValid ? appliedReferralCode : undefined,
         },
       });
 
       if (res.enrolled) {
+        closeConfirmModal();
         router.push(`/courses/s/${slug}/learn`);
       } else if (res.checkout_url) {
         setIsRedirecting(true);
@@ -167,9 +237,6 @@ export default function PublicCoursePage() {
     );
   }
 
-  const isPaid = course.price && parseFloat(course.price) > 0;
-  const priceDisplay = isPaid ? `${course.price} ${course.currency || 'BDT'}` : 'ফ্রি';
-
   return (
     <Box pb={{ base: '50px', md: '80px' }} style={{ backgroundColor: '#f8fafc' }}>
       {/* Dark Radial Hero Section */}
@@ -224,13 +291,19 @@ export default function PublicCoursePage() {
                 <ThemeIcon size={28} radius="xl" color="orange" variant="light">
                   <IconClock size={15} />
                 </ThemeIcon>
-                <Text size="sm" fw={600} c="gray.3">বিষয়ভিত্তিক ভিডিও লেকচার</Text>
+                <Text size="sm" fw={600} c="gray.3">৬০+ ঘণ্টার ভিডিও লেকচার</Text>
               </Group>
               <Group gap={6} align="center">
                 <ThemeIcon size={28} radius="xl" color="teal" variant="light">
                   <IconCertificate size={15} />
                 </ThemeIcon>
-                <Text size="sm" fw={600} c="gray.3">মডেল টেস্ট সহ</Text>
+                <Text size="sm" fw={600} c="gray.3">কোর্স সমাপনী সার্টিফিকেট</Text>
+              </Group>
+              <Group gap={6} align="center">
+                <ThemeIcon size={28} radius="xl" color="violet" variant="light">
+                  <IconDeviceLaptop size={15} />
+                </ThemeIcon>
+                <Text size="sm" fw={600} c="gray.3">লাইফটাইম অ্যাক্সেস</Text>
               </Group>
             </Group>
           </Stack>
@@ -240,67 +313,67 @@ export default function PublicCoursePage() {
       {/* Main Grid Content */}
       <Container size="xl">
         <SimpleGrid cols={{ base: 1, md: 3 }} spacing="xl">
-          {/* Left Column: Details & Syllabus */}
+          {/* Left Column: Syllabus and Details */}
           <Box style={{ gridColumn: 'span 2' }}>
             <Stack gap="xl">
-              {/* Course Highlights Grid */}
-              <Card radius="lg" p={{ base: 'lg', sm: 'xl' }} withBorder shadow="xs">
-                <Title order={3} style={{ fontSize: '20px', fontWeight: 800 }} mb="lg">
+              {/* Features Banner */}
+              <Card p="lg" radius="lg" withBorder style={{ backgroundColor: '#ffffff' }}>
+                <Title order={3} fw={800} mb="md" style={{ color: '#0f172a' }}>
                   এই কোর্সে যা যা থাকছে
                 </Title>
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-                  <Group align="flex-start" gap="md">
-                    <ThemeIcon size={36} radius="md" color="blue" variant="light">
-                      <IconBooks size={20} />
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <Group gap="sm" align="flex-start">
+                    <ThemeIcon color="teal" size={24} radius="xl">
+                      <IconCheck size={14} />
                     </ThemeIcon>
-                    <div style={{ flex: 1 }}>
-                      <Text fw={700} size="sm">শতভাগ সিলেবাস কাভারেজ</Text>
-                      <Text size="xs" c="dimmed" style={{ lineHeight: 1.5 }}>বিসিএস প্রিলির সকল বিষয় ও অধ্যায়ের পুঙ্খানুপুঙ্খ আলোচনা।</Text>
+                    <div>
+                      <Text fw={700} size="sm">অধ্যায়ভিত্তিক এইচডি ভিডিও লেকচার</Text>
+                      <Text size="xs" c="dimmed">প্রতিটি টপিকের বিস্তারিত আলোচনা ও কনসেপ্ট ক্লিয়ারিং।</Text>
                     </div>
                   </Group>
-                  <Group align="flex-start" gap="md">
-                    <ThemeIcon size={36} radius="md" color="violet" variant="light">
-                      <IconPlayerPlay size={20} />
+                  <Group gap="sm" align="flex-start">
+                    <ThemeIcon color="blue" size={24} radius="xl">
+                      <IconCheck size={14} />
                     </ThemeIcon>
-                    <div style={{ flex: 1 }}>
-                      <Text fw={700} size="sm">হাই-কোয়ালিটি রেকর্ড করা ক্লাস</Text>
-                      <Text size="xs" c="dimmed" style={{ lineHeight: 1.5 }}>যেকোনো সময়ে আপনার সুবিধামতো রিপিট করে দেখার সুবিধা।</Text>
+                    <div>
+                      <Text fw={700} size="sm">ডাউনলোডযোগ্য লেকচার শিট ও নোট</Text>
+                      <Text size="xs" c="dimmed">রিভিশন দেওয়ার জন্য সহায়ক প্রিমিয়াম পিডিএফ শিট।</Text>
                     </div>
                   </Group>
-                  <Group align="flex-start" gap="md">
-                    <ThemeIcon size={36} radius="md" color="teal" variant="light">
-                      <IconAward size={20} />
+                  <Group gap="sm" align="flex-start">
+                    <ThemeIcon color="indigo" size={24} radius="xl">
+                      <IconCheck size={14} />
                     </ThemeIcon>
-                    <div style={{ flex: 1 }}>
-                      <Text fw={700} size="sm">অধ্যায়ভিত্তিক মডেল টেস্ট</Text>
-                      <Text size="xs" c="dimmed" style={{ lineHeight: 1.5 }}>পড়াশোনা শেষে নিজেকে যাচাই করতে আনলিমিটেড কুইজ ও প্র্যাকটিস।</Text>
+                    <div>
+                      <Text fw={700} size="sm">টপিকভিত্তিক কুইজ ও প্র্যাকটিস টেস্ট</Text>
+                      <Text size="xs" c="dimmed">পড়া শেষে নিজের প্রস্তুতি যাচাই করার তাৎক্ষণিক ফলাফল।</Text>
                     </div>
                   </Group>
-                  <Group align="flex-start" gap="md">
-                    <ThemeIcon size={36} radius="md" color="orange" variant="light">
-                      <IconDeviceLaptop size={20} />
+                  <Group gap="sm" align="flex-start">
+                    <ThemeIcon color="violet" size={24} radius="xl">
+                      <IconCheck size={14} />
                     </ThemeIcon>
-                    <div style={{ flex: 1 }}>
-                      <Text fw={700} size="sm">আজীবন অ্যাক্সেস</Text>
-                      <Text size="xs" c="dimmed" style={{ lineHeight: 1.5 }}>একবার এনরোল করলে কোনো মেয়াদ ছাড়াই আজীবন অ্যাক্সেস পাবেন।</Text>
+                    <div>
+                      <Text fw={700} size="sm">সার্বক্ষণিক ইন্সট্রাক্টর সাপোর্ট</Text>
+                      <Text size="xs" c="dimmed">যেকোনো প্রশ্ন ও সমস্যা সমাধানের জন্য ডেডিকেটেড ডিসকাশন।</Text>
                     </div>
                   </Group>
                 </SimpleGrid>
               </Card>
 
-              {/* Course Curriculum */}
-              <Card radius="lg" p={{ base: 'lg', sm: 'xl' }} withBorder shadow="xs">
+              {/* Course Curriculum Accordion */}
+              <Card p="lg" radius="lg" withBorder style={{ backgroundColor: '#ffffff' }}>
                 <Group justify="space-between" align="center" mb="lg">
                   <div>
-                    <Title order={3} style={{ fontSize: '20px', fontWeight: 800 }}>
-                      কোর্স সিলেবাস ও অধ্যায়সমূহ
+                    <Title order={3} fw={800} style={{ color: '#0f172a' }}>
+                      কোর্স কারিকুলাম ও সূচিপত্র
                     </Title>
                     <Text size="xs" c="dimmed" mt={4}>
-                      নিচে ক্লিক করে বিষয় ও অধ্যায়সমূহের লেকচার কন্টেন্ট দেখে নিন
+                      সম্পূর্ণ সিলেবাস অনুযায়ী সাজানো বিষয়ভিত্তিক পাঠ্যসূচি
                     </Text>
                   </div>
-                  <Badge variant="light" color="blue" size="md">
-                    {organizedTree.length > 0 ? `${organizedTree.length} টি বিষয়` : 'সিলেবাস আপডেট হচ্ছে'}
+                  <Badge variant="light" color="blue" size="lg">
+                    {organizedTree.length} টি বিষয় অন্তর্ভুক্ত
                   </Badge>
                 </Group>
 
@@ -308,20 +381,19 @@ export default function PublicCoursePage() {
                   <Accordion variant="separated" radius="md">
                     {organizedTree.map((subject) => (
                       <Accordion.Item key={subject.id} value={subject.id} style={{ borderColor: '#e2e8f0' }}>
-                        <Accordion.Control>
-                          <Group justify="space-between" align="center" pr="xs">
-                            <Group gap="sm">
-                              <IconBooks size={20} color="var(--mantine-color-blue-6)" />
-                              <Text fw={700} size="md" c="gray.9">{subject.title}</Text>
-                            </Group>
-                            <Badge variant="subtle" color="gray" size="xs">
+                        <Accordion.Control icon={<IconFolder size={20} color="#2563eb" />}>
+                          <Group justify="space-between" pr="md">
+                            <Text fw={700} size="sm" style={{ color: '#1e293b' }}>
+                              {subject.title}
+                            </Text>
+                            <Badge size="xs" variant="light" color="gray">
                               {subject.children.length} টি অধ্যায়
                             </Badge>
                           </Group>
                         </Accordion.Control>
                         <Accordion.Panel>
-                          <Stack gap="sm" pt="xs">
-                            {subject.children.map((chapter: ExtendedNode) => (
+                          <Stack gap="xs">
+                            {subject.children.map((chapter) => (
                               <Box
                                 key={chapter.id}
                                 p="sm"
@@ -331,26 +403,21 @@ export default function PublicCoursePage() {
                                   border: '1px solid #f1f5f9',
                                 }}
                               >
-                                <Group justify="space-between" align="center" mb="xs">
-                                  <Group gap="xs">
-                                    <IconFolder size={16} color="var(--mantine-color-orange-5)" />
-                                    <Text size="sm" fw={700} c="gray.8">{chapter.title}</Text>
-                                  </Group>
-                                  <Badge size="xs" variant="light" color="blue">
-                                    {chapter.children.length} টি লেকচার
-                                  </Badge>
-                                </Group>
-
-                                <Stack gap={6} pl="md">
-                                  {chapter.children.map((lesson: ExtendedNode) => (
-                                    <Group key={lesson.id} justify="space-between" align="center" py={2}>
-                                      <Group gap="xs">
-                                        <IconFileText size={14} color="var(--mantine-color-teal-6)" />
-                                        <Text size="xs" fw={500} c="gray.7">{lesson.title}</Text>
+                                <Text fw={600} size="xs" c="blue.7" mb={4}>
+                                  {chapter.title}
+                                </Text>
+                                <Stack gap={4} pl="sm">
+                                  {chapter.children.map((lesson) => (
+                                    <Group key={lesson.id} justify="space-between">
+                                      <Group gap={6}>
+                                        <IconFileText size={14} color="#64748b" />
+                                        <Text size="xs" c="dimmed">
+                                          {lesson.title}
+                                        </Text>
                                       </Group>
-                                      {lesson.has_quizzes && (
-                                        <Badge size="xs" color="violet" variant="dot">
-                                          কুইজ রয়েছে
+                                      {lesson.has_quiz && (
+                                        <Badge size="xs" color="orange" variant="dot">
+                                          কুইজ
                                         </Badge>
                                       )}
                                     </Group>
@@ -364,15 +431,15 @@ export default function PublicCoursePage() {
                     ))}
                   </Accordion>
                 ) : (
-                  <Stack gap="sm">
+                  <Stack gap="md">
                     <Box p="md" style={{ backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
                       <Group gap="md">
                         <ThemeIcon size={32} radius="md" color="blue" variant="light">
                           <IconBooks size={18} />
                         </ThemeIcon>
                         <div>
-                          <Text fw={700} size="sm">বিষয়ভিত্তিক সম্পূর্ণ সিলেবাস লেকচার</Text>
-                          <Text size="xs" c="dimmed">বিসিএস প্রিলির ১০টি বিষয়ের সম্পূর্ণ লেকচার ভিডিও এবং অধ্যায়ভিত্তিক রিভিশন নোট।</Text>
+                          <Text fw={700} size="sm">বিষয়ভিত্তিক সম্পূর্ণ প্রিলিমিনারি সিলেবাস</Text>
+                          <Text size="xs" c="dimmed">বাংলা, ইংরেজি, গণিত, সাধারণ জ্ঞান, বিজ্ঞান ও কম্পিউটার বিষয়ের পুঙ্খানুপুঙ্খ আলোচনা।</Text>
                         </div>
                       </Group>
                     </Box>
@@ -436,28 +503,118 @@ export default function PublicCoursePage() {
 
               <Stack gap="md" mt="lg">
                 {/* Price Display */}
-                <Group justify="space-between" align="baseline">
-                  <Text size="xs" c="dimmed" fw={700} style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    কোর্স ফি:
-                  </Text>
-                  <Text size="26px" fw={900} style={{ color: isPaid ? '#2563eb' : '#0d9488' }}>
-                    {priceDisplay}
-                  </Text>
-                </Group>
+                <div>
+                  <Group justify="space-between" align="baseline">
+                    <Text size="xs" c="dimmed" fw={700} style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      কোর্স ফি:
+                    </Text>
+                    {isPaid ? (
+                      <Group gap="xs" align="baseline">
+                        {isReferralValid && (
+                          <Text size="md" td="line-through" c="dimmed" fw={600}>
+                            ৳{rawPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </Text>
+                        )}
+                        <Text size="26px" fw={900} style={{ color: isReferralValid ? '#0d9488' : '#2563eb' }}>
+                          ৳{finalPayable.toLocaleString('en-US', { minimumFractionDigits: 2 })} {currency}
+                        </Text>
+                      </Group>
+                    ) : (
+                      <Text size="26px" fw={900} style={{ color: '#0d9488' }}>
+                        ফ্রি
+                      </Text>
+                    )}
+                  </Group>
 
-                {/* Promo Code Input if paid and user does not have access */}
-                {!hasAccess && isPaid && user && (
-                  <TextInput
-                    placeholder="প্রোমো কোড (যদি থাকে)"
-                    leftSection={<IconTag size={16} />}
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.currentTarget.value)}
-                    size="sm"
-                    radius="md"
-                  />
+                  {/* Savings Ribbon */}
+                  {isReferralValid && isPaid && (
+                    <Group gap={6} mt={4}>
+                      <Badge size="sm" variant="filled" color="teal" leftSection={<IconSparkles size={12} />}>
+                        {buyerDiscountPct}% রেফারাল ডিসকাউন্ট প্রযোজ্য
+                      </Badge>
+                      <Text size="xs" fw={700} c="teal.8">
+                        (৳{discountAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} সাশ্রয়)
+                      </Text>
+                    </Group>
+                  )}
+                </div>
+
+                {/* Referral Code Box (Only shown if paid and user does not have access yet) */}
+                {!hasAccess && isPaid && (
+                  <Paper p="sm" radius="md" withBorder style={{ backgroundColor: '#f8fafc' }}>
+                    <Stack gap={6}>
+                      <Text size="xs" fw={700} c="gray.7">
+                        রেফারাল কোড (Referral Code):
+                      </Text>
+                      <Group gap="xs">
+                        <TextInput
+                          placeholder="৬ অক্ষরের কোড"
+                          leftSection={<IconGift size={16} color="#0d9488" />}
+                          value={referralInput}
+                          maxLength={6}
+                          onChange={(e) => {
+                            const val = e.currentTarget.value.toUpperCase().trim();
+                            setReferralInput(val);
+                            setReferralError(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleApplyReferral();
+                            }
+                          }}
+                          size="sm"
+                          radius="md"
+                          style={{ flex: 1 }}
+                          disabled={isReferralValid}
+                          data-testid="input-referral-code"
+                        />
+                        {isReferralValid ? (
+                          <Button
+                            size="sm"
+                            variant="light"
+                            color="red"
+                            onClick={handleClearReferral}
+                            data-testid="btn-clear-referral"
+                          >
+                            মুছুন
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            color="teal"
+                            loading={isValidatingReferral}
+                            disabled={referralInput.trim().length !== 6}
+                            onClick={handleApplyReferral}
+                            data-testid="btn-apply-referral"
+                          >
+                            প্রয়োগ
+                          </Button>
+                        )}
+                      </Group>
+
+                      {/* Live Validation Feedback */}
+                      {isReferralValid && (
+                        <Text size="xs" fw={700} c="teal.7">
+                          ✓ {validationResult.message}
+                        </Text>
+                      )}
+
+                      {appliedReferralCode && !isValidatingReferral && validationResult && !validationResult.valid && (
+                        <Text size="xs" fw={700} c="red.6">
+                          ✗ {validationResult.message}
+                        </Text>
+                      )}
+
+                      {referralError && (
+                        <Text size="xs" fw={700} c="red.6">
+                          ✗ {referralError}
+                        </Text>
+                      )}
+                    </Stack>
+                  </Paper>
                 )}
 
-                {/* Enrollment Button */}
+                {/* Enrollment Main Button */}
                 {hasAccess ? (
                   <Button
                     size="lg"
@@ -476,12 +633,13 @@ export default function PublicCoursePage() {
                   <Button
                     size="lg"
                     radius="md"
-                    onClick={handleEnroll}
+                    onClick={handleEnrollClick}
                     loading={isCheckingOut || isRedirecting}
                     variant="gradient"
                     gradient={{ from: 'blue', to: 'violet' }}
                     fullWidth
                     style={{ fontWeight: 700, boxShadow: '0 4px 14px rgba(59, 130, 246, 0.35)' }}
+                    data-testid="btn-enroll-course"
                   >
                     {isPaid ? 'এনরোল করুন' : 'বিনামূল্যে এনরোল করুন'}
                   </Button>
@@ -516,6 +674,115 @@ export default function PublicCoursePage() {
           </Box>
         </SimpleGrid>
       </Container>
+
+      {/* Transaction & Order Confirmation Modal */}
+      <Modal
+        opened={confirmModalOpened}
+        onClose={closeConfirmModal}
+        title={
+          <Group gap="xs">
+            <IconCreditCard size={22} color="#2563eb" />
+            <Title order={4} fw={800} style={{ color: '#0f172a' }}>
+              অর্ডার কনফার্মেশন ও পেমেন্ট বিবরণ
+            </Title>
+          </Group>
+        }
+        centered
+        radius="lg"
+        size="md"
+        transitionProps={{ duration: 0 }}
+      >
+        <Stack gap="md">
+          {/* Course Summary Snippet */}
+          <Paper p="sm" radius="md" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <Group align="center" gap="sm">
+              <ThemeIcon size={40} radius="md" color="blue" variant="light">
+                <IconBooks size={22} />
+              </ThemeIcon>
+              <div style={{ flex: 1 }}>
+                <Text size="xs" c="dimmed">নির্বাচিত কোর্স:</Text>
+                <Text size="sm" fw={700} style={{ color: '#0f172a' }}>{course.title}</Text>
+              </div>
+            </Group>
+          </Paper>
+
+          {/* Invoice / Pricing Breakdown Table */}
+          <Paper p="md" radius="md" withBorder>
+            <Stack gap="xs">
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+                পেমেন্ট রসিদ বিবরণ (Bill Breakdown)
+              </Text>
+
+              <Table verticalSpacing={6}>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Text size="sm">কোর্স ফি (Original Price)</Text>
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: 'right' }}>
+                      <Text size="sm" fw={600}>
+                        ৳{rawPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+
+                  {isReferralValid && (
+                    <Table.Tr style={{ color: '#0d9488' }}>
+                      <Table.Td>
+                        <Group gap={6}>
+                          <Text size="sm" fw={600}>রেফারাল ডিসকাউন্ট ({buyerDiscountPct}%)</Text>
+                          <Badge size="xs" color="teal" variant="filled">{appliedReferralCode}</Badge>
+                        </Group>
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }}>
+                        <Text size="sm" fw={700}>
+                          -৳{discountAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  )}
+
+                  <Table.Tr style={{ borderTop: '2px solid #e2e8f0' }}>
+                    <Table.Td>
+                      <Text size="md" fw={800} style={{ color: '#0f172a' }}>
+                        সর্বমোট প্রদেয় (Payable Total)
+                      </Text>
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: 'right' }}>
+                      <Text size="lg" fw={900} style={{ color: '#2563eb' }}>
+                        ৳{finalPayable.toLocaleString('en-US', { minimumFractionDigits: 2 })} {currency}
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Stack>
+          </Paper>
+
+          {/* SSLCommerz Gateway Notice */}
+          <Alert color="blue" radius="md" icon={<IconLock size={18} />}>
+            <Text size="xs" fw={500}>
+              <b>SSLCommerz</b> এর মাধ্যমে বিকাশ (bKash), নগদ (Nagad), রকেট (Rocket), ভিসা/মাস্টারকার্ড অথবা যেকোনো ব্যাংকিং চ্যানেলে নিরাপদে পেমেন্ট সম্পন্ন করতে পারবেন।
+            </Text>
+          </Alert>
+
+          {/* Action Buttons */}
+          <Group justify="flex-end" gap="sm" mt="xs">
+            <Button variant="default" onClick={closeConfirmModal} disabled={isCheckingOut || isRedirecting}>
+              বাতিল
+            </Button>
+            <Button
+              color="blue"
+              leftSection={<IconCreditCard size={18} />}
+              loading={isCheckingOut || isRedirecting}
+              onClick={handleConfirmCheckout}
+              data-testid="btn-proceed-sslcommerz"
+            >
+              পেমেন্ট এগিয়ে যান (Pay with SSLCommerz)
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   );
 }

@@ -1174,14 +1174,46 @@ func (h *CurriculumHandler) GetMediaUploadToken(c echo.Context) error {
 }
 
 func (h *CurriculumHandler) GetMediaStreamToken(c echo.Context) error {
+	ctx := c.Request().Context()
 	videoID := c.Param("videoId")
+	if videoID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Missing videoId")
+	}
+
+	authUser := internalMiddleware.GetAuthUser(c)
+	if authUser.ID == "" {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	// 1. If not admin, verify student enrollment/access to the lesson's course
+	if authUser.Role != string(generated.UserRoleADMIN) {
+		userUUID, err := uuid.Parse(authUser.ID)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Invalid user ID")
+		}
+
+		lessonNode, err := h.store.GetLessonByVideoURL(ctx, sql.NullString{String: videoID, Valid: true})
+		if err == nil {
+			hasAccess, err := h.store.CheckUserAccessToNode(ctx, generated.CheckUserAccessToNodeParams{
+				ID:     lessonNode.ID,
+				UserID: userUUID,
+			})
+			if err != nil || !hasAccess {
+				return echo.NewHTTPError(http.StatusForbidden, "Course enrollment required to access this video")
+			}
+		}
+	}
+
 	mediaServerURL := os.Getenv("MEDIA_SERVER_URL")
 	apiKey := os.Getenv("MEDIA_SERVER_API_KEY")
 
-	req, _ := http.NewRequest("GET", mediaServerURL+"/stream-token/"+videoID, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", mediaServerURL+"/stream-token/"+videoID, nil)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to create request")
+	}
 	req.Header.Set("X-API-KEY", apiKey)
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadGateway, "Media server unreachable")
@@ -1192,14 +1224,18 @@ func (h *CurriculumHandler) GetMediaStreamToken(c echo.Context) error {
 }
 
 func (h *CurriculumHandler) TriggerMediaTranscode(c echo.Context) error {
+	ctx := c.Request().Context()
 	mediaServerURL := os.Getenv("MEDIA_SERVER_URL")
 	apiKey := os.Getenv("MEDIA_SERVER_API_KEY")
 
-	req, _ := http.NewRequest("POST", mediaServerURL+"/transcode", c.Request().Body)
+	req, err := http.NewRequestWithContext(ctx, "POST", mediaServerURL+"/transcode", c.Request().Body)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to create request")
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-API-KEY", apiKey)
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadGateway, "Media server unreachable")
@@ -1210,14 +1246,18 @@ func (h *CurriculumHandler) TriggerMediaTranscode(c echo.Context) error {
 }
 
 func (h *CurriculumHandler) GetMediaTaskStatus(c echo.Context) error {
+	ctx := c.Request().Context()
 	taskID := c.Param("taskID")
 	mediaServerURL := os.Getenv("MEDIA_SERVER_URL")
 	apiKey := os.Getenv("MEDIA_SERVER_API_KEY")
 
-	req, _ := http.NewRequest("GET", mediaServerURL+"/tasks/"+taskID, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", mediaServerURL+"/tasks/"+taskID, nil)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to create request")
+	}
 	req.Header.Set("X-API-KEY", apiKey)
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadGateway, "Media server unreachable")

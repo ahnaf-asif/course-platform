@@ -6,6 +6,7 @@ package generated
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -21,8 +22,13 @@ type Querier interface {
 	AdminGetOrderSummary(ctx context.Context) (AdminGetOrderSummaryRow, error)
 	AdminGetPaymentProviderDistribution(ctx context.Context) ([]AdminGetPaymentProviderDistributionRow, error)
 	AdminGetRecentUsers(ctx context.Context) ([]AdminGetRecentUsersRow, error)
+	AdminGetReferralPlatformSummary(ctx context.Context) (AdminGetReferralPlatformSummaryRow, error)
 	AdminGetTopPerformingCourses(ctx context.Context) ([]AdminGetTopPerformingCoursesRow, error)
+	AdminListAllReferralEarnings(ctx context.Context, arg AdminListAllReferralEarningsParams) ([]AdminListAllReferralEarningsRow, error)
 	AdminListOrders(ctx context.Context, arg AdminListOrdersParams) ([]AdminListOrdersRow, error)
+	// Admin Queries
+	AdminListPayouts(ctx context.Context, arg AdminListPayoutsParams) ([]AdminListPayoutsRow, error)
+	AdminUpdatePayoutStatus(ctx context.Context, arg AdminUpdatePayoutStatusParams) (ReferralPayout, error)
 	AttachQuizToNode(ctx context.Context, arg AttachQuizToNodeParams) error
 	AttachTagToNode(ctx context.Context, arg AttachTagToNodeParams) error
 	CheckUserAccessToNode(ctx context.Context, arg CheckUserAccessToNodeParams) (bool, error)
@@ -48,6 +54,8 @@ type Querier interface {
 	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
 	// Orders
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
+	// Payout Requests
+	CreatePayoutRequest(ctx context.Context, arg CreatePayoutRequestParams) (ReferralPayout, error)
 	// Questions
 	CreateQuestion(ctx context.Context, arg CreateQuestionParams) (Question, error)
 	// Quizzes
@@ -55,6 +63,9 @@ type Querier interface {
 	// Quiz Attempts
 	CreateQuizAttempt(ctx context.Context, arg CreateQuizAttemptParams) (QuizAttempt, error)
 	CreateQuizAttemptAnswer(ctx context.Context, arg CreateQuizAttemptAnswerParams) (QuizAttemptAnswer, error)
+	CreateReferralCode(ctx context.Context, arg CreateReferralCodeParams) (ReferralCode, error)
+	// Referral Earnings & Balances
+	CreateReferralEarning(ctx context.Context, arg CreateReferralEarningParams) (ReferralEarning, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	// Reviews
 	CreateReview(ctx context.Context, arg CreateReviewParams) (Review, error)
@@ -66,6 +77,7 @@ type Querier interface {
 	DeleteAnswersByQuestion(ctx context.Context, questionID uuid.UUID) error
 	DeleteChapter(ctx context.Context, id uuid.UUID) error
 	DeleteCourse(ctx context.Context, id uuid.UUID) error
+	DeleteEnrollment(ctx context.Context, arg DeleteEnrollmentParams) error
 	DeleteExpiredRefreshTokens(ctx context.Context) error
 	DeleteLesson(ctx context.Context, id uuid.UUID) error
 	DeletePaymentGate(ctx context.Context, nodeID uuid.UUID) error
@@ -92,11 +104,14 @@ type Querier interface {
 	GetEnrolledCoursesByUser(ctx context.Context, userID uuid.UUID) ([]GetEnrolledCoursesByUserRow, error)
 	GetEnrollment(ctx context.Context, arg GetEnrollmentParams) (Enrollment, error)
 	GetLesson(ctx context.Context, id uuid.UUID) (GetLessonRow, error)
+	GetLessonByVideoURL(ctx context.Context, dollar_1 sql.NullString) (GetLessonByVideoURLRow, error)
 	GetNodeWithType(ctx context.Context, id uuid.UUID) (Node, error)
 	GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error)
 	GetOrderByTranID(ctx context.Context, id uuid.UUID) (Order, error)
 	GetOrdersByUser(ctx context.Context, userID uuid.UUID) ([]Order, error)
 	GetPaymentGateByNode(ctx context.Context, nodeID uuid.UUID) (PaymentGate, error)
+	GetPayoutByID(ctx context.Context, id uuid.UUID) (ReferralPayout, error)
+	GetPayoutsByUser(ctx context.Context, arg GetPayoutsByUserParams) ([]ReferralPayout, error)
 	GetPrerequisites(ctx context.Context, nodeID uuid.UUID) ([]Node, error)
 	GetProgress(ctx context.Context, arg GetProgressParams) (Progress, error)
 	GetQuizAttempt(ctx context.Context, id uuid.UUID) (QuizAttempt, error)
@@ -104,6 +119,13 @@ type Querier interface {
 	GetQuizByID(ctx context.Context, id uuid.UUID) (Quiz, error)
 	GetQuizzesByNode(ctx context.Context, nodeID uuid.UUID) ([]Quiz, error)
 	GetQuizzesByNodes(ctx context.Context, dollar_1 []uuid.UUID) ([]GetQuizzesByNodesRow, error)
+	GetReferralCodeByCode(ctx context.Context, code string) (ReferralCode, error)
+	// Referral Codes
+	GetReferralCodeByUserID(ctx context.Context, userID uuid.UUID) (ReferralCode, error)
+	GetReferralEarningByOrderID(ctx context.Context, orderID uuid.UUID) (ReferralEarning, error)
+	GetReferralEarningsByUser(ctx context.Context, arg GetReferralEarningsByUserParams) ([]GetReferralEarningsByUserRow, error)
+	// Settings Queries
+	GetReferralSettings(ctx context.Context) (ReferralSetting, error)
 	GetRefreshToken(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetSubject(ctx context.Context, id uuid.UUID) (GetSubjectRow, error)
 	GetTagByID(ctx context.Context, id uuid.UUID) (Tag, error)
@@ -112,6 +134,7 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserProfile(ctx context.Context, userID uuid.UUID) (UserProfile, error)
 	GetUserQuizAttemptsForQuizzes(ctx context.Context, arg GetUserQuizAttemptsForQuizzesParams) ([]GetUserQuizAttemptsForQuizzesRow, error)
+	GetUserReferralBalances(ctx context.Context, referrerUserID uuid.UUID) (GetUserReferralBalancesRow, error)
 	GetUserWithProfile(ctx context.Context, id uuid.UUID) (GetUserWithProfileRow, error)
 	IncrementCouponUsage(ctx context.Context, id uuid.UUID) error
 	ListAnnouncementsByCourse(ctx context.Context, nodeID uuid.UUID) ([]Announcement, error)
@@ -139,6 +162,7 @@ type Querier interface {
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
 	UpdateQuestion(ctx context.Context, arg UpdateQuestionParams) (Question, error)
 	UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, error)
+	UpdateReferralEarningStatus(ctx context.Context, arg UpdateReferralEarningStatusParams) (ReferralEarning, error)
 	UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error)
 	UpdateTag(ctx context.Context, arg UpdateTagParams) (Tag, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
@@ -147,6 +171,7 @@ type Querier interface {
 	UpsertPaymentGate(ctx context.Context, arg UpsertPaymentGateParams) (PaymentGate, error)
 	// Progress
 	UpsertProgress(ctx context.Context, arg UpsertProgressParams) (Progress, error)
+	UpsertReferralSettings(ctx context.Context, arg UpsertReferralSettingsParams) (ReferralSetting, error)
 }
 
 var _ Querier = (*Queries)(nil)

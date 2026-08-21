@@ -73,6 +73,26 @@ paths:
     $ref: './paths/admin_orders.yaml#/~1admin~1orders~1{id}~1status'
   /admin/dashboard/analytics:
     $ref: './paths/admin_dashboard.yaml#/~1admin~1dashboard~1analytics'
+  /admin/referrals/settings:
+    $ref: './paths/admin_referral.yaml#/~1admin~1referrals~1settings'
+  /admin/referrals/summary:
+    $ref: './paths/admin_referral.yaml#/~1admin~1referrals~1summary'
+  /admin/referrals/payouts:
+    $ref: './paths/admin_referral.yaml#/~1admin~1referrals~1payouts'
+  /admin/referrals/payouts/{id}/status:
+    $ref: './paths/admin_referral.yaml#/~1admin~1referrals~1payouts~1{id}~1status'
+  /admin/referrals/earnings:
+    $ref: './paths/admin_referral.yaml#/~1admin~1referrals~1earnings'
+  /referrals/overview:
+    $ref: './paths/referral.yaml#/~1referrals~1overview'
+  /referrals/earnings:
+    $ref: './paths/referral.yaml#/~1referrals~1earnings'
+  /referrals/payouts:
+    $ref: './paths/referral.yaml#/~1referrals~1payouts'
+  /referrals/payout-requests:
+    $ref: './paths/referral.yaml#/~1referrals~1payout-requests'
+  /referrals/validate:
+    $ref: './paths/referral.yaml#/~1referrals~1validate'
   /courses:
     $ref: './paths/courses.yaml'
   /courses/{id}/tree:

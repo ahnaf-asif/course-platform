@@ -4,13 +4,14 @@ INSERT INTO orders (
     user_id,
     node_id,
     coupon_id,
+    referral_code,
     amount_paid,
     currency,
     status,
     payment_provider,
     provider_reference
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
 RETURNING *;
 
@@ -69,6 +70,10 @@ RETURNING *;
 -- name: GetPaymentGateByNode :one
 SELECT * FROM payment_gates
 WHERE node_id = $1 LIMIT 1;
+
+-- name: DeleteEnrollment :exec
+DELETE FROM enrollments
+WHERE user_id = $1 AND node_id = $2;
 
 -- name: CheckUserAccessToNode :one
 WITH RECURSIVE ancestors AS (
@@ -187,6 +192,7 @@ SELECT
     cp.code as coupon_code,
     cp.discount_type as coupon_discount_type,
     cp.discount_value as coupon_discount_value,
+    o.referral_code,
     o.created_at,
     COUNT(*) OVER() as total_count
 FROM orders o
@@ -204,6 +210,7 @@ WHERE
         OR up.full_name ILIKE '%' || sqlc.narg('search') || '%'
         OR c.title ILIKE '%' || sqlc.narg('search') || '%'
         OR o.provider_reference ILIKE '%' || sqlc.narg('search') || '%'
+        OR o.referral_code ILIKE '%' || sqlc.narg('search') || '%'
         OR o.id::text ILIKE '%' || sqlc.narg('search') || '%'
     )
 ORDER BY o.created_at DESC
@@ -240,6 +247,7 @@ SELECT
     cp.code as coupon_code,
     cp.discount_type as coupon_discount_type,
     cp.discount_value as coupon_discount_value,
+    o.referral_code,
     o.created_at
 FROM orders o
 JOIN users u ON o.user_id = u.id

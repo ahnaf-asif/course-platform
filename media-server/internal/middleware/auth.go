@@ -34,3 +34,22 @@ func APIKeyAuth(apiKey, streamSecret string) echo.MiddlewareFunc {
 		}
 	}
 }
+
+func AdminAPIKeyAuth(apiKey string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			key := c.Request().Header.Get("X-API-KEY")
+			if key == "" {
+				key = c.QueryParam("api_key")
+			}
+
+			if key != "" && key == apiKey {
+				return next(c)
+			}
+
+			return c.JSON(http.StatusUnauthorized, map[string]string{
+				"message": "Invalid or missing admin API key",
+			})
+		}
+	}
+}

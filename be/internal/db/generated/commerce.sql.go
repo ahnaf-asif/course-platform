@@ -244,6 +244,7 @@ SELECT
     cp.code as coupon_code,
     cp.discount_type as coupon_discount_type,
     cp.discount_value as coupon_discount_value,
+    o.referral_code,
     o.created_at
 FROM orders o
 JOIN users u ON o.user_id = u.id
@@ -275,6 +276,7 @@ type AdminGetOrderByIDRow struct {
 	CouponCode          sql.NullString   `json:"coupon_code"`
 	CouponDiscountType  NullDiscountType `json:"coupon_discount_type"`
 	CouponDiscountValue sql.NullString   `json:"coupon_discount_value"`
+	ReferralCode        sql.NullString   `json:"referral_code"`
 	CreatedAt           time.Time        `json:"created_at"`
 }
 
@@ -301,6 +303,7 @@ func (q *Queries) AdminGetOrderByID(ctx context.Context, id uuid.UUID) (AdminGet
 		&i.CouponCode,
 		&i.CouponDiscountType,
 		&i.CouponDiscountValue,
+		&i.ReferralCode,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -502,6 +505,7 @@ SELECT
     cp.code as coupon_code,
     cp.discount_type as coupon_discount_type,
     cp.discount_value as coupon_discount_value,
+    o.referral_code,
     o.created_at,
     COUNT(*) OVER() as total_count
 FROM orders o
@@ -519,6 +523,7 @@ WHERE
         OR up.full_name ILIKE '%' || $3 || '%'
         OR c.title ILIKE '%' || $3 || '%'
         OR o.provider_reference ILIKE '%' || $3 || '%'
+        OR o.referral_code ILIKE '%' || $3 || '%'
         OR o.id::text ILIKE '%' || $3 || '%'
     )
 ORDER BY o.created_at DESC
@@ -551,6 +556,7 @@ type AdminListOrdersRow struct {
 	CouponCode          sql.NullString   `json:"coupon_code"`
 	CouponDiscountType  NullDiscountType `json:"coupon_discount_type"`
 	CouponDiscountValue sql.NullString   `json:"coupon_discount_value"`
+	ReferralCode        sql.NullString   `json:"referral_code"`
 	CreatedAt           time.Time        `json:"created_at"`
 	TotalCount          int64            `json:"total_count"`
 }
@@ -587,6 +593,7 @@ func (q *Queries) AdminListOrders(ctx context.Context, arg AdminListOrdersParams
 			&i.CouponCode,
 			&i.CouponDiscountType,
 			&i.CouponDiscountValue,
+			&i.ReferralCode,
 			&i.CreatedAt,
 			&i.TotalCount,
 		); err != nil {
@@ -688,26 +695,28 @@ INSERT INTO orders (
     user_id,
     node_id,
     coupon_id,
+    referral_code,
     amount_paid,
     currency,
     status,
     payment_provider,
     provider_reference
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
-RETURNING id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at
+RETURNING id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at, referral_code
 `
 
 type CreateOrderParams struct {
-	UserID            uuid.UUID     `json:"user_id"`
-	NodeID            uuid.UUID     `json:"node_id"`
-	CouponID          uuid.NullUUID `json:"coupon_id"`
-	AmountPaid        string        `json:"amount_paid"`
-	Currency          string        `json:"currency"`
-	Status            OrderStatus   `json:"status"`
-	PaymentProvider   string        `json:"payment_provider"`
-	ProviderReference string        `json:"provider_reference"`
+	UserID            uuid.UUID      `json:"user_id"`
+	NodeID            uuid.UUID      `json:"node_id"`
+	CouponID          uuid.NullUUID  `json:"coupon_id"`
+	ReferralCode      sql.NullString `json:"referral_code"`
+	AmountPaid        string         `json:"amount_paid"`
+	Currency          string         `json:"currency"`
+	Status            OrderStatus    `json:"status"`
+	PaymentProvider   string         `json:"payment_provider"`
+	ProviderReference string         `json:"provider_reference"`
 }
 
 // Orders
@@ -716,6 +725,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		arg.UserID,
 		arg.NodeID,
 		arg.CouponID,
+		arg.ReferralCode,
 		arg.AmountPaid,
 		arg.Currency,
 		arg.Status,
@@ -734,8 +744,24 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.PaymentProvider,
 		&i.ProviderReference,
 		&i.CreatedAt,
+		&i.ReferralCode,
 	)
 	return i, err
+}
+
+const deleteEnrollment = `-- name: DeleteEnrollment :exec
+DELETE FROM enrollments
+WHERE user_id = $1 AND node_id = $2
+`
+
+type DeleteEnrollmentParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	NodeID uuid.UUID `json:"node_id"`
+}
+
+func (q *Queries) DeleteEnrollment(ctx context.Context, arg DeleteEnrollmentParams) error {
+	_, err := q.db.ExecContext(ctx, deleteEnrollment, arg.UserID, arg.NodeID)
+	return err
 }
 
 const deletePaymentGate = `-- name: DeletePaymentGate :exec
@@ -749,7 +775,7 @@ func (q *Queries) DeletePaymentGate(ctx context.Context, nodeID uuid.UUID) error
 }
 
 const getActiveOrderByUserAndNode = `-- name: GetActiveOrderByUserAndNode :one
-SELECT id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at FROM orders
+SELECT id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at, referral_code FROM orders
 WHERE user_id = $1 AND node_id = $2 AND status = 'COMPLETED'
 LIMIT 1
 `
@@ -773,6 +799,7 @@ func (q *Queries) GetActiveOrderByUserAndNode(ctx context.Context, arg GetActive
 		&i.PaymentProvider,
 		&i.ProviderReference,
 		&i.CreatedAt,
+		&i.ReferralCode,
 	)
 	return i, err
 }
@@ -908,7 +935,7 @@ func (q *Queries) GetEnrolledCoursesByUser(ctx context.Context, userID uuid.UUID
 }
 
 const getOrderByID = `-- name: GetOrderByID :one
-SELECT id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at FROM orders
+SELECT id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at, referral_code FROM orders
 WHERE id = $1 LIMIT 1
 `
 
@@ -926,12 +953,13 @@ func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error)
 		&i.PaymentProvider,
 		&i.ProviderReference,
 		&i.CreatedAt,
+		&i.ReferralCode,
 	)
 	return i, err
 }
 
 const getOrderByTranID = `-- name: GetOrderByTranID :one
-SELECT id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at FROM orders
+SELECT id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at, referral_code FROM orders
 WHERE id = $1 LIMIT 1
 `
 
@@ -949,12 +977,13 @@ func (q *Queries) GetOrderByTranID(ctx context.Context, id uuid.UUID) (Order, er
 		&i.PaymentProvider,
 		&i.ProviderReference,
 		&i.CreatedAt,
+		&i.ReferralCode,
 	)
 	return i, err
 }
 
 const getOrdersByUser = `-- name: GetOrdersByUser :many
-SELECT id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at FROM orders
+SELECT id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at, referral_code FROM orders
 WHERE user_id = $1
 ORDER BY created_at DESC
 `
@@ -979,6 +1008,7 @@ func (q *Queries) GetOrdersByUser(ctx context.Context, userID uuid.UUID) ([]Orde
 			&i.PaymentProvider,
 			&i.ProviderReference,
 			&i.CreatedAt,
+			&i.ReferralCode,
 		); err != nil {
 			return nil, err
 		}
@@ -1020,7 +1050,7 @@ const updateOrderReferenceAndStatus = `-- name: UpdateOrderReferenceAndStatus :o
 UPDATE orders
 SET status = $2, provider_reference = $3
 WHERE id = $1
-RETURNING id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at
+RETURNING id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at, referral_code
 `
 
 type UpdateOrderReferenceAndStatusParams struct {
@@ -1043,6 +1073,7 @@ func (q *Queries) UpdateOrderReferenceAndStatus(ctx context.Context, arg UpdateO
 		&i.PaymentProvider,
 		&i.ProviderReference,
 		&i.CreatedAt,
+		&i.ReferralCode,
 	)
 	return i, err
 }
@@ -1051,7 +1082,7 @@ const updateOrderStatus = `-- name: UpdateOrderStatus :one
 UPDATE orders
 SET status = $2
 WHERE id = $1
-RETURNING id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at
+RETURNING id, user_id, node_id, coupon_id, amount_paid, currency, status, payment_provider, provider_reference, created_at, referral_code
 `
 
 type UpdateOrderStatusParams struct {
@@ -1073,6 +1104,7 @@ func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusPa
 		&i.PaymentProvider,
 		&i.ProviderReference,
 		&i.CreatedAt,
+		&i.ReferralCode,
 	)
 	return i, err
 }

@@ -158,6 +158,13 @@ SET
 WHERE node_id = $1
 RETURNING *;
 
+-- name: GetLessonByVideoURL :one
+SELECT n.id, n.parent_id, n.node_type, n.created_at, l.title, l.video_url, l.text_content, l.sequence_order
+FROM nodes n
+JOIN lessons l ON n.id = l.node_id
+WHERE l.video_url LIKE '%' || $1 || '%'
+LIMIT 1;
+
 -- DELETE HANDLERS (Generic for all nodes)
 -- name: DeleteSubject :exec
 DELETE FROM nodes WHERE id = $1;

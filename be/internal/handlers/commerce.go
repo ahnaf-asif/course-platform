@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
 	"math"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -32,8 +35,9 @@ func NewCommerceHandler(store db.Store, sslService services.PaymentGateway) *Com
 }
 
 type CheckoutRequest struct {
-	NodeID     string `json:"node_id" validate:"required,uuid"`
-	CouponCode string `json:"coupon_code"`
+	NodeID       string `json:"node_id" validate:"required,uuid"`
+	CouponCode   string `json:"coupon_code"`
+	ReferralCode string `json:"referral_code"`
 }
 
 func (h *CommerceHandler) Checkout(c echo.Context) error {
@@ -62,6 +66,11 @@ func (h *CommerceHandler) Checkout(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid node ID")
 	}
 
+	var refCodeNull sql.NullString
+	if cleanRef := strings.ToUpper(strings.TrimSpace(req.ReferralCode)); cleanRef != "" {
+		refCodeNull = sql.NullString{String: cleanRef, Valid: true}
+	}
+
 	// 1. Check if already purchased
 	existingOrder, err := h.store.GetActiveOrderByUserAndNode(ctx, generated.GetActiveOrderByUserAndNodeParams{
 		UserID: userID,
@@ -81,6 +90,7 @@ func (h *CommerceHandler) Checkout(c echo.Context) error {
 				o, err := q.CreateOrder(ctx, generated.CreateOrderParams{
 					UserID:            userID,
 					NodeID:            nodeID,
+					ReferralCode:      refCodeNull,
 					AmountPaid:        "0.00",
 					Currency:          "BDT",
 					Status:            generated.OrderStatusCOMPLETED,
@@ -95,6 +105,7 @@ func (h *CommerceHandler) Checkout(c echo.Context) error {
 					UserID: userID,
 					NodeID: nodeID,
 				})
+				h.attributeReferralCommission(ctx, q, o)
 				return nil
 			})
 			if txErr != nil {
@@ -140,7 +151,25 @@ func (h *CommerceHandler) Checkout(c echo.Context) error {
 		}
 	}
 
-	// 4. Handle Free Checkout after Coupon
+	// 4. Process Referral Buyer Discount (if valid referral code provided)
+	if refCodeNull.Valid && finalAmount > 0 {
+		rc, err := h.store.GetReferralCodeByCode(ctx, refCodeNull.String)
+		if err == nil && rc.UserID != userID {
+			settings, err := h.store.GetReferralSettings(ctx)
+			if err == nil && settings.IsEnabled {
+				buyerDiscPct, err := strconv.ParseFloat(settings.BuyerDiscountPercentage, 64)
+				if err == nil && buyerDiscPct > 0 {
+					referralDiscount := (finalAmount * buyerDiscPct) / 100.0
+					finalAmount = finalAmount - referralDiscount
+					if finalAmount < 0 {
+						finalAmount = 0
+					}
+				}
+			}
+		}
+	}
+
+	// 5. Handle Free Checkout after Coupon / Referral Discount
 	if finalAmount <= 0 {
 		var couponOrder generated.Order
 		txErr := h.store.WithTx(ctx, func(q generated.Querier) error {
@@ -148,6 +177,7 @@ func (h *CommerceHandler) Checkout(c echo.Context) error {
 				UserID:            userID,
 				NodeID:            nodeID,
 				CouponID:          couponID,
+				ReferralCode:      refCodeNull,
 				AmountPaid:        "0.00",
 				Currency:          pg.Currency,
 				Status:            generated.OrderStatusCOMPLETED,
@@ -163,8 +193,9 @@ func (h *CommerceHandler) Checkout(c echo.Context) error {
 				NodeID: nodeID,
 			})
 			if couponID.Valid {
-				return q.IncrementCouponUsage(ctx, couponID.UUID)
+				_ = q.IncrementCouponUsage(ctx, couponID.UUID)
 			}
+			h.attributeReferralCommission(ctx, q, o)
 			return nil
 		})
 		if txErr != nil {
@@ -183,6 +214,7 @@ func (h *CommerceHandler) Checkout(c echo.Context) error {
 			UserID:            userID,
 			NodeID:            nodeID,
 			CouponID:          couponID,
+			ReferralCode:      refCodeNull,
 			AmountPaid:        strconv.FormatFloat(finalAmount, 'f', 2, 64),
 			Currency:          pg.Currency,
 			Status:            generated.OrderStatusPENDING,
@@ -296,8 +328,10 @@ func (h *CommerceHandler) HandleSuccess(c echo.Context) error {
 		})
 
 		if o.CouponID.Valid {
-			return q.IncrementCouponUsage(ctx, o.CouponID.UUID)
+			_ = q.IncrementCouponUsage(ctx, o.CouponID.UUID)
 		}
+
+		h.attributeReferralCommission(ctx, q, o)
 		return nil
 	})
 
@@ -407,8 +441,10 @@ func (h *CommerceHandler) HandleIPN(c echo.Context) error {
 		})
 
 		if o.CouponID.Valid {
-			return q.IncrementCouponUsage(ctx, o.CouponID.UUID)
+			_ = q.IncrementCouponUsage(ctx, o.CouponID.UUID)
 		}
+
+		h.attributeReferralCommission(ctx, q, o)
 		return nil
 	})
 
@@ -548,6 +584,7 @@ type AdminOrderResponse struct {
 	CouponCode          *string                 `json:"coupon_code,omitempty"`
 	CouponDiscountType  *generated.DiscountType `json:"coupon_discount_type,omitempty"`
 	CouponDiscountValue *string                 `json:"coupon_discount_value,omitempty"`
+	ReferralCode        *string                 `json:"referral_code,omitempty"`
 	CreatedAt           string                  `json:"created_at"`
 }
 
@@ -587,6 +624,7 @@ type AdminOrderDetailResponse struct {
 	CouponCode          *string                 `json:"coupon_code,omitempty"`
 	CouponDiscountType  *generated.DiscountType `json:"coupon_discount_type,omitempty"`
 	CouponDiscountValue *string                 `json:"coupon_discount_value,omitempty"`
+	ReferralCode        *string                 `json:"referral_code,omitempty"`
 	CreatedAt           string                  `json:"created_at"`
 }
 
@@ -669,6 +707,11 @@ func (h *CommerceHandler) AdminListOrders(c echo.Context) error {
 			discountValue = &r.CouponDiscountValue.String
 		}
 
+		var refCode *string
+		if r.ReferralCode.Valid {
+			refCode = &r.ReferralCode.String
+		}
+
 		orders = append(orders, AdminOrderResponse{
 			ID:                  r.ID.String(),
 			UserID:              r.UserID.String(),
@@ -686,6 +729,7 @@ func (h *CommerceHandler) AdminListOrders(c echo.Context) error {
 			CouponCode:          couponCode,
 			CouponDiscountType:  discountType,
 			CouponDiscountValue: discountValue,
+			ReferralCode:        refCode,
 			CreatedAt:           r.CreatedAt.Format(time.RFC3339),
 		})
 	}
@@ -760,6 +804,11 @@ func (h *CommerceHandler) AdminGetOrderByID(c echo.Context) error {
 		discountValue = &r.CouponDiscountValue.String
 	}
 
+	var refCode *string
+	if r.ReferralCode.Valid {
+		refCode = &r.ReferralCode.String
+	}
+
 	return c.JSON(http.StatusOK, AdminOrderDetailResponse{
 		ID:                  r.ID.String(),
 		UserID:              r.UserID.String(),
@@ -780,6 +829,7 @@ func (h *CommerceHandler) AdminGetOrderByID(c echo.Context) error {
 		CouponCode:          couponCode,
 		CouponDiscountType:  discountType,
 		CouponDiscountValue: discountValue,
+		ReferralCode:        refCode,
 		CreatedAt:           r.CreatedAt.Format(time.RFC3339),
 	})
 }
@@ -828,6 +878,21 @@ func (h *CommerceHandler) AdminUpdateOrderStatus(c echo.Context) error {
 			if existing.CouponID.Valid {
 				_ = q.IncrementCouponUsage(ctx, existing.CouponID.UUID)
 			}
+
+			h.attributeReferralCommission(ctx, q, updatedOrder)
+		}
+
+		// If transitioning to REFUNDED, revoke enrollment and cancel referral commission
+		if req.Status == generated.OrderStatusREFUNDED && existing.Status != generated.OrderStatusREFUNDED {
+			_ = q.DeleteEnrollment(ctx, generated.DeleteEnrollmentParams{
+				UserID: existing.UserID,
+				NodeID: existing.NodeID,
+			})
+
+			_, _ = q.UpdateReferralEarningStatus(ctx, generated.UpdateReferralEarningStatusParams{
+				OrderID: orderUUID,
+				Status:  generated.ReferralEarningStatusREFUNDEDREVOKED,
+			})
 		}
 
 		return nil
@@ -1047,6 +1112,11 @@ func (h *CommerceHandler) AdminGetDashboardAnalytics(c echo.Context) error {
 			discountValue = &r.CouponDiscountValue.String
 		}
 
+		var refCode *string
+		if r.ReferralCode.Valid {
+			refCode = &r.ReferralCode.String
+		}
+
 		recentOrders = append(recentOrders, AdminOrderResponse{
 			ID:                  r.ID.String(),
 			UserID:              r.UserID.String(),
@@ -1064,6 +1134,7 @@ func (h *CommerceHandler) AdminGetDashboardAnalytics(c echo.Context) error {
 			CouponCode:          couponCode,
 			CouponDiscountType:  discountType,
 			CouponDiscountValue: discountValue,
+			ReferralCode:        refCode,
 			CreatedAt:           r.CreatedAt.Format(time.RFC3339),
 		})
 	}
@@ -1092,5 +1163,53 @@ func (h *CommerceHandler) AdminGetDashboardAnalytics(c echo.Context) error {
 		PaymentDistribution:  paymentDist,
 		RecentOrders:         recentOrders,
 		RecentUsers:          recentUsers,
+	})
+}
+
+// attributeReferralCommission credits commission to the referrer when an order is completed.
+func (h *CommerceHandler) attributeReferralCommission(ctx context.Context, q generated.Querier, order generated.Order) {
+	if !order.ReferralCode.Valid || order.ReferralCode.String == "" {
+		return
+	}
+	// 1. Check if commission was already attributed for this order
+	_, err := q.GetReferralEarningByOrderID(ctx, order.ID)
+	if err == nil {
+		return // Already recorded
+	}
+	// 2. Fetch referrer by code
+	rc, err := q.GetReferralCodeByCode(ctx, order.ReferralCode.String)
+	if err != nil {
+		return // Referral code not found
+	}
+	// 3. Prevent self-referral
+	if rc.UserID == order.UserID {
+		return
+	}
+	// 4. Check if referral program is active and fetch commission %
+	settings, err := q.GetReferralSettings(ctx)
+	if err != nil || !settings.IsEnabled {
+		return
+	}
+	commPct, err := strconv.ParseFloat(settings.CommissionPercentage, 64)
+	if err != nil || commPct <= 0 {
+		return
+	}
+	orderAmt, err := strconv.ParseFloat(order.AmountPaid, 64)
+	if err != nil || orderAmt <= 0 {
+		return
+	}
+	commissionEarned := (orderAmt * commPct) / 100.0
+	commEarnedStr := fmt.Sprintf("%.2f", commissionEarned)
+
+	_, _ = q.CreateReferralEarning(ctx, generated.CreateReferralEarningParams{
+		ReferrerUserID:       rc.UserID,
+		ReferredUserID:       order.UserID,
+		OrderID:              order.ID,
+		NodeID:               order.NodeID,
+		OrderAmount:          order.AmountPaid,
+		CommissionPercentage: settings.CommissionPercentage,
+		CommissionEarned:     commEarnedStr,
+		Currency:             order.Currency,
+		Status:               generated.ReferralEarningStatusCOMMISSIONEARNED,
 	})
 }

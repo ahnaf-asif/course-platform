@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 export function isDevToolsOpenSync(): boolean {
   if (typeof window === 'undefined') return false;
 
-  const threshold = 160;
+  const threshold = 200;
   const widthDiff = window.outerWidth - window.innerWidth > threshold;
   const heightDiff = window.outerHeight - window.innerHeight > threshold;
 

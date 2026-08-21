@@ -637,6 +637,41 @@ func (q *Queries) GetLesson(ctx context.Context, id uuid.UUID) (GetLessonRow, er
 	return i, err
 }
 
+const getLessonByVideoURL = `-- name: GetLessonByVideoURL :one
+SELECT n.id, n.parent_id, n.node_type, n.created_at, l.title, l.video_url, l.text_content, l.sequence_order
+FROM nodes n
+JOIN lessons l ON n.id = l.node_id
+WHERE l.video_url LIKE '%' || $1 || '%'
+LIMIT 1
+`
+
+type GetLessonByVideoURLRow struct {
+	ID            uuid.UUID      `json:"id"`
+	ParentID      uuid.NullUUID  `json:"parent_id"`
+	NodeType      NodeType       `json:"node_type"`
+	CreatedAt     time.Time      `json:"created_at"`
+	Title         string         `json:"title"`
+	VideoUrl      sql.NullString `json:"video_url"`
+	TextContent   sql.NullString `json:"text_content"`
+	SequenceOrder int32          `json:"sequence_order"`
+}
+
+func (q *Queries) GetLessonByVideoURL(ctx context.Context, dollar_1 sql.NullString) (GetLessonByVideoURLRow, error) {
+	row := q.db.QueryRowContext(ctx, getLessonByVideoURL, dollar_1)
+	var i GetLessonByVideoURLRow
+	err := row.Scan(
+		&i.ID,
+		&i.ParentID,
+		&i.NodeType,
+		&i.CreatedAt,
+		&i.Title,
+		&i.VideoUrl,
+		&i.TextContent,
+		&i.SequenceOrder,
+	)
+	return i, err
+}
+
 const getNodeWithType = `-- name: GetNodeWithType :one
 SELECT id, parent_id, node_type, created_at FROM nodes
 WHERE id = $1 LIMIT 1

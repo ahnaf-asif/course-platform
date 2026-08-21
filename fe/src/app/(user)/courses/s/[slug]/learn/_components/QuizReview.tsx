@@ -164,8 +164,10 @@ export function QuizReview({ activeAttempt, setActiveAttempt }: QuizReviewProps)
                               backgroundColor: optionBg,
                             }}
                           >
-                            <Text size="sm">{opt.content}</Text>
-                            <Group gap="xs" style={{ display: 'flex', gap: '8px' }}>
+                            <Box style={{ flex: 1 }}>
+                              <MathJaxContent html={parseHTMLContent(opt.content)} />
+                            </Box>
+                            <Group gap="xs" style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                               {isUserSelected && !isOptionCorrect && (
                                 <Badge size="xs" color="red">
                                   Your Answer

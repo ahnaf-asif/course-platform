@@ -28,6 +28,7 @@ import {
   IconLayoutDashboard,
   IconShield,
   IconHome,
+  IconGift,
 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -42,6 +43,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     { label: 'হোম', href: '/', icon: IconHome },
     { label: 'কোর্সসমূহ', href: '/courses', icon: IconBooks },
     { label: 'ড্যাশবোর্ড', href: '/dashboard', icon: IconLayoutDashboard },
+    { label: 'রেফারাল ও আয়', href: '/profile/referrals', icon: IconGift },
     { label: 'প্রোফাইল', href: '/profile', icon: IconUser },
   ];
 
@@ -184,6 +186,15 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
                         অ্যাডমিন প্যানেল
                       </Menu.Item>
                     )}
+
+                    <Menu.Item
+                      leftSection={<IconGift size={16} />}
+                      component={Link}
+                      href="/profile/referrals"
+                      className="custom-menu-item"
+                    >
+                      রেফারাল ও আয়
+                    </Menu.Item>
 
                     <Menu.Item
                       leftSection={<IconUser size={16} />}
@@ -516,8 +527,9 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
 
           <div style={{ flexGrow: 1 }}>{children}</div>
 
-          {/* Footer */}
-          <footer style={{ backgroundColor: '#090d16', borderTop: '1px solid rgba(255, 255, 255, 0.08)', color: 'var(--mantine-color-gray-3)', paddingTop: '60px', paddingBottom: '30px', marginTop: 'auto' }}>
+          {/* Footer (hidden on course player full-screen learn mode) */}
+          {!pathname.includes('/learn') && (
+            <footer style={{ backgroundColor: '#090d16', borderTop: '1px solid rgba(255, 255, 255, 0.08)', color: 'var(--mantine-color-gray-3)', paddingTop: '60px', paddingBottom: '30px', marginTop: 'auto' }}>
             <Container size="xl">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '40px', marginBottom: '40px' }}>
                 <div>
@@ -593,6 +605,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
               </Group>
             </Container>
           </footer>
+          )}
         </AppShell.Main>
       </AppShell>
     </AuthGuard>

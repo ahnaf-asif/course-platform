@@ -29,6 +29,7 @@ import {
   IconShoppingCart,
   IconSpeakerphone,
   IconTag,
+  IconGift,
   IconLogout,
   IconChevronDown,
   IconUser,
@@ -40,6 +41,7 @@ const adminLinks = [
   { label: 'Users', icon: IconUsers, href: '/admin/users' },
   { label: 'Quizzes', icon: IconHelpCircle, href: '/admin/quizzes' },
   { label: 'Orders', icon: IconShoppingCart, href: '/admin/orders' },
+  { label: 'Referrals', icon: IconGift, href: '/admin/referrals' },
   { label: 'Announcements', icon: IconSpeakerphone, href: '/admin/announcements' },
   { label: 'Coupons', icon: IconTag, href: '/admin/coupons' },
 ];
@@ -51,7 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [opened, { toggle, close }] = useDisclosure();
 
   return (
-    <AuthGuard>
+    <AuthGuard requiredRole="ADMIN">
       <AppShell
         header={{ height: 60 }}
         navbar={{ 

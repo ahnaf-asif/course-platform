@@ -1,0 +1,111 @@
+/referrals/overview:
+  get:
+    tags:
+      - Referral
+    summary: Get current user referral overview and balances
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Referral code and financial balances
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/referral.yaml#/ReferralOverviewResponse'
+
+/referrals/earnings:
+  get:
+    tags:
+      - Referral
+    summary: List current user referral earnings history
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+    responses:
+      '200':
+        description: List of earnings
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../components/schemas/referral.yaml#/ReferralEarningItem'
+
+/referrals/payouts:
+  get:
+    tags:
+      - Referral
+    summary: List current user payout requests
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+    responses:
+      '200':
+        description: List of payouts
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../components/schemas/referral.yaml#/PayoutItem'
+
+/referrals/payout-requests:
+  post:
+    tags:
+      - Referral
+    summary: Submit a new withdrawal/payout request
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/referral.yaml#/CreatePayoutRequest'
+    responses:
+      '201':
+        description: Payout request created
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/referral.yaml#/PayoutItem'
+
+/referrals/validate:
+  get:
+    tags:
+      - Referral
+    summary: Validate a referral code and get discount percentage
+    parameters:
+      - name: code
+        in: query
+        required: true
+        schema:
+          type: string
+          example: "K7X9B2"
+    responses:
+      '200':
+        description: Referral code validation result
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/referral.yaml#/ValidateReferralCodeResponse'

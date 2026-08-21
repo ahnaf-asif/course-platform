@@ -1,0 +1,386 @@
+ReferralOverviewResponse:
+  type: object
+  required:
+    - code
+    - total_earned
+    - total_withdrawn
+    - pending_payout
+    - available_balance
+    - total_referrals
+    - commission_percentage
+    - buyer_discount_percentage
+    - min_payout_amount
+    - is_enabled
+    - terms_and_conditions
+  properties:
+    code:
+      type: string
+      example: "K7X9B2"
+    total_earned:
+      type: number
+    total_withdrawn:
+      type: number
+    pending_payout:
+      type: number
+    available_balance:
+      type: number
+    total_referrals:
+      type: integer
+    commission_percentage:
+      type: number
+    buyer_discount_percentage:
+      type: number
+    min_payout_amount:
+      type: number
+    is_enabled:
+      type: boolean
+    terms_and_conditions:
+      type: string
+
+ReferralEarningItem:
+  type: object
+  required:
+    - id
+    - order_id
+    - node_id
+    - course_title
+    - referred_user_name
+    - referred_user_email
+    - order_amount
+    - commission_percentage
+    - commission_earned
+    - currency
+    - status
+    - created_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    order_id:
+      type: string
+      format: uuid
+    node_id:
+      type: string
+      format: uuid
+    course_title:
+      type: string
+    referred_user_name:
+      type: string
+    referred_user_email:
+      type: string
+    order_amount:
+      type: number
+    commission_percentage:
+      type: number
+    commission_earned:
+      type: number
+    currency:
+      type: string
+    status:
+      type: string
+      enum: [COMMISSION_EARNED, REFUNDED_REVOKED]
+    created_at:
+      type: string
+      format: date-time
+
+PayoutItem:
+  type: object
+  required:
+    - id
+    - amount
+    - currency
+    - payment_method
+    - account_number
+    - account_type
+    - status
+    - created_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    amount:
+      type: number
+    currency:
+      type: string
+    payment_method:
+      type: string
+    account_number:
+      type: string
+    account_type:
+      type: string
+      enum: [PERSONAL, AGENT]
+    status:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED]
+    transaction_ref:
+      type: string
+      nullable: true
+    admin_note:
+      type: string
+      nullable: true
+    processed_at:
+      type: string
+      format: date-time
+      nullable: true
+    created_at:
+      type: string
+      format: date-time
+
+CreatePayoutRequest:
+  type: object
+  required:
+    - amount
+    - payment_method
+    - account_number
+    - account_type
+  properties:
+    amount:
+      type: number
+    payment_method:
+      type: string
+      default: "bkash"
+    account_number:
+      type: string
+    account_type:
+      type: string
+      enum: [PERSONAL, AGENT]
+
+AdminReferralSettingsResponse:
+  type: object
+  required:
+    - id
+    - commission_percentage
+    - buyer_discount_percentage
+    - min_payout_amount
+    - is_enabled
+    - terms_and_conditions
+    - updated_at
+  properties:
+    id:
+      type: integer
+    commission_percentage:
+      type: number
+    buyer_discount_percentage:
+      type: number
+    min_payout_amount:
+      type: number
+    is_enabled:
+      type: boolean
+    terms_and_conditions:
+      type: string
+    updated_at:
+      type: string
+      format: date-time
+
+UpdateReferralSettingsRequest:
+  type: object
+  required:
+    - commission_percentage
+    - buyer_discount_percentage
+    - min_payout_amount
+    - is_enabled
+    - terms_and_conditions
+  properties:
+    commission_percentage:
+      type: number
+    buyer_discount_percentage:
+      type: number
+    min_payout_amount:
+      type: number
+    is_enabled:
+      type: boolean
+    terms_and_conditions:
+      type: string
+
+AdminReferralSummaryResponse:
+  type: object
+  required:
+    - total_referral_sales
+    - total_commissions_earned
+    - total_commissions_paid
+    - pending_payout_amount
+    - pending_payout_count
+    - active_affiliates_count
+  properties:
+    total_referral_sales:
+      type: number
+    total_commissions_earned:
+      type: number
+    total_commissions_paid:
+      type: number
+    pending_payout_amount:
+      type: number
+    pending_payout_count:
+      type: integer
+    active_affiliates_count:
+      type: integer
+
+AdminPayoutItem:
+  type: object
+  required:
+    - id
+    - user_id
+    - user_name
+    - user_email
+    - amount
+    - currency
+    - payment_method
+    - account_number
+    - account_type
+    - status
+    - created_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    user_name:
+      type: string
+    user_email:
+      type: string
+    amount:
+      type: number
+    currency:
+      type: string
+    payment_method:
+      type: string
+    account_number:
+      type: string
+    account_type:
+      type: string
+      enum: [PERSONAL, AGENT]
+    status:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED]
+    transaction_ref:
+      type: string
+      nullable: true
+    admin_note:
+      type: string
+      nullable: true
+    processed_at:
+      type: string
+      format: date-time
+      nullable: true
+    created_at:
+      type: string
+      format: date-time
+
+AdminListPayoutsResponse:
+  type: object
+  required:
+    - payouts
+    - total_count
+  properties:
+    payouts:
+      type: array
+      items:
+        $ref: '#/AdminPayoutItem'
+    total_count:
+      type: integer
+
+AdminUpdatePayoutStatusRequest:
+  type: object
+  required:
+    - status
+  properties:
+    status:
+      type: string
+      enum: [APPROVED, REJECTED]
+    transaction_ref:
+      type: string
+      nullable: true
+    admin_note:
+      type: string
+      nullable: true
+
+AdminReferralEarningItem:
+  type: object
+  required:
+    - id
+    - referrer_user_id
+    - referrer_name
+    - referrer_email
+    - referred_user_id
+    - referred_name
+    - referred_email
+    - order_id
+    - node_id
+    - course_title
+    - order_amount
+    - commission_percentage
+    - commission_earned
+    - currency
+    - status
+    - created_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    referrer_user_id:
+      type: string
+      format: uuid
+    referrer_name:
+      type: string
+    referrer_email:
+      type: string
+    referred_user_id:
+      type: string
+      format: uuid
+    referred_name:
+      type: string
+    referred_email:
+      type: string
+    order_id:
+      type: string
+      format: uuid
+    node_id:
+      type: string
+      format: uuid
+    course_title:
+      type: string
+    order_amount:
+      type: number
+    commission_percentage:
+      type: number
+    commission_earned:
+      type: number
+    currency:
+      type: string
+    status:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+
+AdminListAllReferralEarningsResponse:
+  type: object
+  required:
+    - earnings
+    - total_count
+  properties:
+    earnings:
+      type: array
+      items:
+        $ref: '#/AdminReferralEarningItem'
+    total_count:
+      type: integer
+
+ValidateReferralCodeResponse:
+  type: object
+  required:
+    - valid
+    - code
+    - buyer_discount_percentage
+    - message
+  properties:
+    valid:
+      type: boolean
+    code:
+      type: string
+    buyer_discount_percentage:
+      type: number
+    message:
+      type: string

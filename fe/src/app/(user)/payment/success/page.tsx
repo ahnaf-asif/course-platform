@@ -1,11 +1,12 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Container, Card, Title, Text, Button, Stack, Group, ThemeIcon, Box, Badge, Divider } from '@mantine/core';
+import { Suspense } from 'react';
+import { Container, Card, Title, Text, Button, Stack, Group, ThemeIcon, Box, Badge, Divider, Loader } from '@mantine/core';
 import { IconCircleCheck, IconArrowRight, IconBook, IconReceipt } from '@tabler/icons-react';
 import Link from 'next/link';
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const tranID = searchParams.get('tran_id') || 'N/A';
 
@@ -110,5 +111,13 @@ export default function PaymentSuccessPage() {
         </Card>
       </Container>
     </Box>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<Box py={100} ta="center"><Loader size="xl" /></Box>}>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }

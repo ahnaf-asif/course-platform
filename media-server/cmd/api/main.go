@@ -76,7 +76,6 @@ func SetupRouter(cfg *config.Config, minioService service.IMinioService, transco
 
 	// Public routes
 	api.GET("/health", h.HealthCheck)
-	api.GET("/files/:file_name", h.GetDownloadURL)
 	api.GET("/p/:file_name", h.GetPublicFile)
 	api.GET("/docs/readme", h.Readme)
 
@@ -90,16 +89,21 @@ func SetupRouter(cfg *config.Config, minioService service.IMinioService, transco
 	// HLS Protected routes (Access validation handled inside StreamHandler)
 	api.Match([]string{"GET", "HEAD"}, "/stream/*", sh.ServeStream)
 
-	// Protected routes (require API key or upload token)
-	protected := api.Group("")
-	protected.Use(customMiddleware.APIKeyAuth(cfg.APIKey, cfg.StreamSecret))
-	protected.GET("/upload-url", h.GetUploadURL)
-	protected.POST("/upload", h.UploadFile)
-	protected.POST("/transcode", h.TriggerTranscode) // New endpoint
-	protected.GET("/tasks/:task_id", h.GetTaskStatus)
-	protected.GET("/files", h.ListFiles)
-	protected.DELETE("/files/:file_name", h.DeleteFile)
-	protected.GET("/stream-token/:video_id", sh.GetToken)
+	// Admin-only routes (strictly require Master API Key)
+	admin := api.Group("")
+	admin.Use(customMiddleware.AdminAPIKeyAuth(cfg.APIKey))
+	admin.GET("/files", h.ListFiles)
+	admin.GET("/files/:file_name", h.GetDownloadURL)
+	admin.DELETE("/files/:file_name", h.DeleteFile)
+	admin.POST("/transcode", h.TriggerTranscode)
+	admin.GET("/tasks/:task_id", h.GetTaskStatus)
+	admin.GET("/stream-token/:video_id", sh.GetToken)
+
+	// Uploader routes (allow Master API Key or temporary Upload Token)
+	uploader := api.Group("")
+	uploader.Use(customMiddleware.APIKeyAuth(cfg.APIKey, cfg.StreamSecret))
+	uploader.GET("/upload-url", h.GetUploadURL)
+	uploader.POST("/upload", h.UploadFile)
 
 	return e
 }

@@ -1,11 +1,12 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Container, Card, Title, Text, Button, Stack, Group, ThemeIcon, Box, Badge, Divider } from '@mantine/core';
+import { Suspense } from 'react';
+import { Container, Card, Title, Text, Button, Stack, Group, ThemeIcon, Box, Badge, Divider, Loader } from '@mantine/core';
 import { IconAlertTriangle, IconRefresh, IconHeadset, IconReceipt } from '@tabler/icons-react';
 import Link from 'next/link';
 
-export default function PaymentFailPage() {
+function PaymentFailContent() {
   const searchParams = useSearchParams();
   const tranID = searchParams.get('tran_id') || 'N/A';
   const errorMsg = searchParams.get('error') || 'ট্রানজেকশন সফলভাবে সম্পন্ন করা সম্ভব হয়নি';
@@ -113,5 +114,13 @@ export default function PaymentFailPage() {
         </Card>
       </Container>
     </Box>
+  );
+}
+
+export default function PaymentFailPage() {
+  return (
+    <Suspense fallback={<Box py={100} ta="center"><Loader size="xl" /></Box>}>
+      <PaymentFailContent />
+    </Suspense>
   );
 }

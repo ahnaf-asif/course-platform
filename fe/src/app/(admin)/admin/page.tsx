@@ -37,8 +37,17 @@ export default function AdminDashboard() {
     isLoading,
     isFetching,
     isError,
+    error,
     refetch,
   } = useGetAdminDashboardAnalytics();
+
+  const axiosError = error as { response?: { status?: number; data?: { message?: string; error?: string } }; message?: string } | null;
+  const isAuthError = axiosError?.response?.status === 401 || axiosError?.response?.status === 403;
+  const errorDetail =
+    axiosError?.response?.data?.message ||
+    axiosError?.response?.data?.error ||
+    axiosError?.message ||
+    'ড্যাশবোর্ড তথ্য লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে সার্ভার কানেকশন ও লগইন স্ট্যাটাস চেক করুন।';
 
   return (
     <Stack gap="xl" p={{ base: 'sm', md: 'md' }}>
@@ -80,8 +89,24 @@ export default function AdminDashboard() {
 
       {/* Error Alert */}
       {isError && (
-        <Alert color="red" icon={<IconAlertCircle size={16} />} title="Error">
-          ড্যাশবোর্ড তথ্য লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে রিফ্রেশ করুন।
+        <Alert color="red" icon={<IconAlertCircle size={18} />} title="তথ্য লোড ত্রুটি (Dashboard Load Error)">
+          <Stack gap="xs">
+            <Text size="sm">
+              {isAuthError
+                ? 'আপনার অ্যাডমিন সেশনের মেয়াদ শেষ হয়েছে বা পারমিশন নেই। অনুগ্রহ করে পুনরায় লগইন করুন।'
+                : errorDetail}
+            </Text>
+            <Group gap="sm">
+              <Button size="xs" variant="light" color="red" onClick={() => refetch()}>
+                পুনরায় চেষ্টা করুন (Retry)
+              </Button>
+              {isAuthError && (
+                <Button size="xs" component={Link} href="/login" color="red">
+                  লগইন পেজে যান
+                </Button>
+              )}
+            </Group>
+          </Stack>
         </Alert>
       )}
 

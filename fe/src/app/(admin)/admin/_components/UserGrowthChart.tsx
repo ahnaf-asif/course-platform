@@ -24,8 +24,8 @@ export function UserGrowthChart({ userTrends = [], isLoading }: UserGrowthChartP
   const totalNewUsers = userTrends.reduce((acc, curr) => acc + (curr.new_users || 0), 0);
 
   const formattedChartData = userTrends.map((d) => ({
-    date: d.date.slice(5), // MM-DD for clean x-axis
-    new_users: d.new_users,
+    date: d.date ? d.date.slice(5) : '', // MM-DD for clean x-axis
+    new_users: d.new_users || 0,
   }));
 
   return (
