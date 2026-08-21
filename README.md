@@ -92,13 +92,16 @@ Admins can upload large CSV files for quiz creation.
 
 ## 📖 Detailed Documentation
 
-For specific development guides, troubleshooting, and architectural details, please refer to the component-specific READMEs:
+For specific development guides, troubleshooting, and architectural details, please refer to the project documentation:
 
+- 📚 **[Documentation Hub & Index](./documentation/README.md)**
+- 🤝 **[Referral & bKash Payout System Roadmap](./documentation/referral_system_roadmap.md)**
+- 🚀 **[Production Deployment & Security Guide](./documentation/deployment_guide.md)**
+- 🛡️ **[Secure Media System](./documentation/docs_media_system.md)**
+- 🔒 **[Anti-Scraping & Content Protection System](./documentation/anti_scraping_content_protection_plan.md)**
+- 💳 **[Payment System & SSLCommerz](./documentation/payment_system_documentation.md)**
 - 📚 **[Backend Documentation](./be/README.md)**
 - 🎨 **[Frontend Documentation](./fe/README.md)**
-- 🚀 **[Production Deployment & Security Guide](./DEPLOYMENT_GUIDE.md)**
-- 🛡️ **[Secure Media System](./DOCS_MEDIA_SYSTEM.md)**
-- 🔒 **[Anti-Scraping & Content Protection System](./ANTI_SCRAPING_CONTENT_PROTECTION_PLAN.md)**
 - 📡 **[API Specification (OpenAPI)](./be/docs/openapi.yaml)**
 
 ---
