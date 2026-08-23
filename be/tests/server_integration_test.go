@@ -29,7 +29,7 @@ func TestServerGenericRoutes(t *testing.T) {
 	store := db.NewStore(conn)
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	tokenService := services.NewTokenService("secret", time.Minute, time.Hour)
-	server := api.NewServer(store, tokenService, nil, nil, nil, logger)
+	server := api.NewServer(store, tokenService, nil, nil, nil, nil, logger)
 	e := server.GetEcho()
 
 	t.Run("Health Check", func(t *testing.T) {

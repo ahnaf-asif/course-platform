@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/shafins-course/backend/internal/db/generated"
+	"github.com/shafins-course/backend/internal/services"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -35,9 +36,43 @@ func (m *MockStore) GetUserByID(ctx context.Context, id uuid.UUID) (generated.Us
 	return args.Get(0).(generated.User), args.Error(1)
 }
 
+func (m *MockStore) GetUserByEmail(ctx context.Context, email string) (generated.User, error) {
+	args := m.Called(ctx, email)
+	if args.Get(0) == nil {
+		return generated.User{}, args.Error(1)
+	}
+	return args.Get(0).(generated.User), args.Error(1)
+}
+
+func (m *MockStore) GetUserProfile(ctx context.Context, userID uuid.UUID) (generated.UserProfile, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return generated.UserProfile{}, args.Error(1)
+	}
+	return args.Get(0).(generated.UserProfile), args.Error(1)
+}
+
 func (m *MockStore) CreateRefreshToken(ctx context.Context, arg generated.CreateRefreshTokenParams) (generated.RefreshToken, error) {
 	args := m.Called(ctx, arg)
 	return args.Get(0).(generated.RefreshToken), args.Error(1)
+}
+
+func (m *MockStore) CreateUser(ctx context.Context, arg generated.CreateUserParams) (generated.User, error) {
+	args := m.Called(ctx, arg)
+	return args.Get(0).(generated.User), args.Error(1)
+}
+
+func (m *MockStore) CreateUserProfile(ctx context.Context, arg generated.CreateUserProfileParams) (generated.UserProfile, error) {
+	args := m.Called(ctx, arg)
+	return args.Get(0).(generated.UserProfile), args.Error(1)
+}
+
+func (m *MockStore) UpdateUser(ctx context.Context, arg generated.UpdateUserParams) (generated.User, error) {
+	args := m.Called(ctx, arg)
+	if args.Get(0) == nil {
+		return generated.User{}, args.Error(1)
+	}
+	return args.Get(0).(generated.User), args.Error(1)
 }
 
 func (m *MockStore) GetQuizByID(ctx context.Context, id uuid.UUID) (generated.Quiz, error) {
@@ -288,4 +323,37 @@ func (m *MockStore) ListProgressByUser(ctx context.Context, userID uuid.UUID) ([
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]generated.Progress), args.Error(1)
+}
+
+// MockEmailService for handler tests
+type MockEmailService struct {
+	mock.Mock
+}
+
+func (m *MockEmailService) SendEmail(ctx context.Context, req services.SendEmailRequest) (*services.SendEmailResponse, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*services.SendEmailResponse), args.Error(1)
+}
+
+func (m *MockEmailService) SendWelcomeEmail(ctx context.Context, toEmail, recipientName string) error {
+	args := m.Called(ctx, toEmail, recipientName)
+	return args.Error(0)
+}
+
+func (m *MockEmailService) SendPasswordResetEmail(ctx context.Context, toEmail, recipientName, resetLink string) error {
+	args := m.Called(ctx, toEmail, recipientName, resetLink)
+	return args.Error(0)
+}
+
+func (m *MockEmailService) SendOrderConfirmationEmail(ctx context.Context, toEmail, recipientName, courseTitle, orderID, amount, currency string) error {
+	args := m.Called(ctx, toEmail, recipientName, courseTitle, orderID, amount, currency)
+	return args.Error(0)
+}
+
+func (m *MockEmailService) SendPayoutStatusEmail(ctx context.Context, toEmail, recipientName, status, amount, currency, trxID, adminNote string) error {
+	args := m.Called(ctx, toEmail, recipientName, status, amount, currency, trxID, adminNote)
+	return args.Error(0)
 }

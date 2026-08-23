@@ -178,7 +178,17 @@ We use **Asynq** (Redis-backed) for asynchronous processing.
 
 ### Task Types
 - **`quiz:bulk-upload`**: Triggered via `POST /api/v1/admin/quizzes/:id/questions/csv`. 
+- **`email:send`**: Background asynchronous transactional email sending via Resend.
 - **Task Status**: Tracked via the generic `TaskService` which interacts with the Asynq Inspector.
+
+### 📧 Email System (Resend)
+We use **Resend** (`github.com/resend/resend-go/v2`) for sending transactional emails (Welcome onboarding, password resets, enrollment receipts, affiliate payouts).
+- **Service**: `be/internal/services/email.go`
+- **Simulation Mode**: If `RESEND_API_KEY` is empty or begins with `re_placeholder`, emails run in simulation mode (logged without network failure) so local/Docker environments run smoothly without real credentials.
+- **Production Mode**: Provide your real Resend API key (`re_...`) in `be/.env` or Docker environment to immediately start sending real emails.
+- **🎨 Live Email Template Studio (Dev)**:
+  - Visual Interactive Gallery: `http://localhost:8080/api/v1/dev/emails`
+  - Raw HTML Previews: `http://localhost:8080/api/v1/dev/emails/preview?template=welcome` (supports `welcome`, `reset_password`, `order_confirmation`, `payout_approved`, `payout_rejected`)
 
 ### Media Server Integration
 The backend acts as a secure proxy/orchestrator for the `media-server`:

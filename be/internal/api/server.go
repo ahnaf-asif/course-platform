@@ -25,11 +25,16 @@ type Server struct {
 	cacheService *services.CacheService
 	minioService *services.MinioService
 	taskService  *services.TaskService
+	emailService services.EmailService
 	logger       *slog.Logger
 }
 
-func NewServer(store db.Store, tokenService *services.TokenService, cacheService *services.CacheService, minioService *services.MinioService, taskService *services.TaskService, logger *slog.Logger) *Server {
+func NewServer(store db.Store, tokenService *services.TokenService, cacheService *services.CacheService, minioService *services.MinioService, taskService *services.TaskService, emailService services.EmailService, logger *slog.Logger) *Server {
 	e := echo.New()
+
+	if emailService == nil {
+		emailService = services.NewResendEmailServiceFromEnv()
+	}
 
 	s := &Server{
 		echo:         e,
@@ -38,6 +43,7 @@ func NewServer(store db.Store, tokenService *services.TokenService, cacheService
 		cacheService: cacheService,
 		minioService: minioService,
 		taskService:  taskService,
+		emailService: emailService,
 		logger:       logger,
 	}
 
@@ -112,6 +118,8 @@ func (s *Server) registerRoutes() {
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	authHandler := handlers.NewAuthHandler(s.store, s.tokenService, s.logger)
+	authHandler.SetEmailService(s.emailService)
+
 	userHandler := handlers.NewUserHandler(s.store, s.cacheService, s.logger)
 	courseHandler := handlers.NewCourseHandler(s.store, s.cacheService, s.logger)
 	curriculumHandler := handlers.NewCurriculumHandler(s.store, s.cacheService, s.logger)
@@ -120,7 +128,10 @@ func (s *Server) registerRoutes() {
 
 	sslcommerzService := services.NewSSLCommerzService()
 	commerceHandler := handlers.NewCommerceHandler(s.store, sslcommerzService)
+	commerceHandler.SetEmailService(s.emailService)
+
 	referralHandler := handlers.NewReferralHandler(s.store, s.logger)
+	referralHandler.SetEmailService(s.emailService)
 
 	// API v1 Group
 	v1 := s.echo.Group("/api/v1")
@@ -171,6 +182,11 @@ func (s *Server) registerRoutes() {
 `)
 	})
 
+	// Dev email template preview endpoints
+	devEmailHandler := handlers.NewDevEmailPreviewHandler()
+	v1.GET("/dev/emails", devEmailHandler.RenderGallery)
+	v1.GET("/dev/emails/preview", devEmailHandler.RenderPreview)
+
 	// Public Auth routes
 	auth := v1.Group("/auth")
 
@@ -209,6 +225,8 @@ func (s *Server) registerRoutes() {
 	auth.POST("/register", authHandler.Register, registerRateLimit)
 	auth.POST("/login", authHandler.Login, loginRateLimit)
 	auth.POST("/refresh", authHandler.Refresh)
+	auth.POST("/forgot-password", authHandler.ForgotPassword, loginRateLimit)
+	auth.POST("/reset-password", authHandler.ResetPassword, loginRateLimit)
 
 	// SSLCommerz public callbacks
 	v1.POST("/payments/sslcommerz/success", commerceHandler.HandleSuccess)

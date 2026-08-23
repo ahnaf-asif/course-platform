@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -23,6 +26,7 @@ import (
 type AuthHandler struct {
 	store        db.Store
 	tokenService *services.TokenService
+	emailService services.EmailService
 	validate     *validator.Validate
 	logger       *slog.Logger
 	isProduction bool
@@ -48,6 +52,10 @@ func NewAuthHandler(store db.Store, tokenService *services.TokenService, logger 
 		logger:       logger,
 		isProduction: env == "production",
 	}
+}
+
+func (h *AuthHandler) SetEmailService(emailService services.EmailService) {
+	h.emailService = emailService
 }
 
 type LoginRequest struct {
@@ -357,11 +365,115 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to register user")
 	}
 
+	if h.emailService != nil {
+		go func(email, name string) {
+			if err := h.emailService.SendWelcomeEmail(context.Background(), email, name); err != nil {
+				if h.logger != nil {
+					h.logger.Warn("Failed to send welcome email", "email", email, "error", err)
+				}
+			}
+		}(user.Email, profile.FullName)
+	}
+
 	return c.JSON(http.StatusCreated, UserResponse{
 		ID:        user.ID.String(),
 		Email:     user.Email,
 		FullName:  profile.FullName,
 		Role:      string(user.Role),
 		CreatedAt: user.CreatedAt.String(),
+	})
+}
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Token       string `json:"token" validate:"required"`
+	NewPassword string `json:"new_password" validate:"required,min=8"`
+}
+
+func (h *AuthHandler) ForgotPassword(c echo.Context) error {
+	var req ForgotPasswordRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	ctx := c.Request().Context()
+	user, err := h.store.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		// Prevent user enumeration attacks by returning 200 OK
+		return c.JSON(http.StatusOK, map[string]string{
+			"message": "If that email address is registered, a password reset link has been sent.",
+		})
+	}
+
+	profile, _ := h.store.GetUserProfile(ctx, user.ID)
+
+	resetToken, err := h.tokenService.GeneratePasswordResetToken(user.ID)
+	if err != nil {
+		if h.logger != nil {
+			h.logger.Error("Failed to generate password reset token", "error", err)
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to generate password reset token")
+	}
+
+	feURL := os.Getenv("FRONTEND_URL")
+	if feURL == "" {
+		feURL = "http://localhost:3000"
+	}
+	feURL = strings.TrimRight(feURL, "/")
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", feURL, resetToken)
+
+	if h.emailService != nil {
+		go func(email, name, link string) {
+			if err := h.emailService.SendPasswordResetEmail(context.Background(), email, name, link); err != nil {
+				if h.logger != nil {
+					h.logger.Warn("Failed to send password reset email", "email", email, "error", err)
+				}
+			}
+		}(user.Email, profile.FullName, resetLink)
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "If that email address is registered, a password reset link has been sent.",
+	})
+}
+
+func (h *AuthHandler) ResetPassword(c echo.Context) error {
+	var req ResetPasswordRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	userID, err := h.tokenService.ValidatePasswordResetToken(req.Token)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid or expired password reset token")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to hash password")
+	}
+
+	ctx := c.Request().Context()
+	_, err = h.store.UpdateUser(ctx, generated.UpdateUserParams{
+		ID:           userID,
+		PasswordHash: sql.NullString{String: string(hashedPassword), Valid: true},
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to update password")
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Password has been successfully reset. You may now log in with your new password.",
 	})
 }

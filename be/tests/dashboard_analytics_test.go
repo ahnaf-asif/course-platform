@@ -37,7 +37,7 @@ func TestAdminDashboardAnalyticsIntegration(t *testing.T) {
 	store := db.NewStore(conn)
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	tokenService := services.NewTokenService(jwtSecret, time.Minute*15, time.Hour*24)
-	server := api.NewServer(store, tokenService, nil, nil, nil, logger)
+	server := api.NewServer(store, tokenService, nil, nil, nil, nil, logger)
 	e := server.GetEcho()
 
 	// 1. Create Admin User

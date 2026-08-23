@@ -9,12 +9,26 @@ import (
 
 const (
 	TypeQuizBulkUpload = "quiz:bulk-upload"
+	TypeSendEmail      = "email:send"
 )
 
 type QuizBulkUploadPayload struct {
 	QuizID   string `json:"quiz_id"`
 	FilePath string `json:"file_path"` // Path in Minio
 	Bucket   string `json:"bucket"`
+}
+
+type SendEmailPayload struct {
+	From        string            `json:"from,omitempty"`
+	To          []string          `json:"to"`
+	Subject     string            `json:"subject"`
+	HTML        string            `json:"html,omitempty"`
+	Text        string            `json:"text,omitempty"`
+	ReplyTo     string            `json:"reply_to,omitempty"`
+	Cc          []string          `json:"cc,omitempty"`
+	Bcc         []string          `json:"bcc,omitempty"`
+	Tags        map[string]string `json:"tags,omitempty"`
+	ScheduledAt string            `json:"scheduled_at,omitempty"`
 }
 
 type TaskService struct {
@@ -78,6 +92,21 @@ func (s *TaskService) EnqueueQuizBulkUpload(quizID, filePath, bucket string) (st
 	info, err := s.client.Enqueue(task)
 	if err != nil {
 		return "", fmt.Errorf("failed to enqueue task: %v", err)
+	}
+
+	return info.ID, nil
+}
+
+func (s *TaskService) EnqueueSendEmail(req SendEmailRequest) (string, error) {
+	payload, err := json.Marshal(SendEmailPayload(req))
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal email payload: %v", err)
+	}
+
+	task := asynq.NewTask(TypeSendEmail, payload)
+	info, err := s.client.Enqueue(task)
+	if err != nil {
+		return "", fmt.Errorf("failed to enqueue email task: %v", err)
 	}
 
 	return info.ID, nil

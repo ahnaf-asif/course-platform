@@ -105,3 +105,61 @@ func TestProcessQuizBulkUpload(t *testing.T) {
 	mockMinio.AssertExpectations(t)
 	mockStore.AssertExpectations(t)
 }
+
+type MockEmailService struct {
+	mock.Mock
+}
+
+func (m *MockEmailService) SendEmail(ctx context.Context, req services.SendEmailRequest) (*services.SendEmailResponse, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*services.SendEmailResponse), args.Error(1)
+}
+
+func (m *MockEmailService) SendWelcomeEmail(ctx context.Context, toEmail, recipientName string) error {
+	args := m.Called(ctx, toEmail, recipientName)
+	return args.Error(0)
+}
+
+func (m *MockEmailService) SendPasswordResetEmail(ctx context.Context, toEmail, recipientName, resetLink string) error {
+	args := m.Called(ctx, toEmail, recipientName, resetLink)
+	return args.Error(0)
+}
+
+func (m *MockEmailService) SendOrderConfirmationEmail(ctx context.Context, toEmail, recipientName, courseTitle, orderID, amount, currency string) error {
+	args := m.Called(ctx, toEmail, recipientName, courseTitle, orderID, amount, currency)
+	return args.Error(0)
+}
+
+func (m *MockEmailService) SendPayoutStatusEmail(ctx context.Context, toEmail, recipientName, status, amount, currency, trxID, adminNote string) error {
+	args := m.Called(ctx, toEmail, recipientName, status, amount, currency, trxID, adminNote)
+	return args.Error(0)
+}
+
+func TestProcessSendEmail(t *testing.T) {
+	mockEmail := new(MockEmailService)
+	worker := NewEmailWorker(mockEmail)
+
+	payload := services.SendEmailPayload{
+		To:      []string{"student@example.com"},
+		Subject: "Test Email",
+		HTML:    "<p>Hello</p>",
+		Text:    "Hello",
+	}
+	payloadBytes, _ := json.Marshal(payload)
+	task := asynq.NewTask(services.TypeSendEmail, payloadBytes)
+
+	mockEmail.On("SendEmail", mock.Anything, services.SendEmailRequest{
+		To:      []string{"student@example.com"},
+		Subject: "Test Email",
+		HTML:    "<p>Hello</p>",
+		Text:    "Hello",
+	}).Return(&services.SendEmailResponse{ID: "email-123"}, nil)
+
+	err := worker.ProcessSendEmail(context.Background(), task)
+	assert.NoError(t, err)
+
+	mockEmail.AssertExpectations(t)
+}

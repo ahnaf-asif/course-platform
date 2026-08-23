@@ -71,4 +71,20 @@ func TestTokenService(t *testing.T) {
 		assert.Equal(t, refreshDuration, s.GetRefreshTokenDuration())
 		assert.Equal(t, int(accessDuration.Seconds()), s.GetAccessTokenDurationSeconds())
 	})
+
+	t.Run("PasswordResetToken_Lifecycle", func(t *testing.T) {
+		userID := uuid.New()
+		tokenStr, err := s.GeneratePasswordResetToken(userID)
+		require.NoError(t, err)
+		require.NotEmpty(t, tokenStr)
+
+		parsedUserID, err := s.ValidatePasswordResetToken(tokenStr)
+		require.NoError(t, err)
+		assert.Equal(t, userID, parsedUserID)
+	})
+
+	t.Run("PasswordResetToken_Invalid", func(t *testing.T) {
+		_, err := s.ValidatePasswordResetToken("invalid-token-string")
+		assert.Error(t, err)
+	})
 }

@@ -88,6 +88,12 @@ Admins can upload large CSV files for quiz creation.
 - **Worker**: Parses CSV, validates questions, and bulk-inserts into Postgres.
 - **Status**: Tracked via the same task polling mechanism as videos.
 
+### 📧 Transactional Email System (Resend)
+The platform uses **Resend** for asynchronous, reliable transactional emailing:
+- **Events Supported**: Welcome onboarding, Password resets, Enrollment receipts, and Affiliate payout notifications.
+- **Simulation Mode**: Automatically runs locally without external network failures when using placeholder API keys.
+- **Live Template Studio**: Interactive visual preview studio at `http://localhost:8080/api/v1/dev/emails`.
+
 ---
 
 ## 📖 Detailed Documentation

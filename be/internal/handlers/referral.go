@@ -20,12 +20,14 @@ import (
 	"github.com/shafins-course/backend/internal/db"
 	"github.com/shafins-course/backend/internal/db/generated"
 	internalMiddleware "github.com/shafins-course/backend/internal/middleware"
+	"github.com/shafins-course/backend/internal/services"
 )
 
 type ReferralHandler struct {
-	store    db.Store
-	logger   *slog.Logger
-	validate *validator.Validate
+	store        db.Store
+	emailService services.EmailService
+	logger       *slog.Logger
+	validate     *validator.Validate
 }
 
 func NewReferralHandler(store db.Store, logger *slog.Logger) *ReferralHandler {
@@ -34,6 +36,10 @@ func NewReferralHandler(store db.Store, logger *slog.Logger) *ReferralHandler {
 		logger:   logger,
 		validate: validator.New(),
 	}
+}
+
+func (h *ReferralHandler) SetEmailService(emailService services.EmailService) {
+	h.emailService = emailService
 }
 
 const referralCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -681,6 +687,25 @@ func (h *ReferralHandler) AdminUpdatePayoutStatus(c echo.Context) error {
 	if updated.ProcessedAt.Valid {
 		f := updated.ProcessedAt.Time.Format(time.RFC3339)
 		procAt = &f
+	}
+
+	if h.emailService != nil {
+		txRefVal := ""
+		if finalTxRef != nil {
+			txRefVal = *finalTxRef
+		}
+		noteVal := ""
+		if finalAdminNote != nil {
+			noteVal = *finalAdminNote
+		}
+		go func(userID uuid.UUID, status, amount, currency, trxID, note string) {
+			ctx := context.Background()
+			user, err := h.store.GetUserByID(ctx, userID)
+			if err != nil {
+				return
+			}
+			_ = h.emailService.SendPayoutStatusEmail(ctx, user.Email, user.Email, status, amount, currency, trxID, note)
+		}(updated.UserID, string(updated.Status), strconv.FormatFloat(amt, 'f', 2, 64), updated.Currency, txRefVal, noteVal)
 	}
 
 	return c.JSON(http.StatusOK, PayoutItem{

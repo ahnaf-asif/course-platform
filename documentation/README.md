@@ -10,6 +10,7 @@ This directory contains system architecture plans, security specifications, depl
 - **[Referral & bKash Payout System Roadmap](./referral_system_roadmap.md)**: Full architecture, database schema, 6-character code rules, and payout approval lifecycle.
 - **[Payment System & SSLCommerz Documentation](./payment_system_documentation.md)**: Payment gateway integration, webhook IPNs, and order verification.
 - **[Course Ordering & Hierarchy Plan](./course_ordering_implementation_plan.md)**: Drag-and-drop syllabus ordering and recursive tree structures.
+- **[Email Notification & Resend Integration Guide](../be/README.md#%EF%B8%8F-email-system-resend)**: Transactional templates, Asynq background delivery, and Template Studio.
 - **[Feature TODO Checklist](./todo.md)**: Implementation task list and backlog.
 
 ### 2. 🛡️ Security & Content Protection

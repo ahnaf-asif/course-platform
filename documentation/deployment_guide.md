@@ -97,6 +97,11 @@ FRONTEND_URL=https://yourdomain.com
 SSLCOMMERZ_STORE_ID=your_live_store_id
 SSLCOMMERZ_STORE_PASS=your_live_store_password
 SSLCOMMERZ_IS_SANDBOX=false
+
+# Resend Email Configuration
+RESEND_API_KEY=re_your_live_resend_api_key
+RESEND_FROM_EMAIL=notifications@yourdomain.com
+RESEND_FROM_NAME=Course Platform
 ```
 
 #### 2. Frontend (`/fe/.env.production`)

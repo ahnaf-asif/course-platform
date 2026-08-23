@@ -114,12 +114,16 @@ func main() {
 	}
 	tokenService := services.NewTokenService(jwtSecret, 15*time.Minute, 7*24*time.Hour)
 
+	// Resend Email Service initialization
+	emailService := services.NewResendEmailServiceFromEnv()
+
 	// Background Worker initialization
 	quizWorker := worker.NewQuizWorker(store, minioService)
-	backgroundWorker := worker.NewWorker(redisURL, quizWorker)
+	emailWorker := worker.NewEmailWorker(emailService)
+	backgroundWorker := worker.NewWorker(redisURL, quizWorker, emailWorker)
 
 	// Server initialization
-	server := api.NewServer(store, tokenService, cacheService, minioService, taskService, logger)
+	server := api.NewServer(store, tokenService, cacheService, minioService, taskService, emailService, logger)
 
 	port := os.Getenv("PORT")
 	if port == "" {

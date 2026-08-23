@@ -4,9 +4,12 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/shafins-course/backend/internal/db/generated"
 )
 
@@ -72,4 +75,37 @@ func (s *TokenService) GetRefreshTokenDuration() time.Duration {
 
 func (s *TokenService) GetAccessTokenDurationSeconds() int {
 	return int(s.accessTokenDuration.Seconds())
+}
+
+// GeneratePasswordResetToken generates a secure 1-hour signed JWT for resetting a password.
+func (s *TokenService) GeneratePasswordResetToken(userID uuid.UUID) (string, error) {
+	claims := jwt.RegisteredClaims{
+		Subject:   userID.String(),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		Issuer:    "eduverse-auth-reset",
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(s.jwtSecret)
+}
+
+// ValidatePasswordResetToken validates a password reset token and returns the associated user ID.
+func (s *TokenService) ValidatePasswordResetToken(tokenStr string) (uuid.UUID, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return s.jwtSecret, nil
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	claims, ok := token.Claims.(*jwt.RegisteredClaims)
+	if !ok || !token.Valid || claims.Issuer != "eduverse-auth-reset" {
+		return uuid.Nil, errors.New("invalid or expired reset token")
+	}
+
+	return uuid.Parse(claims.Subject)
 }

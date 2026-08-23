@@ -158,3 +158,28 @@ func (w *QuizWorker) ProcessQuizBulkUpload(ctx context.Context, t *asynq.Task) e
 	log.Printf("Successfully processed bulk upload for quiz %s\n", payload.QuizID)
 	return nil
 }
+
+type EmailWorker struct {
+	emailService services.EmailService
+}
+
+func NewEmailWorker(emailService services.EmailService) *EmailWorker {
+	return &EmailWorker{
+		emailService: emailService,
+	}
+}
+
+func (w *EmailWorker) ProcessSendEmail(ctx context.Context, t *asynq.Task) error {
+	var payload services.SendEmailPayload
+	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal email payload: %v", err)
+	}
+
+	_, err := w.emailService.SendEmail(ctx, services.SendEmailRequest(payload))
+	if err != nil {
+		return fmt.Errorf("failed to process send email task: %w", err)
+	}
+
+	log.Printf("Successfully processed background email to %v with subject %q\n", payload.To, payload.Subject)
+	return nil
+}

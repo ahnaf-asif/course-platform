@@ -10,6 +10,7 @@ import {
   Button,
   Stack,
   Anchor,
+  Group,
 } from '@mantine/core';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
@@ -95,7 +96,14 @@ export default function LoginPage() {
           />
 
           <PasswordInput
-            label={<Text component="span" size="sm" fw={600} c="gray.3">পাসওয়ার্ড</Text>}
+            label={
+              <Group justify="space-between" align="center" style={{ width: '100%' }}>
+                <Text component="span" size="sm" fw={600} c="gray.3">পাসওয়ার্ড</Text>
+                <Anchor component={Link} href="/forgot-password" size="xs" style={{ color: '#93c5fd' }}>
+                  পাসওয়ার্ড ভুলে গেছেন?
+                </Anchor>
+              </Group>
+            }
             placeholder="আপনার পাসওয়ার্ড লিখুন"
             required
             styles={{

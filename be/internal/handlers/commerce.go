@@ -23,6 +23,7 @@ import (
 type CommerceHandler struct {
 	store             db.Store
 	sslcommerzService services.PaymentGateway
+	emailService      services.EmailService
 	validate          *validator.Validate
 }
 
@@ -32,6 +33,29 @@ func NewCommerceHandler(store db.Store, sslService services.PaymentGateway) *Com
 		sslcommerzService: sslService,
 		validate:          validator.New(),
 	}
+}
+
+func (h *CommerceHandler) SetEmailService(emailService services.EmailService) {
+	h.emailService = emailService
+}
+
+func (h *CommerceHandler) sendOrderConfirmationEmailAsync(order generated.Order) {
+	if h.emailService == nil {
+		return
+	}
+	go func() {
+		ctx := context.Background()
+		user, err := h.store.GetUserByID(ctx, order.UserID)
+		if err != nil {
+			return
+		}
+		course, err := h.store.GetCourse(ctx, order.NodeID)
+		courseTitle := "Course"
+		if err == nil && course.Title != "" {
+			courseTitle = course.Title
+		}
+		_ = h.emailService.SendOrderConfirmationEmail(ctx, user.Email, user.Email, courseTitle, order.ID.String(), order.AmountPaid, order.Currency)
+	}()
 }
 
 type CheckoutRequest struct {
@@ -201,6 +225,7 @@ func (h *CommerceHandler) Checkout(c echo.Context) error {
 		if txErr != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "Checkout transaction failed")
 		}
+		h.sendOrderConfirmationEmailAsync(couponOrder)
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"enrolled": true,
 			"order_id": couponOrder.ID.String(),
@@ -303,6 +328,7 @@ func (h *CommerceHandler) HandleSuccess(c echo.Context) error {
 		return c.Redirect(http.StatusSeeOther, feURL+"/payment/fail?tran_id="+tranID+"&error=currency_mismatch")
 	}
 
+	var completedOrder generated.Order
 	// Update order to Completed
 	err = h.store.WithTx(ctx, func(q generated.Querier) error {
 		o, err := q.GetOrderByTranID(ctx, orderUUID)
@@ -310,10 +336,11 @@ func (h *CommerceHandler) HandleSuccess(c echo.Context) error {
 			return err
 		}
 		if o.Status == generated.OrderStatusCOMPLETED {
+			completedOrder = o
 			return nil // Already updated
 		}
 
-		_, err = q.UpdateOrderReferenceAndStatus(ctx, generated.UpdateOrderReferenceAndStatusParams{
+		updatedOrder, err := q.UpdateOrderReferenceAndStatus(ctx, generated.UpdateOrderReferenceAndStatusParams{
 			ID:                orderUUID,
 			Status:            generated.OrderStatusCOMPLETED,
 			ProviderReference: valID,
@@ -321,6 +348,7 @@ func (h *CommerceHandler) HandleSuccess(c echo.Context) error {
 		if err != nil {
 			return err
 		}
+		completedOrder = updatedOrder
 
 		_, _ = q.CreateEnrollment(ctx, generated.CreateEnrollmentParams{
 			UserID: o.UserID,
@@ -338,6 +366,8 @@ func (h *CommerceHandler) HandleSuccess(c echo.Context) error {
 	if err != nil {
 		return c.Redirect(http.StatusSeeOther, feURL+"/payment/fail?tran_id="+tranID+"&error=db_update_failed")
 	}
+
+	h.sendOrderConfirmationEmailAsync(completedOrder)
 
 	return c.Redirect(http.StatusSeeOther, feURL+"/payment/success?tran_id="+tranID)
 }
@@ -417,16 +447,18 @@ func (h *CommerceHandler) HandleIPN(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	}
 
+	var completedOrder generated.Order
 	_ = h.store.WithTx(ctx, func(q generated.Querier) error {
 		o, err := q.GetOrderByTranID(ctx, orderUUID)
 		if err != nil {
 			return err
 		}
 		if o.Status == generated.OrderStatusCOMPLETED {
+			completedOrder = o
 			return nil
 		}
 
-		_, err = q.UpdateOrderReferenceAndStatus(ctx, generated.UpdateOrderReferenceAndStatusParams{
+		updatedOrder, err := q.UpdateOrderReferenceAndStatus(ctx, generated.UpdateOrderReferenceAndStatusParams{
 			ID:                orderUUID,
 			Status:            generated.OrderStatusCOMPLETED,
 			ProviderReference: valID,
@@ -434,6 +466,7 @@ func (h *CommerceHandler) HandleIPN(c echo.Context) error {
 		if err != nil {
 			return err
 		}
+		completedOrder = updatedOrder
 
 		_, _ = q.CreateEnrollment(ctx, generated.CreateEnrollmentParams{
 			UserID: o.UserID,
@@ -447,6 +480,8 @@ func (h *CommerceHandler) HandleIPN(c echo.Context) error {
 		h.attributeReferralCommission(ctx, q, o)
 		return nil
 	})
+
+	h.sendOrderConfirmationEmailAsync(completedOrder)
 
 	return c.NoContent(http.StatusOK)
 }

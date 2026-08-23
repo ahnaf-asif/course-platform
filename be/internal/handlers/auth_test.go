@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -217,4 +218,122 @@ func TestAuthHandler_Refresh(t *testing.T) {
 
 		mockStore.AssertExpectations(t)
 	})
+}
+
+func TestAuthHandler_Register_SendsWelcomeEmail(t *testing.T) {
+	e := echo.New()
+	mockStore := new(MockStore)
+	mockEmail := new(MockEmailService)
+	tokenService := services.NewTokenService("secret", time.Minute, time.Hour)
+	h := NewAuthHandler(mockStore, tokenService, nil)
+	h.SetEmailService(mockEmail)
+
+	userID := uuid.New()
+	email := "newstudent@example.com"
+	fullName := "New Student"
+
+	body := `{"email":"newstudent@example.com","password":"password123","full_name":"New Student"}`
+	req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	mockStore.On("CreateUser", mock.Anything, mock.MatchedBy(func(p generated.CreateUserParams) bool {
+		return p.Email == email
+	})).Return(generated.User{
+		ID:        userID,
+		Email:     email,
+		Role:      generated.UserRoleUSER,
+		CreatedAt: time.Now(),
+	}, nil)
+
+	mockStore.On("CreateUserProfile", mock.Anything, mock.MatchedBy(func(p generated.CreateUserProfileParams) bool {
+		return p.UserID == userID && p.FullName == fullName
+	})).Return(generated.UserProfile{
+		UserID:   userID,
+		FullName: fullName,
+	}, nil)
+
+	mockEmail.On("SendWelcomeEmail", mock.Anything, email, fullName).Return(nil)
+
+	err := h.Register(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+
+	// Allow goroutine time to execute
+	time.Sleep(20 * time.Millisecond)
+
+	mockEmail.AssertExpectations(t)
+	mockStore.AssertExpectations(t)
+}
+
+func TestAuthHandler_ForgotPassword(t *testing.T) {
+	e := echo.New()
+	mockStore := new(MockStore)
+	mockEmail := new(MockEmailService)
+	tokenService := services.NewTokenService("secret", time.Minute, time.Hour)
+	h := NewAuthHandler(mockStore, tokenService, nil)
+	h.SetEmailService(mockEmail)
+
+	userID := uuid.New()
+	email := "student.forgot@example.com"
+	fullName := "Forgot Student"
+
+	mockStore.On("GetUserByEmail", mock.Anything, email).Return(generated.User{
+		ID:    userID,
+		Email: email,
+		Role:  generated.UserRoleUSER,
+	}, nil)
+
+	mockStore.On("GetUserProfile", mock.Anything, userID).Return(generated.UserProfile{
+		UserID:   userID,
+		FullName: fullName,
+	}, nil)
+
+	mockEmail.On("SendPasswordResetEmail", mock.Anything, email, fullName, mock.Anything).Return(nil)
+
+	body := `{"email":"student.forgot@example.com"}`
+	req := httptest.NewRequest(http.MethodPost, "/forgot-password", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err := h.ForgotPassword(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	time.Sleep(20 * time.Millisecond)
+	mockEmail.AssertExpectations(t)
+	mockStore.AssertExpectations(t)
+}
+
+func TestAuthHandler_ResetPassword(t *testing.T) {
+	e := echo.New()
+	mockStore := new(MockStore)
+	tokenService := services.NewTokenService("secret", time.Minute, time.Hour)
+	h := NewAuthHandler(mockStore, tokenService, nil)
+
+	userID := uuid.New()
+	resetToken, err := tokenService.GeneratePasswordResetToken(userID)
+	assert.NoError(t, err)
+
+	mockStore.On("UpdateUser", mock.Anything, mock.MatchedBy(func(p generated.UpdateUserParams) bool {
+		return p.ID == userID && p.PasswordHash.Valid
+	})).Return(generated.User{
+		ID:    userID,
+		Email: "student@example.com",
+	}, nil)
+
+	body := `{"token":"` + resetToken + `","new_password":"newpassword123"}`
+	req := httptest.NewRequest(http.MethodPost, "/reset-password", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err = h.ResetPassword(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Password has been successfully reset")
+
+	mockStore.AssertExpectations(t)
 }
