@@ -49,7 +49,7 @@ export default function FeaturesSection() {
   ];
 
   return (
-    <Box py={{ base: '50px', sm: '70px', md: '100px' }} style={{ backgroundColor: '#fafbfc', borderTop: '1px solid #f1f3f5', borderBottom: '1px solid #f1f3f5' }}>
+    <Box py={{ base: '50px', sm: '70px', md: '100px' }} style={{ backgroundColor: '#f1f5f9', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
       <Container size="xl">
         <Grid gap={{ base: 'lg', md: 'xl' }} align="stretch">
           {/* Left Column (Asymmetric Heading) */}
