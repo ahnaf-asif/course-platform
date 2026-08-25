@@ -41,6 +41,10 @@ paths:
     $ref: './paths/admin_curriculum.yaml#/~1admin~1lessons'
   /admin/lessons/{id}:
     $ref: './paths/admin_curriculum.yaml#/~1admin~1lessons~1{id}'
+  /admin/model-tests:
+    $ref: './paths/admin_model_tests.yaml#/~1admin~1model-tests'
+  /admin/model-tests/{id}:
+    $ref: './paths/admin_model_tests.yaml#/~1admin~1model-tests~1{id}'
   /admin/quizzes:
     $ref: './paths/admin_assessment.yaml#/~1admin~1quizzes'
   /admin/quizzes/{id}:
@@ -117,6 +121,8 @@ paths:
     $ref: './paths/student_quiz.yaml#/~1quizzes~1{id}~1questions'
   /quizzes/{id}/attempts:
     $ref: './paths/student_quiz.yaml#/~1quizzes~1{id}~1attempts'
+  /quizzes/{id}/leaderboard:
+    $ref: './paths/student_quiz.yaml#/~1quizzes~1{id}~1leaderboard'
   /attempts/{id}:
     $ref: './paths/student_quiz.yaml#/~1attempts~1{id}'
   /nodes/{id}/progress:
@@ -174,6 +180,14 @@ components:
       $ref: './components/schemas/curriculum.yaml#/CreateLessonRequest'
     UpdateLessonRequest:
       $ref: './components/schemas/curriculum.yaml#/UpdateLessonRequest'
+    ModelTestResponse:
+      $ref: './components/schemas/curriculum.yaml#/ModelTestResponse'
+    CreateModelTestRequest:
+      $ref: './components/schemas/curriculum.yaml#/CreateModelTestRequest'
+    UpdateModelTestRequest:
+      $ref: './components/schemas/curriculum.yaml#/UpdateModelTestRequest'
+    ModelTestSummaryResponse:
+      $ref: './components/schemas/curriculum.yaml#/ModelTestSummaryResponse'
     QuizResponse:
       $ref: './components/schemas/assessment.yaml#/QuizResponse'
     CreateQuizRequest:
@@ -200,6 +214,10 @@ components:
       $ref: './components/schemas/assessment.yaml#/SubmitQuizResponse'
     StudentQuizAttemptSummary:
       $ref: './components/schemas/assessment.yaml#/StudentQuizAttemptSummary'
+    LeaderboardEntryResponse:
+      $ref: './components/schemas/assessment.yaml#/LeaderboardEntryResponse'
+    LeaderboardResponse:
+      $ref: './components/schemas/assessment.yaml#/LeaderboardResponse'
     AttachQuizRequest:
       $ref: './components/schemas/node_quiz.yaml#/AttachQuizRequest'
     TagResponse:

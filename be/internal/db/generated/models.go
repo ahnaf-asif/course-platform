@@ -58,10 +58,11 @@ func (ns NullDiscountType) Value() (driver.Value, error) {
 type NodeType string
 
 const (
-	NodeTypeCOURSE  NodeType = "COURSE"
-	NodeTypeSUBJECT NodeType = "SUBJECT"
-	NodeTypeCHAPTER NodeType = "CHAPTER"
-	NodeTypeLESSON  NodeType = "LESSON"
+	NodeTypeCOURSE    NodeType = "COURSE"
+	NodeTypeSUBJECT   NodeType = "SUBJECT"
+	NodeTypeCHAPTER   NodeType = "CHAPTER"
+	NodeTypeLESSON    NodeType = "LESSON"
+	NodeTypeMODELTEST NodeType = "MODEL_TEST"
 )
 
 func (e *NodeType) Scan(src interface{}) error {
@@ -461,6 +462,18 @@ type Lesson struct {
 	SequenceOrder int32          `json:"sequence_order"`
 }
 
+type ModelTest struct {
+	NodeID              uuid.UUID `json:"node_id"`
+	Title               string    `json:"title"`
+	Description         string    `json:"description"`
+	DurationMinutes     int32     `json:"duration_minutes"`
+	TotalMarks          string    `json:"total_marks"`
+	PassMarks           string    `json:"pass_marks"`
+	NegativeMarkingRate string    `json:"negative_marking_rate"`
+	SequenceOrder       int32     `json:"sequence_order"`
+	CreatedAt           time.Time `json:"created_at"`
+}
+
 type Node struct {
 	ID        uuid.UUID     `json:"id"`
 	ParentID  uuid.NullUUID `json:"parent_id"`
@@ -537,12 +550,19 @@ type Quiz struct {
 }
 
 type QuizAttempt struct {
-	ID          uuid.UUID `json:"id"`
-	UserID      uuid.UUID `json:"user_id"`
-	QuizID      uuid.UUID `json:"quiz_id"`
-	Score       int32     `json:"score"`
-	IsPassed    bool      `json:"is_passed"`
-	CompletedAt time.Time `json:"completed_at"`
+	ID                 uuid.UUID `json:"id"`
+	UserID             uuid.UUID `json:"user_id"`
+	QuizID             uuid.UUID `json:"quiz_id"`
+	Score              string    `json:"score"`
+	IsPassed           bool      `json:"is_passed"`
+	CompletedAt        time.Time `json:"completed_at"`
+	TimeSpentSeconds   int32     `json:"time_spent_seconds"`
+	TotalQuestions     int32     `json:"total_questions"`
+	CorrectCount       int32     `json:"correct_count"`
+	WrongCount         int32     `json:"wrong_count"`
+	UnansweredCount    int32     `json:"unanswered_count"`
+	TotalNegativeMarks string    `json:"total_negative_marks"`
+	IsFirstAttempt     bool      `json:"is_first_attempt"`
 }
 
 type QuizAttemptAnswer struct {

@@ -325,6 +325,129 @@ func (m *MockStore) ListProgressByUser(ctx context.Context, userID uuid.UUID) ([
 	return args.Get(0).([]generated.Progress), args.Error(1)
 }
 
+func (m *MockStore) CreateModelTest(ctx context.Context, arg generated.CreateModelTestParams) (generated.ModelTest, error) {
+	args := m.Called(ctx, arg)
+	if args.Get(0) == nil {
+		return generated.ModelTest{}, args.Error(1)
+	}
+	return args.Get(0).(generated.ModelTest), args.Error(1)
+}
+
+func (m *MockStore) GetModelTest(ctx context.Context, id uuid.UUID) (generated.GetModelTestRow, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return generated.GetModelTestRow{}, args.Error(1)
+	}
+	return args.Get(0).(generated.GetModelTestRow), args.Error(1)
+}
+
+func (m *MockStore) GetModelTestByQuizID(ctx context.Context, quizID uuid.UUID) (generated.ModelTest, error) {
+	args := m.Called(ctx, quizID)
+	if args.Get(0) == nil {
+		return generated.ModelTest{}, args.Error(1)
+	}
+	return args.Get(0).(generated.ModelTest), args.Error(1)
+}
+
+func (m *MockStore) UpdateModelTest(ctx context.Context, arg generated.UpdateModelTestParams) (generated.ModelTest, error) {
+	args := m.Called(ctx, arg)
+	if args.Get(0) == nil {
+		return generated.ModelTest{}, args.Error(1)
+	}
+	return args.Get(0).(generated.ModelTest), args.Error(1)
+}
+
+func (m *MockStore) DeleteModelTest(ctx context.Context, id uuid.UUID) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *MockStore) GetQuizLeaderboard(ctx context.Context, quizID uuid.UUID) ([]generated.GetQuizLeaderboardRow, error) {
+	args := m.Called(ctx, quizID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]generated.GetQuizLeaderboardRow), args.Error(1)
+}
+
+func (m *MockStore) GetUserRankInQuiz(ctx context.Context, arg generated.GetUserRankInQuizParams) (generated.GetUserRankInQuizRow, error) {
+	args := m.Called(ctx, arg)
+	if args.Get(0) == nil {
+		return generated.GetUserRankInQuizRow{}, args.Error(1)
+	}
+	return args.Get(0).(generated.GetUserRankInQuizRow), args.Error(1)
+}
+
+func (m *MockStore) CountQuizLeaderboardParticipants(ctx context.Context, quizID uuid.UUID) (int64, error) {
+	args := m.Called(ctx, quizID)
+	if len(args) == 0 {
+		return 0, nil
+	}
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockStore) CountUserAttemptsForQuiz(ctx context.Context, arg generated.CountUserAttemptsForQuizParams) (int64, error) {
+	args := m.Called(ctx, arg)
+	if len(args) == 0 {
+		return 0, nil
+	}
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockStore) CreateNode(ctx context.Context, arg generated.CreateNodeParams) (generated.Node, error) {
+	args := m.Called(ctx, arg)
+	if args.Get(0) == nil {
+		return generated.Node{}, args.Error(1)
+	}
+	return args.Get(0).(generated.Node), args.Error(1)
+}
+
+func (m *MockStore) CreateQuiz(ctx context.Context, arg generated.CreateQuizParams) (generated.Quiz, error) {
+	args := m.Called(ctx, arg)
+	if args.Get(0) == nil {
+		return generated.Quiz{}, args.Error(1)
+	}
+	return args.Get(0).(generated.Quiz), args.Error(1)
+}
+
+func (m *MockStore) AttachQuizToNode(ctx context.Context, arg generated.AttachQuizToNodeParams) error {
+	args := m.Called(ctx, arg)
+	return args.Error(0)
+}
+
+func (m *MockStore) GetQuizzesByNode(ctx context.Context, nodeID uuid.UUID) ([]generated.Quiz, error) {
+	args := m.Called(ctx, nodeID)
+	if len(args) == 0 {
+		return nil, nil
+	}
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]generated.Quiz), args.Error(1)
+}
+
+func (m *MockStore) GetNodesByQuiz(ctx context.Context, quizID uuid.UUID) ([]uuid.UUID, error) {
+	args := m.Called(ctx, quizID)
+	if len(args) == 0 {
+		return nil, nil
+	}
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]uuid.UUID), args.Error(1)
+}
+
+func (m *MockStore) GetNodeAncestors(ctx context.Context, id uuid.UUID) ([]generated.GetNodeAncestorsRow, error) {
+	args := m.Called(ctx, id)
+	if len(args) == 0 {
+		return nil, nil
+	}
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]generated.GetNodeAncestorsRow), args.Error(1)
+}
+
 // MockEmailService for handler tests
 type MockEmailService struct {
 	mock.Mock

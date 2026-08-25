@@ -193,6 +193,68 @@ WITH RECURSIVE tree AS (
 SELECT id, parent_id, node_type, level FROM tree
 ORDER BY level, id;
 
+-- name: GetNodeAncestors :many
+WITH RECURSIVE ancestors AS (
+    -- Anchor: Start from the given node
+    SELECT n.id, n.parent_id, n.node_type
+    FROM nodes n
+    WHERE n.id = $1
+    
+    UNION ALL
+    
+    -- Recursive step: Traverse up to parent
+    SELECT n.id, n.parent_id, n.node_type
+    FROM nodes n
+    JOIN ancestors a ON n.id = a.parent_id
+)
+SELECT id, parent_id, node_type FROM ancestors;
+
+-- Model Tests
+-- name: CreateModelTest :one
+INSERT INTO model_tests (
+    node_id,
+    title,
+    description,
+    duration_minutes,
+    total_marks,
+    pass_marks,
+    negative_marking_rate,
+    sequence_order
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8
+)
+RETURNING *;
+
+-- name: GetModelTest :one
+SELECT n.id, n.parent_id, n.node_type, n.created_at,
+       mt.title, mt.description, mt.duration_minutes, mt.total_marks,
+       mt.pass_marks, mt.negative_marking_rate, mt.sequence_order
+FROM nodes n
+JOIN model_tests mt ON n.id = mt.node_id
+WHERE n.id = $1 LIMIT 1;
+
+-- name: GetModelTestByQuizID :one
+SELECT mt.* 
+FROM model_tests mt
+JOIN node_quiz nq ON mt.node_id = nq.node_id
+WHERE nq.quiz_id = $1 LIMIT 1;
+
+-- name: UpdateModelTest :one
+UPDATE model_tests
+SET
+    title = COALESCE(sqlc.narg('title'), title),
+    description = COALESCE(sqlc.narg('description'), description),
+    duration_minutes = COALESCE(sqlc.narg('duration_minutes'), duration_minutes),
+    total_marks = COALESCE(sqlc.narg('total_marks'), total_marks),
+    pass_marks = COALESCE(sqlc.narg('pass_marks'), pass_marks),
+    negative_marking_rate = COALESCE(sqlc.narg('negative_marking_rate'), negative_marking_rate),
+    sequence_order = COALESCE(sqlc.narg('sequence_order'), sequence_order)
+WHERE node_id = $1
+RETURNING *;
+
+-- name: DeleteModelTest :exec
+DELETE FROM nodes WHERE id = $1;
+
 -- name: GetCourseTreeHydrated :many
 WITH RECURSIVE tree AS (
     -- Anchor
@@ -214,13 +276,17 @@ SELECT
     ch.title as chapter_title, ch.sequence_order as chapter_order,
     l.title as lesson_title, l.sequence_order as lesson_order,
     l.video_url as lesson_video_url, l.text_content as lesson_text_content,
+    mt.title as model_test_title, mt.duration_minutes as model_test_duration,
+    mt.total_marks as model_test_total_marks, mt.pass_marks as model_test_pass_marks,
+    mt.negative_marking_rate as model_test_negative_mark, mt.sequence_order as model_test_order,
     EXISTS (SELECT 1 FROM node_quiz nq WHERE nq.node_id = t.id) as has_quizzes
 FROM tree t
 LEFT JOIN courses c ON t.id = c.node_id
 LEFT JOIN subjects s ON t.id = s.node_id
 LEFT JOIN chapters ch ON t.id = ch.node_id
 LEFT JOIN lessons l ON t.id = l.node_id
-ORDER BY t.level, COALESCE(s.sequence_order, ch.sequence_order, l.sequence_order, 0);
+LEFT JOIN model_tests mt ON t.id = mt.node_id
+ORDER BY t.level, COALESCE(s.sequence_order, ch.sequence_order, l.sequence_order, mt.sequence_order, 0);
 
 -- name: GetCourseTreeHydratedBySlug :many
 WITH RECURSIVE tree AS (
@@ -244,13 +310,17 @@ SELECT
     ch.title as chapter_title, ch.sequence_order as chapter_order,
     l.title as lesson_title, l.sequence_order as lesson_order,
     l.video_url as lesson_video_url, l.text_content as lesson_text_content,
+    mt.title as model_test_title, mt.duration_minutes as model_test_duration,
+    mt.total_marks as model_test_total_marks, mt.pass_marks as model_test_pass_marks,
+    mt.negative_marking_rate as model_test_negative_mark, mt.sequence_order as model_test_order,
     EXISTS (SELECT 1 FROM node_quiz nq WHERE nq.node_id = t.id) as has_quizzes
 FROM tree t
 LEFT JOIN courses c ON t.id = c.node_id
 LEFT JOIN subjects s ON t.id = s.node_id
 LEFT JOIN chapters ch ON t.id = ch.node_id
 LEFT JOIN lessons l ON t.id = l.node_id
-ORDER BY t.level, COALESCE(s.sequence_order, ch.sequence_order, l.sequence_order, 0);
+LEFT JOIN model_tests mt ON t.id = mt.node_id
+ORDER BY t.level, COALESCE(s.sequence_order, ch.sequence_order, l.sequence_order, mt.sequence_order, 0);
 
 -- Prerequisites
 -- name: AddPrerequisite :exec

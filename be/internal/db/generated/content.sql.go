@@ -140,6 +140,60 @@ func (q *Queries) CreateLesson(ctx context.Context, arg CreateLessonParams) (Les
 	return i, err
 }
 
+const createModelTest = `-- name: CreateModelTest :one
+INSERT INTO model_tests (
+    node_id,
+    title,
+    description,
+    duration_minutes,
+    total_marks,
+    pass_marks,
+    negative_marking_rate,
+    sequence_order
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8
+)
+RETURNING node_id, title, description, duration_minutes, total_marks, pass_marks, negative_marking_rate, sequence_order, created_at
+`
+
+type CreateModelTestParams struct {
+	NodeID              uuid.UUID `json:"node_id"`
+	Title               string    `json:"title"`
+	Description         string    `json:"description"`
+	DurationMinutes     int32     `json:"duration_minutes"`
+	TotalMarks          string    `json:"total_marks"`
+	PassMarks           string    `json:"pass_marks"`
+	NegativeMarkingRate string    `json:"negative_marking_rate"`
+	SequenceOrder       int32     `json:"sequence_order"`
+}
+
+// Model Tests
+func (q *Queries) CreateModelTest(ctx context.Context, arg CreateModelTestParams) (ModelTest, error) {
+	row := q.db.QueryRowContext(ctx, createModelTest,
+		arg.NodeID,
+		arg.Title,
+		arg.Description,
+		arg.DurationMinutes,
+		arg.TotalMarks,
+		arg.PassMarks,
+		arg.NegativeMarkingRate,
+		arg.SequenceOrder,
+	)
+	var i ModelTest
+	err := row.Scan(
+		&i.NodeID,
+		&i.Title,
+		&i.Description,
+		&i.DurationMinutes,
+		&i.TotalMarks,
+		&i.PassMarks,
+		&i.NegativeMarkingRate,
+		&i.SequenceOrder,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createNode = `-- name: CreateNode :one
 INSERT INTO nodes (
     parent_id,
@@ -217,6 +271,15 @@ DELETE FROM nodes WHERE id = $1
 
 func (q *Queries) DeleteLesson(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteLesson, id)
+	return err
+}
+
+const deleteModelTest = `-- name: DeleteModelTest :exec
+DELETE FROM nodes WHERE id = $1
+`
+
+func (q *Queries) DeleteModelTest(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteModelTest, id)
 	return err
 }
 
@@ -453,30 +516,40 @@ SELECT
     ch.title as chapter_title, ch.sequence_order as chapter_order,
     l.title as lesson_title, l.sequence_order as lesson_order,
     l.video_url as lesson_video_url, l.text_content as lesson_text_content,
+    mt.title as model_test_title, mt.duration_minutes as model_test_duration,
+    mt.total_marks as model_test_total_marks, mt.pass_marks as model_test_pass_marks,
+    mt.negative_marking_rate as model_test_negative_mark, mt.sequence_order as model_test_order,
     EXISTS (SELECT 1 FROM node_quiz nq WHERE nq.node_id = t.id) as has_quizzes
 FROM tree t
 LEFT JOIN courses c ON t.id = c.node_id
 LEFT JOIN subjects s ON t.id = s.node_id
 LEFT JOIN chapters ch ON t.id = ch.node_id
 LEFT JOIN lessons l ON t.id = l.node_id
-ORDER BY t.level, COALESCE(s.sequence_order, ch.sequence_order, l.sequence_order, 0)
+LEFT JOIN model_tests mt ON t.id = mt.node_id
+ORDER BY t.level, COALESCE(s.sequence_order, ch.sequence_order, l.sequence_order, mt.sequence_order, 0)
 `
 
 type GetCourseTreeHydratedRow struct {
-	ID                uuid.UUID      `json:"id"`
-	ParentID          uuid.NullUUID  `json:"parent_id"`
-	NodeType          NodeType       `json:"node_type"`
-	Level             int32          `json:"level"`
-	CourseTitle       sql.NullString `json:"course_title"`
-	SubjectTitle      sql.NullString `json:"subject_title"`
-	SubjectOrder      sql.NullInt32  `json:"subject_order"`
-	ChapterTitle      sql.NullString `json:"chapter_title"`
-	ChapterOrder      sql.NullInt32  `json:"chapter_order"`
-	LessonTitle       sql.NullString `json:"lesson_title"`
-	LessonOrder       sql.NullInt32  `json:"lesson_order"`
-	LessonVideoUrl    sql.NullString `json:"lesson_video_url"`
-	LessonTextContent sql.NullString `json:"lesson_text_content"`
-	HasQuizzes        bool           `json:"has_quizzes"`
+	ID                    uuid.UUID      `json:"id"`
+	ParentID              uuid.NullUUID  `json:"parent_id"`
+	NodeType              NodeType       `json:"node_type"`
+	Level                 int32          `json:"level"`
+	CourseTitle           sql.NullString `json:"course_title"`
+	SubjectTitle          sql.NullString `json:"subject_title"`
+	SubjectOrder          sql.NullInt32  `json:"subject_order"`
+	ChapterTitle          sql.NullString `json:"chapter_title"`
+	ChapterOrder          sql.NullInt32  `json:"chapter_order"`
+	LessonTitle           sql.NullString `json:"lesson_title"`
+	LessonOrder           sql.NullInt32  `json:"lesson_order"`
+	LessonVideoUrl        sql.NullString `json:"lesson_video_url"`
+	LessonTextContent     sql.NullString `json:"lesson_text_content"`
+	ModelTestTitle        sql.NullString `json:"model_test_title"`
+	ModelTestDuration     sql.NullInt32  `json:"model_test_duration"`
+	ModelTestTotalMarks   sql.NullString `json:"model_test_total_marks"`
+	ModelTestPassMarks    sql.NullString `json:"model_test_pass_marks"`
+	ModelTestNegativeMark sql.NullString `json:"model_test_negative_mark"`
+	ModelTestOrder        sql.NullInt32  `json:"model_test_order"`
+	HasQuizzes            bool           `json:"has_quizzes"`
 }
 
 func (q *Queries) GetCourseTreeHydrated(ctx context.Context, id uuid.UUID) ([]GetCourseTreeHydratedRow, error) {
@@ -502,6 +575,12 @@ func (q *Queries) GetCourseTreeHydrated(ctx context.Context, id uuid.UUID) ([]Ge
 			&i.LessonOrder,
 			&i.LessonVideoUrl,
 			&i.LessonTextContent,
+			&i.ModelTestTitle,
+			&i.ModelTestDuration,
+			&i.ModelTestTotalMarks,
+			&i.ModelTestPassMarks,
+			&i.ModelTestNegativeMark,
+			&i.ModelTestOrder,
 			&i.HasQuizzes,
 		); err != nil {
 			return nil, err
@@ -539,30 +618,40 @@ SELECT
     ch.title as chapter_title, ch.sequence_order as chapter_order,
     l.title as lesson_title, l.sequence_order as lesson_order,
     l.video_url as lesson_video_url, l.text_content as lesson_text_content,
+    mt.title as model_test_title, mt.duration_minutes as model_test_duration,
+    mt.total_marks as model_test_total_marks, mt.pass_marks as model_test_pass_marks,
+    mt.negative_marking_rate as model_test_negative_mark, mt.sequence_order as model_test_order,
     EXISTS (SELECT 1 FROM node_quiz nq WHERE nq.node_id = t.id) as has_quizzes
 FROM tree t
 LEFT JOIN courses c ON t.id = c.node_id
 LEFT JOIN subjects s ON t.id = s.node_id
 LEFT JOIN chapters ch ON t.id = ch.node_id
 LEFT JOIN lessons l ON t.id = l.node_id
-ORDER BY t.level, COALESCE(s.sequence_order, ch.sequence_order, l.sequence_order, 0)
+LEFT JOIN model_tests mt ON t.id = mt.node_id
+ORDER BY t.level, COALESCE(s.sequence_order, ch.sequence_order, l.sequence_order, mt.sequence_order, 0)
 `
 
 type GetCourseTreeHydratedBySlugRow struct {
-	ID                uuid.UUID      `json:"id"`
-	ParentID          uuid.NullUUID  `json:"parent_id"`
-	NodeType          NodeType       `json:"node_type"`
-	Level             int32          `json:"level"`
-	CourseTitle       sql.NullString `json:"course_title"`
-	SubjectTitle      sql.NullString `json:"subject_title"`
-	SubjectOrder      sql.NullInt32  `json:"subject_order"`
-	ChapterTitle      sql.NullString `json:"chapter_title"`
-	ChapterOrder      sql.NullInt32  `json:"chapter_order"`
-	LessonTitle       sql.NullString `json:"lesson_title"`
-	LessonOrder       sql.NullInt32  `json:"lesson_order"`
-	LessonVideoUrl    sql.NullString `json:"lesson_video_url"`
-	LessonTextContent sql.NullString `json:"lesson_text_content"`
-	HasQuizzes        bool           `json:"has_quizzes"`
+	ID                    uuid.UUID      `json:"id"`
+	ParentID              uuid.NullUUID  `json:"parent_id"`
+	NodeType              NodeType       `json:"node_type"`
+	Level                 int32          `json:"level"`
+	CourseTitle           sql.NullString `json:"course_title"`
+	SubjectTitle          sql.NullString `json:"subject_title"`
+	SubjectOrder          sql.NullInt32  `json:"subject_order"`
+	ChapterTitle          sql.NullString `json:"chapter_title"`
+	ChapterOrder          sql.NullInt32  `json:"chapter_order"`
+	LessonTitle           sql.NullString `json:"lesson_title"`
+	LessonOrder           sql.NullInt32  `json:"lesson_order"`
+	LessonVideoUrl        sql.NullString `json:"lesson_video_url"`
+	LessonTextContent     sql.NullString `json:"lesson_text_content"`
+	ModelTestTitle        sql.NullString `json:"model_test_title"`
+	ModelTestDuration     sql.NullInt32  `json:"model_test_duration"`
+	ModelTestTotalMarks   sql.NullString `json:"model_test_total_marks"`
+	ModelTestPassMarks    sql.NullString `json:"model_test_pass_marks"`
+	ModelTestNegativeMark sql.NullString `json:"model_test_negative_mark"`
+	ModelTestOrder        sql.NullInt32  `json:"model_test_order"`
+	HasQuizzes            bool           `json:"has_quizzes"`
 }
 
 func (q *Queries) GetCourseTreeHydratedBySlug(ctx context.Context, slug string) ([]GetCourseTreeHydratedBySlugRow, error) {
@@ -588,6 +677,12 @@ func (q *Queries) GetCourseTreeHydratedBySlug(ctx context.Context, slug string) 
 			&i.LessonOrder,
 			&i.LessonVideoUrl,
 			&i.LessonTextContent,
+			&i.ModelTestTitle,
+			&i.ModelTestDuration,
+			&i.ModelTestTotalMarks,
+			&i.ModelTestPassMarks,
+			&i.ModelTestNegativeMark,
+			&i.ModelTestOrder,
 			&i.HasQuizzes,
 		); err != nil {
 			return nil, err
@@ -670,6 +765,118 @@ func (q *Queries) GetLessonByVideoURL(ctx context.Context, dollar_1 sql.NullStri
 		&i.SequenceOrder,
 	)
 	return i, err
+}
+
+const getModelTest = `-- name: GetModelTest :one
+SELECT n.id, n.parent_id, n.node_type, n.created_at,
+       mt.title, mt.description, mt.duration_minutes, mt.total_marks,
+       mt.pass_marks, mt.negative_marking_rate, mt.sequence_order
+FROM nodes n
+JOIN model_tests mt ON n.id = mt.node_id
+WHERE n.id = $1 LIMIT 1
+`
+
+type GetModelTestRow struct {
+	ID                  uuid.UUID     `json:"id"`
+	ParentID            uuid.NullUUID `json:"parent_id"`
+	NodeType            NodeType      `json:"node_type"`
+	CreatedAt           time.Time     `json:"created_at"`
+	Title               string        `json:"title"`
+	Description         string        `json:"description"`
+	DurationMinutes     int32         `json:"duration_minutes"`
+	TotalMarks          string        `json:"total_marks"`
+	PassMarks           string        `json:"pass_marks"`
+	NegativeMarkingRate string        `json:"negative_marking_rate"`
+	SequenceOrder       int32         `json:"sequence_order"`
+}
+
+func (q *Queries) GetModelTest(ctx context.Context, id uuid.UUID) (GetModelTestRow, error) {
+	row := q.db.QueryRowContext(ctx, getModelTest, id)
+	var i GetModelTestRow
+	err := row.Scan(
+		&i.ID,
+		&i.ParentID,
+		&i.NodeType,
+		&i.CreatedAt,
+		&i.Title,
+		&i.Description,
+		&i.DurationMinutes,
+		&i.TotalMarks,
+		&i.PassMarks,
+		&i.NegativeMarkingRate,
+		&i.SequenceOrder,
+	)
+	return i, err
+}
+
+const getModelTestByQuizID = `-- name: GetModelTestByQuizID :one
+SELECT mt.node_id, mt.title, mt.description, mt.duration_minutes, mt.total_marks, mt.pass_marks, mt.negative_marking_rate, mt.sequence_order, mt.created_at 
+FROM model_tests mt
+JOIN node_quiz nq ON mt.node_id = nq.node_id
+WHERE nq.quiz_id = $1 LIMIT 1
+`
+
+func (q *Queries) GetModelTestByQuizID(ctx context.Context, quizID uuid.UUID) (ModelTest, error) {
+	row := q.db.QueryRowContext(ctx, getModelTestByQuizID, quizID)
+	var i ModelTest
+	err := row.Scan(
+		&i.NodeID,
+		&i.Title,
+		&i.Description,
+		&i.DurationMinutes,
+		&i.TotalMarks,
+		&i.PassMarks,
+		&i.NegativeMarkingRate,
+		&i.SequenceOrder,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getNodeAncestors = `-- name: GetNodeAncestors :many
+WITH RECURSIVE ancestors AS (
+    -- Anchor: Start from the given node
+    SELECT n.id, n.parent_id, n.node_type
+    FROM nodes n
+    WHERE n.id = $1
+    
+    UNION ALL
+    
+    -- Recursive step: Traverse up to parent
+    SELECT n.id, n.parent_id, n.node_type
+    FROM nodes n
+    JOIN ancestors a ON n.id = a.parent_id
+)
+SELECT id, parent_id, node_type FROM ancestors
+`
+
+type GetNodeAncestorsRow struct {
+	ID       uuid.UUID     `json:"id"`
+	ParentID uuid.NullUUID `json:"parent_id"`
+	NodeType NodeType      `json:"node_type"`
+}
+
+func (q *Queries) GetNodeAncestors(ctx context.Context, id uuid.UUID) ([]GetNodeAncestorsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getNodeAncestors, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetNodeAncestorsRow
+	for rows.Next() {
+		var i GetNodeAncestorsRow
+		if err := rows.Scan(&i.ID, &i.ParentID, &i.NodeType); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getNodeWithType = `-- name: GetNodeWithType :one
@@ -968,6 +1175,57 @@ func (q *Queries) UpdateLesson(ctx context.Context, arg UpdateLessonParams) (Les
 		&i.TextContent,
 		&i.VideoUrl,
 		&i.SequenceOrder,
+	)
+	return i, err
+}
+
+const updateModelTest = `-- name: UpdateModelTest :one
+UPDATE model_tests
+SET
+    title = COALESCE($2, title),
+    description = COALESCE($3, description),
+    duration_minutes = COALESCE($4, duration_minutes),
+    total_marks = COALESCE($5, total_marks),
+    pass_marks = COALESCE($6, pass_marks),
+    negative_marking_rate = COALESCE($7, negative_marking_rate),
+    sequence_order = COALESCE($8, sequence_order)
+WHERE node_id = $1
+RETURNING node_id, title, description, duration_minutes, total_marks, pass_marks, negative_marking_rate, sequence_order, created_at
+`
+
+type UpdateModelTestParams struct {
+	NodeID              uuid.UUID      `json:"node_id"`
+	Title               sql.NullString `json:"title"`
+	Description         sql.NullString `json:"description"`
+	DurationMinutes     sql.NullInt32  `json:"duration_minutes"`
+	TotalMarks          sql.NullString `json:"total_marks"`
+	PassMarks           sql.NullString `json:"pass_marks"`
+	NegativeMarkingRate sql.NullString `json:"negative_marking_rate"`
+	SequenceOrder       sql.NullInt32  `json:"sequence_order"`
+}
+
+func (q *Queries) UpdateModelTest(ctx context.Context, arg UpdateModelTestParams) (ModelTest, error) {
+	row := q.db.QueryRowContext(ctx, updateModelTest,
+		arg.NodeID,
+		arg.Title,
+		arg.Description,
+		arg.DurationMinutes,
+		arg.TotalMarks,
+		arg.PassMarks,
+		arg.NegativeMarkingRate,
+		arg.SequenceOrder,
+	)
+	var i ModelTest
+	err := row.Scan(
+		&i.NodeID,
+		&i.Title,
+		&i.Description,
+		&i.DurationMinutes,
+		&i.TotalMarks,
+		&i.PassMarks,
+		&i.NegativeMarkingRate,
+		&i.SequenceOrder,
+		&i.CreatedAt,
 	)
 	return i, err
 }

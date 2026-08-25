@@ -30,6 +30,35 @@ func (q *Queries) AttachQuizToNode(ctx context.Context, arg AttachQuizToNodePara
 	return err
 }
 
+const countQuizLeaderboardParticipants = `-- name: CountQuizLeaderboardParticipants :one
+SELECT COUNT(*) FROM quiz_attempts
+WHERE quiz_id = $1 AND is_first_attempt = TRUE
+`
+
+func (q *Queries) CountQuizLeaderboardParticipants(ctx context.Context, quizID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countQuizLeaderboardParticipants, quizID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUserAttemptsForQuiz = `-- name: CountUserAttemptsForQuiz :one
+SELECT COUNT(*) FROM quiz_attempts
+WHERE user_id = $1 AND quiz_id = $2
+`
+
+type CountUserAttemptsForQuizParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	QuizID uuid.UUID `json:"quiz_id"`
+}
+
+func (q *Queries) CountUserAttemptsForQuiz(ctx context.Context, arg CountUserAttemptsForQuizParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUserAttemptsForQuiz, arg.UserID, arg.QuizID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createAnswer = `-- name: CreateAnswer :one
 INSERT INTO answers (
     question_id,
@@ -137,18 +166,32 @@ INSERT INTO quiz_attempts (
     user_id,
     quiz_id,
     score,
-    is_passed
+    is_passed,
+    time_spent_seconds,
+    total_questions,
+    correct_count,
+    wrong_count,
+    unanswered_count,
+    total_negative_marks,
+    is_first_attempt
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
-RETURNING id, user_id, quiz_id, score, is_passed, completed_at
+RETURNING id, user_id, quiz_id, score, is_passed, completed_at, time_spent_seconds, total_questions, correct_count, wrong_count, unanswered_count, total_negative_marks, is_first_attempt
 `
 
 type CreateQuizAttemptParams struct {
-	UserID   uuid.UUID `json:"user_id"`
-	QuizID   uuid.UUID `json:"quiz_id"`
-	Score    int32     `json:"score"`
-	IsPassed bool      `json:"is_passed"`
+	UserID             uuid.UUID `json:"user_id"`
+	QuizID             uuid.UUID `json:"quiz_id"`
+	Score              string    `json:"score"`
+	IsPassed           bool      `json:"is_passed"`
+	TimeSpentSeconds   int32     `json:"time_spent_seconds"`
+	TotalQuestions     int32     `json:"total_questions"`
+	CorrectCount       int32     `json:"correct_count"`
+	WrongCount         int32     `json:"wrong_count"`
+	UnansweredCount    int32     `json:"unanswered_count"`
+	TotalNegativeMarks string    `json:"total_negative_marks"`
+	IsFirstAttempt     bool      `json:"is_first_attempt"`
 }
 
 // Quiz Attempts
@@ -158,6 +201,13 @@ func (q *Queries) CreateQuizAttempt(ctx context.Context, arg CreateQuizAttemptPa
 		arg.QuizID,
 		arg.Score,
 		arg.IsPassed,
+		arg.TimeSpentSeconds,
+		arg.TotalQuestions,
+		arg.CorrectCount,
+		arg.WrongCount,
+		arg.UnansweredCount,
+		arg.TotalNegativeMarks,
+		arg.IsFirstAttempt,
 	)
 	var i QuizAttempt
 	err := row.Scan(
@@ -167,6 +217,13 @@ func (q *Queries) CreateQuizAttempt(ctx context.Context, arg CreateQuizAttemptPa
 		&i.Score,
 		&i.IsPassed,
 		&i.CompletedAt,
+		&i.TimeSpentSeconds,
+		&i.TotalQuestions,
+		&i.CorrectCount,
+		&i.WrongCount,
+		&i.UnansweredCount,
+		&i.TotalNegativeMarks,
+		&i.IsFirstAttempt,
 	)
 	return i, err
 }
@@ -248,6 +305,9 @@ func (q *Queries) DetachQuizFromNode(ctx context.Context, arg DetachQuizFromNode
 const getAttemptWithAnswers = `-- name: GetAttemptWithAnswers :many
 SELECT 
     qa.id as attempt_id, qa.score, qa.is_passed, qa.completed_at,
+    qa.time_spent_seconds, qa.total_questions, qa.correct_count,
+    qa.wrong_count, qa.unanswered_count, qa.total_negative_marks,
+    qa.is_first_attempt,
     qaa.question_id, qaa.answer_id,
     q.content as question_content,
     q.explanation as question_explanation,
@@ -261,9 +321,16 @@ WHERE qa.id = $1
 
 type GetAttemptWithAnswersRow struct {
 	AttemptID           uuid.UUID      `json:"attempt_id"`
-	Score               int32          `json:"score"`
+	Score               string         `json:"score"`
 	IsPassed            bool           `json:"is_passed"`
 	CompletedAt         time.Time      `json:"completed_at"`
+	TimeSpentSeconds    int32          `json:"time_spent_seconds"`
+	TotalQuestions      int32          `json:"total_questions"`
+	CorrectCount        int32          `json:"correct_count"`
+	WrongCount          int32          `json:"wrong_count"`
+	UnansweredCount     int32          `json:"unanswered_count"`
+	TotalNegativeMarks  string         `json:"total_negative_marks"`
+	IsFirstAttempt      bool           `json:"is_first_attempt"`
 	QuestionID          uuid.UUID      `json:"question_id"`
 	AnswerID            uuid.NullUUID  `json:"answer_id"`
 	QuestionContent     string         `json:"question_content"`
@@ -286,6 +353,13 @@ func (q *Queries) GetAttemptWithAnswers(ctx context.Context, id uuid.UUID) ([]Ge
 			&i.Score,
 			&i.IsPassed,
 			&i.CompletedAt,
+			&i.TimeSpentSeconds,
+			&i.TotalQuestions,
+			&i.CorrectCount,
+			&i.WrongCount,
+			&i.UnansweredCount,
+			&i.TotalNegativeMarks,
+			&i.IsFirstAttempt,
 			&i.QuestionID,
 			&i.AnswerID,
 			&i.QuestionContent,
@@ -307,7 +381,7 @@ func (q *Queries) GetAttemptWithAnswers(ctx context.Context, id uuid.UUID) ([]Ge
 }
 
 const getAttemptsByUserAndQuiz = `-- name: GetAttemptsByUserAndQuiz :many
-SELECT id, user_id, quiz_id, score, is_passed, completed_at FROM quiz_attempts
+SELECT id, user_id, quiz_id, score, is_passed, completed_at, time_spent_seconds, total_questions, correct_count, wrong_count, unanswered_count, total_negative_marks, is_first_attempt FROM quiz_attempts
 WHERE user_id = $1 AND quiz_id = $2
 ORDER BY completed_at DESC
 `
@@ -333,6 +407,13 @@ func (q *Queries) GetAttemptsByUserAndQuiz(ctx context.Context, arg GetAttemptsB
 			&i.Score,
 			&i.IsPassed,
 			&i.CompletedAt,
+			&i.TimeSpentSeconds,
+			&i.TotalQuestions,
+			&i.CorrectCount,
+			&i.WrongCount,
+			&i.UnansweredCount,
+			&i.TotalNegativeMarks,
+			&i.IsFirstAttempt,
 		); err != nil {
 			return nil, err
 		}
@@ -347,8 +428,36 @@ func (q *Queries) GetAttemptsByUserAndQuiz(ctx context.Context, arg GetAttemptsB
 	return items, nil
 }
 
+const getNodesByQuiz = `-- name: GetNodesByQuiz :many
+SELECT node_id FROM node_quiz
+WHERE quiz_id = $1
+`
+
+func (q *Queries) GetNodesByQuiz(ctx context.Context, quizID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, getNodesByQuiz, quizID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var node_id uuid.UUID
+		if err := rows.Scan(&node_id); err != nil {
+			return nil, err
+		}
+		items = append(items, node_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getQuizAttempt = `-- name: GetQuizAttempt :one
-SELECT id, user_id, quiz_id, score, is_passed, completed_at FROM quiz_attempts
+SELECT id, user_id, quiz_id, score, is_passed, completed_at, time_spent_seconds, total_questions, correct_count, wrong_count, unanswered_count, total_negative_marks, is_first_attempt FROM quiz_attempts
 WHERE id = $1 LIMIT 1
 `
 
@@ -362,6 +471,13 @@ func (q *Queries) GetQuizAttempt(ctx context.Context, id uuid.UUID) (QuizAttempt
 		&i.Score,
 		&i.IsPassed,
 		&i.CompletedAt,
+		&i.TimeSpentSeconds,
+		&i.TotalQuestions,
+		&i.CorrectCount,
+		&i.WrongCount,
+		&i.UnansweredCount,
+		&i.TotalNegativeMarks,
+		&i.IsFirstAttempt,
 	)
 	return i, err
 }
@@ -414,6 +530,82 @@ func (q *Queries) GetQuizByID(ctx context.Context, id uuid.UUID) (Quiz, error) {
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getQuizLeaderboard = `-- name: GetQuizLeaderboard :many
+SELECT 
+    DENSE_RANK() OVER (ORDER BY qa.score DESC, qa.time_spent_seconds ASC, qa.completed_at ASC)::BIGINT as rank_position,
+    qa.id as attempt_id,
+    qa.user_id,
+    COALESCE(up.full_name, split_part(u.email, '@', 1))::TEXT as user_name,
+    up.avatar_url,
+    u.email as user_email,
+    qa.score,
+    qa.correct_count,
+    qa.wrong_count,
+    qa.unanswered_count,
+    qa.total_negative_marks,
+    qa.time_spent_seconds,
+    qa.completed_at
+FROM quiz_attempts qa
+JOIN users u ON qa.user_id = u.id
+LEFT JOIN user_profiles up ON u.id = up.user_id
+WHERE qa.quiz_id = $1 AND qa.is_first_attempt = TRUE
+ORDER BY rank_position ASC, qa.time_spent_seconds ASC, qa.completed_at ASC
+LIMIT 100
+`
+
+type GetQuizLeaderboardRow struct {
+	RankPosition       int64          `json:"rank_position"`
+	AttemptID          uuid.UUID      `json:"attempt_id"`
+	UserID             uuid.UUID      `json:"user_id"`
+	UserName           string         `json:"user_name"`
+	AvatarUrl          sql.NullString `json:"avatar_url"`
+	UserEmail          string         `json:"user_email"`
+	Score              string         `json:"score"`
+	CorrectCount       int32          `json:"correct_count"`
+	WrongCount         int32          `json:"wrong_count"`
+	UnansweredCount    int32          `json:"unanswered_count"`
+	TotalNegativeMarks string         `json:"total_negative_marks"`
+	TimeSpentSeconds   int32          `json:"time_spent_seconds"`
+	CompletedAt        time.Time      `json:"completed_at"`
+}
+
+func (q *Queries) GetQuizLeaderboard(ctx context.Context, quizID uuid.UUID) ([]GetQuizLeaderboardRow, error) {
+	rows, err := q.db.QueryContext(ctx, getQuizLeaderboard, quizID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetQuizLeaderboardRow
+	for rows.Next() {
+		var i GetQuizLeaderboardRow
+		if err := rows.Scan(
+			&i.RankPosition,
+			&i.AttemptID,
+			&i.UserID,
+			&i.UserName,
+			&i.AvatarUrl,
+			&i.UserEmail,
+			&i.Score,
+			&i.CorrectCount,
+			&i.WrongCount,
+			&i.UnansweredCount,
+			&i.TotalNegativeMarks,
+			&i.TimeSpentSeconds,
+			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getQuizzesByNode = `-- name: GetQuizzesByNode :many
@@ -505,7 +697,7 @@ type GetUserQuizAttemptsForQuizzesParams struct {
 
 type GetUserQuizAttemptsForQuizzesRow struct {
 	QuizID   uuid.UUID `json:"quiz_id"`
-	Score    int32     `json:"score"`
+	Score    string    `json:"score"`
 	IsPassed bool      `json:"is_passed"`
 }
 
@@ -530,6 +722,63 @@ func (q *Queries) GetUserQuizAttemptsForQuizzes(ctx context.Context, arg GetUser
 		return nil, err
 	}
 	return items, nil
+}
+
+const getUserRankInQuiz = `-- name: GetUserRankInQuiz :one
+WITH ranked AS (
+    SELECT 
+        qa.id as attempt_id,
+        qa.user_id,
+        qa.score,
+        qa.correct_count,
+        qa.wrong_count,
+        qa.unanswered_count,
+        qa.total_negative_marks,
+        qa.time_spent_seconds,
+        qa.completed_at,
+        DENSE_RANK() OVER (ORDER BY qa.score DESC, qa.time_spent_seconds ASC, qa.completed_at ASC)::BIGINT as rank_position
+    FROM quiz_attempts qa
+    WHERE qa.quiz_id = $1 AND qa.is_first_attempt = TRUE
+)
+SELECT rank_position, attempt_id, user_id, score, correct_count, wrong_count, unanswered_count, total_negative_marks, time_spent_seconds, completed_at
+FROM ranked
+WHERE user_id = $2 LIMIT 1
+`
+
+type GetUserRankInQuizParams struct {
+	QuizID uuid.UUID `json:"quiz_id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+type GetUserRankInQuizRow struct {
+	RankPosition       int64     `json:"rank_position"`
+	AttemptID          uuid.UUID `json:"attempt_id"`
+	UserID             uuid.UUID `json:"user_id"`
+	Score              string    `json:"score"`
+	CorrectCount       int32     `json:"correct_count"`
+	WrongCount         int32     `json:"wrong_count"`
+	UnansweredCount    int32     `json:"unanswered_count"`
+	TotalNegativeMarks string    `json:"total_negative_marks"`
+	TimeSpentSeconds   int32     `json:"time_spent_seconds"`
+	CompletedAt        time.Time `json:"completed_at"`
+}
+
+func (q *Queries) GetUserRankInQuiz(ctx context.Context, arg GetUserRankInQuizParams) (GetUserRankInQuizRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserRankInQuiz, arg.QuizID, arg.UserID)
+	var i GetUserRankInQuizRow
+	err := row.Scan(
+		&i.RankPosition,
+		&i.AttemptID,
+		&i.UserID,
+		&i.Score,
+		&i.CorrectCount,
+		&i.WrongCount,
+		&i.UnansweredCount,
+		&i.TotalNegativeMarks,
+		&i.TimeSpentSeconds,
+		&i.CompletedAt,
+	)
+	return i, err
 }
 
 const listAnswersByQuestion = `-- name: ListAnswersByQuestion :many

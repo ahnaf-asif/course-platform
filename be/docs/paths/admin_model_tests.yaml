@@ -1,0 +1,88 @@
+/admin/model-tests:
+  post:
+    summary: Create a model test node under a subject
+    operationId: createModelTest
+    tags:
+      - admin-curriculum
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/curriculum.yaml#/CreateModelTestRequest'
+    responses:
+      '201':
+        description: Model test created successfully
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/ModelTestResponse'
+
+/admin/model-tests/{id}:
+  get:
+    summary: Get model test by ID
+    operationId: getModelTest
+    tags:
+      - admin-curriculum
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Model test details
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/ModelTestResponse'
+  patch:
+    summary: Update a model test
+    operationId: updateModelTest
+    tags:
+      - admin-curriculum
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/curriculum.yaml#/UpdateModelTestRequest'
+    responses:
+      '200':
+        description: Model test updated successfully
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/curriculum.yaml#/ModelTestResponse'
+  delete:
+    summary: Delete a model test
+    operationId: deleteModelTest
+    tags:
+      - admin-curriculum
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: Model test deleted successfully

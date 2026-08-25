@@ -38,6 +38,10 @@ SELECT q.* FROM quizzes q
 JOIN node_quiz nq ON q.id = nq.quiz_id
 WHERE nq.node_id = $1;
 
+-- name: GetNodesByQuiz :many
+SELECT node_id FROM node_quiz
+WHERE quiz_id = $1;
+
 -- name: DetachQuizFromNode :exec
 DELETE FROM node_quiz
 WHERE node_id = $1 AND quiz_id = $2;
@@ -100,9 +104,16 @@ INSERT INTO quiz_attempts (
     user_id,
     quiz_id,
     score,
-    is_passed
+    is_passed,
+    time_spent_seconds,
+    total_questions,
+    correct_count,
+    wrong_count,
+    unanswered_count,
+    total_negative_marks,
+    is_first_attempt
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
 RETURNING *;
 
@@ -119,6 +130,9 @@ RETURNING *;
 -- name: GetAttemptWithAnswers :many
 SELECT 
     qa.id as attempt_id, qa.score, qa.is_passed, qa.completed_at,
+    qa.time_spent_seconds, qa.total_questions, qa.correct_count,
+    qa.wrong_count, qa.unanswered_count, qa.total_negative_marks,
+    qa.is_first_attempt,
     qaa.question_id, qaa.answer_id,
     q.content as question_content,
     q.explanation as question_explanation,
@@ -138,6 +152,10 @@ ORDER BY completed_at DESC;
 SELECT * FROM quiz_attempts
 WHERE id = $1 LIMIT 1;
 
+-- name: CountUserAttemptsForQuiz :one
+SELECT COUNT(*) FROM quiz_attempts
+WHERE user_id = $1 AND quiz_id = $2;
+
 -- name: GetQuizAttemptAnswers :many
 SELECT * FROM quiz_attempt_answers
 WHERE attempt_id = $1;
@@ -152,6 +170,53 @@ WHERE nq.node_id = ANY($1::uuid[]);
 SELECT quiz_id, score, is_passed
 FROM quiz_attempts
 WHERE user_id = $1 AND quiz_id = ANY(sqlc.arg(quiz_ids)::uuid[]);
+
+-- name: GetQuizLeaderboard :many
+SELECT 
+    DENSE_RANK() OVER (ORDER BY qa.score DESC, qa.time_spent_seconds ASC, qa.completed_at ASC)::BIGINT as rank_position,
+    qa.id as attempt_id,
+    qa.user_id,
+    COALESCE(up.full_name, split_part(u.email, '@', 1))::TEXT as user_name,
+    up.avatar_url,
+    u.email as user_email,
+    qa.score,
+    qa.correct_count,
+    qa.wrong_count,
+    qa.unanswered_count,
+    qa.total_negative_marks,
+    qa.time_spent_seconds,
+    qa.completed_at
+FROM quiz_attempts qa
+JOIN users u ON qa.user_id = u.id
+LEFT JOIN user_profiles up ON u.id = up.user_id
+WHERE qa.quiz_id = $1 AND qa.is_first_attempt = TRUE
+ORDER BY rank_position ASC, qa.time_spent_seconds ASC, qa.completed_at ASC
+LIMIT 100;
+
+-- name: GetUserRankInQuiz :one
+WITH ranked AS (
+    SELECT 
+        qa.id as attempt_id,
+        qa.user_id,
+        qa.score,
+        qa.correct_count,
+        qa.wrong_count,
+        qa.unanswered_count,
+        qa.total_negative_marks,
+        qa.time_spent_seconds,
+        qa.completed_at,
+        DENSE_RANK() OVER (ORDER BY qa.score DESC, qa.time_spent_seconds ASC, qa.completed_at ASC)::BIGINT as rank_position
+    FROM quiz_attempts qa
+    WHERE qa.quiz_id = $1 AND qa.is_first_attempt = TRUE
+)
+SELECT rank_position, attempt_id, user_id, score, correct_count, wrong_count, unanswered_count, total_negative_marks, time_spent_seconds, completed_at
+FROM ranked
+WHERE user_id = $2 LIMIT 1;
+
+-- name: CountQuizLeaderboardParticipants :one
+SELECT COUNT(*) FROM quiz_attempts
+WHERE quiz_id = $1 AND is_first_attempt = TRUE;
+
 
 
 

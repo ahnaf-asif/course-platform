@@ -110,7 +110,7 @@ func TestCurriculumHandler_GetCourseTree(t *testing.T) {
 		// GetPaymentGateByNode returns sql.ErrNoRows -> Free course
 		mockStore.On("GetPaymentGateByNode", mock.Anything, courseID).Return(generated.PaymentGate{}, sql.ErrNoRows)
 
-		mockStore.On("GetQuizzesByNodes", mock.Anything, mock.Anything).Return([]generated.GetQuizzesByNodesRow{}, nil).Once()
+		mockStore.On("GetQuizzesByNodes", mock.Anything, mock.Anything).Return([]generated.GetQuizzesByNodesRow{}, nil)
 
 		err := h.GetCourseTree(c)
 		assert.NoError(t, err)
@@ -153,7 +153,7 @@ func TestCurriculumHandler_GetCourseTree(t *testing.T) {
 			Price: "99.00",
 		}, nil)
 
-		mockStore.On("GetQuizzesByNodes", mock.Anything, mock.Anything).Return([]generated.GetQuizzesByNodesRow{}, nil).Once()
+		mockStore.On("GetQuizzesByNodes", mock.Anything, mock.Anything).Return([]generated.GetQuizzesByNodesRow{}, nil)
 
 		err := h.GetCourseTree(c)
 		assert.NoError(t, err)
@@ -207,7 +207,7 @@ func TestCurriculumHandler_GetCourseTreeBySlug(t *testing.T) {
 			Price: "99.00",
 		}, nil)
 
-		mockStore.On("GetQuizzesByNodes", mock.Anything, mock.Anything).Return([]generated.GetQuizzesByNodesRow{}, nil).Once()
+		mockStore.On("GetQuizzesByNodes", mock.Anything, mock.Anything).Return([]generated.GetQuizzesByNodesRow{}, nil)
 		mockStore.On("ListProgressByUser", mock.Anything, mock.Anything).Return([]generated.Progress{}, nil).Once()
 
 		err := h.GetCourseTreeBySlug(c)
@@ -267,6 +267,89 @@ func TestCurriculumHandler_GetCourseTreeBySlug(t *testing.T) {
 		assert.Equal(t, "Cached Lesson 1", resp[1].Title)
 
 		assert.NoError(t, redisMock.ExpectationsWereMet())
+	})
+
+	t.Run("Success Hydrated Tree with Subject, Chapter, and Model Test", func(t *testing.T) {
+		mockStore := new(MockStore)
+		h := NewCurriculumHandler(mockStore, nil, logger)
+
+		courseID := uuid.New()
+		subID := uuid.New()
+		chapID := uuid.New()
+		lessonID := uuid.New()
+		mtID := uuid.New()
+		slug := "bcs-mastery"
+
+		req := httptest.NewRequest(http.MethodGet, "/courses/s/"+slug+"/tree", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("slug")
+		c.SetParamValues(slug)
+
+		mockStore.On("GetCourseTreeHydratedBySlug", mock.Anything, slug).Return([]generated.GetCourseTreeHydratedBySlugRow{
+			{
+				ID:          courseID,
+				NodeType:    generated.NodeTypeCOURSE,
+				Level:       0,
+				CourseTitle: sql.NullString{String: "BCS Mastery", Valid: true},
+			},
+			{
+				ID:           subID,
+				ParentID:     uuid.NullUUID{UUID: courseID, Valid: true},
+				NodeType:     generated.NodeTypeSUBJECT,
+				Level:        1,
+				SubjectTitle: sql.NullString{String: "Bangla Literature", Valid: true},
+				SubjectOrder: sql.NullInt32{Int32: 0, Valid: true},
+			},
+			{
+				ID:           chapID,
+				ParentID:     uuid.NullUUID{UUID: subID, Valid: true},
+				NodeType:     generated.NodeTypeCHAPTER,
+				Level:        2,
+				ChapterTitle: sql.NullString{String: "Ancient & Medieval Era", Valid: true},
+				ChapterOrder: sql.NullInt32{Int32: 0, Valid: true},
+			},
+			{
+				ID:          lessonID,
+				ParentID:    uuid.NullUUID{UUID: chapID, Valid: true},
+				NodeType:    generated.NodeTypeLESSON,
+				Level:       3,
+				LessonTitle: sql.NullString{String: "Charyapada Overview", Valid: true},
+				LessonOrder: sql.NullInt32{Int32: 0, Valid: true},
+			},
+			{
+				ID:                    mtID,
+				ParentID:              uuid.NullUUID{UUID: subID, Valid: true},
+				NodeType:              generated.NodeTypeMODELTEST,
+				Level:                 2,
+				ModelTestTitle:        sql.NullString{String: "Live Model Test 1", Valid: true},
+				ModelTestDuration:     sql.NullInt32{Int32: 60, Valid: true},
+				ModelTestTotalMarks:   sql.NullString{String: "100.00", Valid: true},
+				ModelTestPassMarks:    sql.NullString{String: "40.00", Valid: true},
+				ModelTestNegativeMark: sql.NullString{String: "0.50", Valid: true},
+				ModelTestOrder:        sql.NullInt32{Int32: 1, Valid: true},
+			},
+		}, nil)
+
+		mockStore.On("GetPaymentGateByNode", mock.Anything, courseID).Return(generated.PaymentGate{
+			Price: "0.00",
+		}, nil)
+		mockStore.On("GetQuizzesByNodes", mock.Anything, mock.Anything).Return([]generated.GetQuizzesByNodesRow{}, nil)
+
+		err := h.GetCourseTreeBySlug(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var resp []CourseTreeResponse
+		json.Unmarshal(rec.Body.Bytes(), &resp)
+		assert.Len(t, resp, 5)
+		assert.Equal(t, "BCS Mastery", resp[0].Title)
+		assert.Equal(t, "Bangla Literature", resp[1].Title)
+		assert.Equal(t, "Ancient & Medieval Era", resp[2].Title)
+		assert.Equal(t, "Charyapada Overview", resp[3].Title)
+		assert.Equal(t, "Live Model Test 1", resp[4].Title)
+		assert.NotNil(t, resp[4].ModelTest)
+		assert.Equal(t, int32(60), resp[4].ModelTest.DurationMinutes)
 	})
 }
 

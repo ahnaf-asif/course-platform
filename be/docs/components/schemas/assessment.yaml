@@ -180,6 +180,8 @@ SubmitQuizRequest:
       type: array
       items:
         $ref: '#/SubmitAnswerItem'
+    time_spent_seconds:
+      type: integer
   required:
     - answers
 
@@ -237,11 +239,28 @@ SubmitQuizResponse:
       type: string
       format: uuid
     score:
-      type: integer
+      type: number
     is_passed:
       type: boolean
     passing_score:
       type: integer
+    time_spent_seconds:
+      type: integer
+    total_questions:
+      type: integer
+    correct_count:
+      type: integer
+    wrong_count:
+      type: integer
+    unanswered_count:
+      type: integer
+    total_negative_marks:
+      type: number
+    is_first_attempt:
+      type: boolean
+    rank_position:
+      type: integer
+      nullable: true
     completed_at:
       type: string
       format: date-time
@@ -254,6 +273,13 @@ SubmitQuizResponse:
     - score
     - is_passed
     - passing_score
+    - time_spent_seconds
+    - total_questions
+    - correct_count
+    - wrong_count
+    - unanswered_count
+    - total_negative_marks
+    - is_first_attempt
     - completed_at
     - questions
 
@@ -264,8 +290,22 @@ StudentQuizAttemptSummary:
       type: string
       format: uuid
     score:
-      type: integer
+      type: number
     is_passed:
+      type: boolean
+    time_spent_seconds:
+      type: integer
+    total_questions:
+      type: integer
+    correct_count:
+      type: integer
+    wrong_count:
+      type: integer
+    unanswered_count:
+      type: integer
+    total_negative_marks:
+      type: number
+    is_first_attempt:
       type: boolean
     completed_at:
       type: string
@@ -274,4 +314,81 @@ StudentQuizAttemptSummary:
     - id
     - score
     - is_passed
+    - time_spent_seconds
+    - total_questions
+    - correct_count
+    - wrong_count
+    - unanswered_count
+    - total_negative_marks
+    - is_first_attempt
     - completed_at
+
+LeaderboardEntryResponse:
+  type: object
+  properties:
+    rank_position:
+      type: integer
+    attempt_id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    user_name:
+      type: string
+    avatar_url:
+      type: string
+      nullable: true
+    score:
+      type: number
+    correct_count:
+      type: integer
+    wrong_count:
+      type: integer
+    unanswered_count:
+      type: integer
+    total_negative_marks:
+      type: number
+    time_spent_seconds:
+      type: integer
+    completed_at:
+      type: string
+      format: date-time
+    is_current_user:
+      type: boolean
+  required:
+    - rank_position
+    - attempt_id
+    - user_id
+    - user_name
+    - score
+    - correct_count
+    - wrong_count
+    - unanswered_count
+    - total_negative_marks
+    - time_spent_seconds
+    - completed_at
+    - is_current_user
+
+LeaderboardResponse:
+  type: object
+  properties:
+    quiz_id:
+      type: string
+      format: uuid
+    quiz_title:
+      type: string
+    total_participants:
+      type: integer
+    my_rank:
+      $ref: '#/LeaderboardEntryResponse'
+      nullable: true
+    entries:
+      type: array
+      items:
+        $ref: '#/LeaderboardEntryResponse'
+  required:
+    - quiz_id
+    - quiz_title
+    - total_participants
+    - entries

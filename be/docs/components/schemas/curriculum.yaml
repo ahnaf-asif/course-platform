@@ -148,12 +148,135 @@ CourseTreeResponse:
       type: string
       enum: [STARTED, COMPLETED]
       nullable: true
+    model_test:
+      $ref: '#/ModelTestSummaryResponse'
+      nullable: true
   required:
     - id
     - node_type
     - level
     - title
     - has_quizzes
+
+ModelTestSummaryResponse:
+  type: object
+  properties:
+    duration_minutes:
+      type: integer
+    total_marks:
+      type: number
+    pass_marks:
+      type: number
+    negative_marking_rate:
+      type: number
+  required:
+    - duration_minutes
+    - total_marks
+    - pass_marks
+    - negative_marking_rate
+
+ModelTestResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    parent_id:
+      type: string
+      format: uuid
+    node_type:
+      type: string
+      enum: [MODEL_TEST]
+    title:
+      type: string
+    description:
+      type: string
+    duration_minutes:
+      type: integer
+    total_marks:
+      type: number
+    pass_marks:
+      type: number
+    negative_marking_rate:
+      type: number
+    sequence_order:
+      type: integer
+    created_at:
+      type: string
+      format: date-time
+    quiz_id:
+      type: string
+      format: uuid
+      nullable: true
+  required:
+    - id
+    - parent_id
+    - node_type
+    - title
+    - duration_minutes
+    - total_marks
+    - pass_marks
+    - negative_marking_rate
+    - sequence_order
+    - created_at
+
+CreateModelTestRequest:
+  type: object
+  properties:
+    parent_id:
+      type: string
+      format: uuid
+    title:
+      type: string
+      minLength: 3
+      maxLength: 255
+    description:
+      type: string
+    duration_minutes:
+      type: integer
+      minimum: 1
+    total_marks:
+      type: number
+      minimum: 1
+    pass_marks:
+      type: number
+      minimum: 0
+    negative_marking_rate:
+      type: number
+      minimum: 0
+    sequence_order:
+      type: integer
+      minimum: 0
+  required:
+    - parent_id
+    - title
+    - sequence_order
+
+UpdateModelTestRequest:
+  type: object
+  properties:
+    title:
+      type: string
+      minLength: 3
+      maxLength: 255
+    description:
+      type: string
+    duration_minutes:
+      type: integer
+      minimum: 1
+    total_marks:
+      type: number
+      minimum: 1
+    pass_marks:
+      type: number
+      minimum: 0
+    negative_marking_rate:
+      type: number
+      minimum: 0
+    sequence_order:
+      type: integer
+      minimum: 0
+  minProperties: 1
 
 CourseQuizResponse:
   type: object

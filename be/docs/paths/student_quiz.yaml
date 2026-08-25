@@ -122,3 +122,26 @@
           application/json:
             schema:
               $ref: '../components/schemas/assessment.yaml#/SubmitQuizResponse'
+
+/quizzes/{id}/leaderboard:
+  get:
+    summary: Get competitive ranklist for quiz or model test
+    operationId: studentGetQuizLeaderboard
+    tags:
+      - assessment
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Leaderboard ranklist
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assessment.yaml#/LeaderboardResponse'

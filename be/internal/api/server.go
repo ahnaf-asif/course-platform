@@ -259,6 +259,7 @@ func (s *Server) registerRoutes() {
 	protected.GET("/quizzes/:id/questions", quizHandler.StudentGetQuizQuestions)
 	protected.POST("/quizzes/:id/attempts", quizHandler.StudentSubmitQuizAttempt)
 	protected.GET("/quizzes/:id/attempts", quizHandler.StudentListQuizAttempts)
+	protected.GET("/quizzes/:id/leaderboard", quizHandler.StudentGetQuizLeaderboard)
 	protected.GET("/attempts/:id", quizHandler.StudentGetAttemptDetails)
 
 	// Student Referral routes
@@ -306,6 +307,12 @@ func (s *Server) registerRoutes() {
 	adminLessons.GET("/:id", curriculumHandler.GetLesson)
 	adminLessons.PATCH("/:id", curriculumHandler.UpdateLesson)
 	adminLessons.DELETE("/:id", curriculumHandler.DeleteLesson)
+
+	adminModelTests := admin.Group("/model-tests")
+	adminModelTests.POST("", curriculumHandler.CreateModelTest)
+	adminModelTests.GET("/:id", curriculumHandler.GetModelTest)
+	adminModelTests.PATCH("/:id", curriculumHandler.UpdateModelTest)
+	adminModelTests.DELETE("/:id", curriculumHandler.DeleteModelTest)
 
 	adminQuizzes := admin.Group("/quizzes")
 	adminQuizzes.GET("", quizHandler.ListQuizzes)

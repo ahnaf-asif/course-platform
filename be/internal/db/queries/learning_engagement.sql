@@ -30,7 +30,10 @@ INSERT INTO progress (
 )
 ON CONFLICT (user_id, node_id) DO UPDATE
 SET
-    status = EXCLUDED.status,
+    status = CASE 
+        WHEN progress.status = 'COMPLETED' AND EXCLUDED.status = 'STARTED' THEN progress.status 
+        ELSE EXCLUDED.status 
+    END,
     updated_at = NOW()
 RETURNING *;
 

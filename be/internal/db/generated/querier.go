@@ -32,6 +32,8 @@ type Querier interface {
 	AttachQuizToNode(ctx context.Context, arg AttachQuizToNodeParams) error
 	AttachTagToNode(ctx context.Context, arg AttachTagToNodeParams) error
 	CheckUserAccessToNode(ctx context.Context, arg CheckUserAccessToNodeParams) (bool, error)
+	CountQuizLeaderboardParticipants(ctx context.Context, quizID uuid.UUID) (int64, error)
+	CountUserAttemptsForQuiz(ctx context.Context, arg CountUserAttemptsForQuizParams) (int64, error)
 	// Announcements
 	CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error)
 	// Answers
@@ -48,6 +50,8 @@ type Querier interface {
 	CreateEnrollment(ctx context.Context, arg CreateEnrollmentParams) (Enrollment, error)
 	// Lessons
 	CreateLesson(ctx context.Context, arg CreateLessonParams) (Lesson, error)
+	// Model Tests
+	CreateModelTest(ctx context.Context, arg CreateModelTestParams) (ModelTest, error)
 	// Nodes
 	CreateNode(ctx context.Context, arg CreateNodeParams) (Node, error)
 	// Notifications
@@ -80,6 +84,7 @@ type Querier interface {
 	DeleteEnrollment(ctx context.Context, arg DeleteEnrollmentParams) error
 	DeleteExpiredRefreshTokens(ctx context.Context) error
 	DeleteLesson(ctx context.Context, id uuid.UUID) error
+	DeleteModelTest(ctx context.Context, id uuid.UUID) error
 	DeletePaymentGate(ctx context.Context, nodeID uuid.UUID) error
 	DeleteQuestion(ctx context.Context, id uuid.UUID) error
 	DeleteQuiz(ctx context.Context, id uuid.UUID) error
@@ -105,7 +110,11 @@ type Querier interface {
 	GetEnrollment(ctx context.Context, arg GetEnrollmentParams) (Enrollment, error)
 	GetLesson(ctx context.Context, id uuid.UUID) (GetLessonRow, error)
 	GetLessonByVideoURL(ctx context.Context, dollar_1 sql.NullString) (GetLessonByVideoURLRow, error)
+	GetModelTest(ctx context.Context, id uuid.UUID) (GetModelTestRow, error)
+	GetModelTestByQuizID(ctx context.Context, quizID uuid.UUID) (ModelTest, error)
+	GetNodeAncestors(ctx context.Context, id uuid.UUID) ([]GetNodeAncestorsRow, error)
 	GetNodeWithType(ctx context.Context, id uuid.UUID) (Node, error)
+	GetNodesByQuiz(ctx context.Context, quizID uuid.UUID) ([]uuid.UUID, error)
 	GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error)
 	GetOrderByTranID(ctx context.Context, id uuid.UUID) (Order, error)
 	GetOrdersByUser(ctx context.Context, userID uuid.UUID) ([]Order, error)
@@ -117,6 +126,7 @@ type Querier interface {
 	GetQuizAttempt(ctx context.Context, id uuid.UUID) (QuizAttempt, error)
 	GetQuizAttemptAnswers(ctx context.Context, attemptID uuid.UUID) ([]QuizAttemptAnswer, error)
 	GetQuizByID(ctx context.Context, id uuid.UUID) (Quiz, error)
+	GetQuizLeaderboard(ctx context.Context, quizID uuid.UUID) ([]GetQuizLeaderboardRow, error)
 	GetQuizzesByNode(ctx context.Context, nodeID uuid.UUID) ([]Quiz, error)
 	GetQuizzesByNodes(ctx context.Context, dollar_1 []uuid.UUID) ([]GetQuizzesByNodesRow, error)
 	GetReferralCodeByCode(ctx context.Context, code string) (ReferralCode, error)
@@ -134,6 +144,7 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserProfile(ctx context.Context, userID uuid.UUID) (UserProfile, error)
 	GetUserQuizAttemptsForQuizzes(ctx context.Context, arg GetUserQuizAttemptsForQuizzesParams) ([]GetUserQuizAttemptsForQuizzesRow, error)
+	GetUserRankInQuiz(ctx context.Context, arg GetUserRankInQuizParams) (GetUserRankInQuizRow, error)
 	GetUserReferralBalances(ctx context.Context, referrerUserID uuid.UUID) (GetUserReferralBalancesRow, error)
 	GetUserWithProfile(ctx context.Context, id uuid.UUID) (GetUserWithProfileRow, error)
 	IncrementCouponUsage(ctx context.Context, id uuid.UUID) error
@@ -158,6 +169,7 @@ type Querier interface {
 	UpdateChapter(ctx context.Context, arg UpdateChapterParams) (Chapter, error)
 	UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Course, error)
 	UpdateLesson(ctx context.Context, arg UpdateLessonParams) (Lesson, error)
+	UpdateModelTest(ctx context.Context, arg UpdateModelTestParams) (ModelTest, error)
 	UpdateOrderReferenceAndStatus(ctx context.Context, arg UpdateOrderReferenceAndStatusParams) (Order, error)
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
 	UpdateQuestion(ctx context.Context, arg UpdateQuestionParams) (Question, error)

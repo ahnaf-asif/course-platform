@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,7 +28,8 @@ type StudentQuestionResponse struct {
 }
 
 type SubmitQuizRequest struct {
-	Answers []SubmitAnswerItem `json:"answers" validate:"required"`
+	Answers          []SubmitAnswerItem `json:"answers" validate:"required"`
+	TimeSpentSeconds int32              `json:"time_spent_seconds"`
 }
 
 type SubmitAnswerItem struct {
@@ -51,22 +54,61 @@ type AttemptAnswerOption struct {
 }
 
 type SubmitQuizResponse struct {
-	AttemptID    string                  `json:"attempt_id"`
-	Score        int32                   `json:"score"`
-	IsPassed     bool                    `json:"is_passed"`
-	PassingScore int32                   `json:"passing_score"`
-	CompletedAt  time.Time               `json:"completed_at"`
-	Questions    []AttemptDetailQuestion `json:"questions"`
+	AttemptID          string                  `json:"attempt_id"`
+	Score              float64                 `json:"score"`
+	IsPassed           bool                    `json:"is_passed"`
+	PassingScore       int32                   `json:"passing_score"`
+	TimeSpentSeconds   int32                   `json:"time_spent_seconds"`
+	TotalQuestions     int32                   `json:"total_questions"`
+	CorrectCount       int32                   `json:"correct_count"`
+	WrongCount         int32                   `json:"wrong_count"`
+	UnansweredCount    int32                   `json:"unanswered_count"`
+	TotalNegativeMarks float64                 `json:"total_negative_marks"`
+	IsFirstAttempt     bool                    `json:"is_first_attempt"`
+	RankPosition       *int64                  `json:"rank_position,omitempty"`
+	CompletedAt        time.Time               `json:"completed_at"`
+	Questions          []AttemptDetailQuestion `json:"questions"`
 }
 
 type StudentQuizAttemptSummary struct {
-	ID          string    `json:"id"`
-	Score       int32     `json:"score"`
-	IsPassed    bool      `json:"is_passed"`
-	CompletedAt time.Time `json:"completed_at"`
+	ID                 string    `json:"id"`
+	Score              float64   `json:"score"`
+	IsPassed           bool      `json:"is_passed"`
+	TimeSpentSeconds   int32     `json:"time_spent_seconds"`
+	TotalQuestions     int32     `json:"total_questions"`
+	CorrectCount       int32     `json:"correct_count"`
+	WrongCount         int32     `json:"wrong_count"`
+	UnansweredCount    int32     `json:"unanswered_count"`
+	TotalNegativeMarks float64   `json:"total_negative_marks"`
+	IsFirstAttempt     bool      `json:"is_first_attempt"`
+	CompletedAt        time.Time `json:"completed_at"`
 }
 
-// StudentListQuizzesByNode retrieves quizzes linked to a lesson node for students
+type QuizLeaderboardEntry struct {
+	RankPosition       int64     `json:"rank_position"`
+	AttemptID          string    `json:"attempt_id"`
+	UserID             string    `json:"user_id"`
+	UserName           string    `json:"user_name"`
+	AvatarURL          string    `json:"avatar_url,omitempty"`
+	Score              float64   `json:"score"`
+	CorrectCount       int32     `json:"correct_count"`
+	WrongCount         int32     `json:"wrong_count"`
+	UnansweredCount    int32     `json:"unanswered_count"`
+	TotalNegativeMarks float64   `json:"total_negative_marks"`
+	TimeSpentSeconds   int32     `json:"time_spent_seconds"`
+	CompletedAt        time.Time `json:"completed_at"`
+	IsCurrentUser      bool      `json:"is_current_user"`
+}
+
+type QuizLeaderboardResponse struct {
+	QuizID            string                 `json:"quiz_id"`
+	QuizTitle         string                 `json:"quiz_title"`
+	TotalParticipants int64                  `json:"total_participants"`
+	MyRank            *QuizLeaderboardEntry  `json:"my_rank,omitempty"`
+	Entries           []QuizLeaderboardEntry `json:"entries"`
+}
+
+// StudentListQuizzesByNode retrieves quizzes linked to a lesson or model test node for students
 func (h *QuizHandler) StudentListQuizzesByNode(c echo.Context) error {
 	nodeID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -132,7 +174,7 @@ func (h *QuizHandler) StudentGetQuizQuestions(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
-// StudentSubmitQuizAttempt grades the submission, persists results, and returns explanations
+// StudentSubmitQuizAttempt grades the submission, calculates negative marking, persists results, and returns explanations
 func (h *QuizHandler) StudentSubmitQuizAttempt(c echo.Context) error {
 	quizID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -181,8 +223,6 @@ func (h *QuizHandler) StudentSubmitQuizAttempt(c echo.Context) error {
 		userAnswersMap[qID] = append(userAnswersMap[qID], aID)
 	}
 
-	// Grade questions
-	correctCount := 0
 	totalQuestions := len(questions)
 
 	type GradedQuestion struct {
@@ -228,12 +268,7 @@ func (h *QuizHandler) StudentSubmitQuizAttempt(c echo.Context) error {
 				isQuestionCorrect = matchedAll
 			}
 		} else {
-			// If no correct answers are designated in DB, mark it true if user selected nothing
 			isQuestionCorrect = len(userAns) == 0
-		}
-
-		if isQuestionCorrect {
-			correctCount++
 		}
 
 		gradedQuestions = append(gradedQuestions, GradedQuestion{
@@ -244,18 +279,71 @@ func (h *QuizHandler) StudentSubmitQuizAttempt(c echo.Context) error {
 		})
 	}
 
-	score := int32(0)
-	if totalQuestions > 0 {
-		score = int32((correctCount * 100) / totalQuestions)
+	// Calculate counts: correct, wrong, unanswered
+	correctCount := 0
+	wrongCount := 0
+	unansweredCount := 0
+
+	for _, gq := range gradedQuestions {
+		if len(gq.UserAnswers) == 0 {
+			unansweredCount++
+		} else if gq.IsCorrect {
+			correctCount++
+		} else {
+			wrongCount++
+		}
 	}
-	isPassed := score >= quiz.PassingScore
+
+	// Determine model test rules (if linked to a ModelTest node)
+	var totalMarks float64 = 100.0
+	var passMarks float64 = float64(quiz.PassingScore)
+	var negativeMarkingRate float64 = 0.0
+
+	if mt, errMT := h.store.GetModelTestByQuizID(ctx, quizID); errMT == nil {
+		if tm, errParse := strconv.ParseFloat(mt.TotalMarks, 64); errParse == nil && tm > 0 {
+			totalMarks = tm
+		}
+		if pm, errParse := strconv.ParseFloat(mt.PassMarks, 64); errParse == nil && pm > 0 {
+			passMarks = pm
+		}
+		if nm, errParse := strconv.ParseFloat(mt.NegativeMarkingRate, 64); errParse == nil {
+			negativeMarkingRate = nm
+		}
+	}
+
+	markPerQuestion := 0.0
+	if totalQuestions > 0 {
+		markPerQuestion = totalMarks / float64(totalQuestions)
+	}
+
+	earnedMarks := float64(correctCount) * markPerQuestion
+	deductedMarks := float64(wrongCount) * negativeMarkingRate
+	finalScore := earnedMarks - deductedMarks
+	if finalScore < 0 {
+		finalScore = 0
+	}
+	isPassed := finalScore >= passMarks
+
+	// Check if this is the user's first attempt for ranklist eligibility
+	userAttemptsCount, _ := h.store.CountUserAttemptsForQuiz(ctx, generated.CountUserAttemptsForQuizParams{
+		UserID: userID,
+		QuizID: quizID,
+	})
+	isFirstAttempt := userAttemptsCount == 0
 
 	// Persist attempt
 	attempt, err := h.store.CreateQuizAttempt(ctx, generated.CreateQuizAttemptParams{
-		UserID:   userID,
-		QuizID:   quizID,
-		Score:    score,
-		IsPassed: isPassed,
+		UserID:             userID,
+		QuizID:             quizID,
+		Score:              fmt.Sprintf("%.2f", finalScore),
+		IsPassed:           isPassed,
+		TimeSpentSeconds:   req.TimeSpentSeconds,
+		TotalQuestions:     int32(totalQuestions),
+		CorrectCount:       int32(correctCount),
+		WrongCount:         int32(wrongCount),
+		UnansweredCount:    int32(unansweredCount),
+		TotalNegativeMarks: fmt.Sprintf("%.2f", deductedMarks),
+		IsFirstAttempt:     isFirstAttempt,
 	})
 	if err != nil {
 		h.logger.Error("Failed to save quiz attempt", "error", err)
@@ -281,6 +369,40 @@ func (h *QuizHandler) StudentSubmitQuizAttempt(c echo.Context) error {
 			QuestionID: qID,
 			AnswerID:   ansID,
 		})
+	}
+
+	// Mark all attached nodes as COMPLETED in student progress and invalidate tree caches
+	if linkedNodes, errNodes := h.store.GetNodesByQuiz(ctx, quizID); errNodes == nil {
+		for _, nID := range linkedNodes {
+			_, _ = h.store.UpsertProgress(ctx, generated.UpsertProgressParams{
+				UserID: userID,
+				NodeID: nID,
+				Status: generated.ProgressStatusCOMPLETED,
+			})
+			if h.cacheService != nil {
+				_ = h.cacheService.Delete(ctx, "course:tree:id:"+nID.String())
+				if ancestors, errA := h.store.GetCourseTree(ctx, nID); errA == nil {
+					for _, a := range ancestors {
+						if a.NodeType == generated.NodeTypeCOURSE {
+							_ = h.cacheService.Delete(ctx, "course:tree:id:"+a.ID.String())
+							if course, errC := h.store.GetCourse(ctx, a.ID); errC == nil {
+								_ = h.cacheService.Delete(ctx, "course:tree:slug:"+course.Slug)
+							}
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Optional rank lookup
+	var rankPos *int64
+	if userRank, errR := h.store.GetUserRankInQuiz(ctx, generated.GetUserRankInQuizParams{
+		QuizID: quizID,
+		UserID: userID,
+	}); errR == nil {
+		rankPos = &userRank.RankPosition
 	}
 
 	// Format response with explanations
@@ -317,12 +439,20 @@ func (h *QuizHandler) StudentSubmitQuizAttempt(c echo.Context) error {
 	}
 
 	resp := SubmitQuizResponse{
-		AttemptID:    attempt.ID.String(),
-		Score:        attempt.Score,
-		IsPassed:     attempt.IsPassed,
-		PassingScore: quiz.PassingScore,
-		CompletedAt:  attempt.CompletedAt,
-		Questions:    detailQuestions,
+		AttemptID:          attempt.ID.String(),
+		Score:              finalScore,
+		IsPassed:           attempt.IsPassed,
+		PassingScore:       quiz.PassingScore,
+		TimeSpentSeconds:   attempt.TimeSpentSeconds,
+		TotalQuestions:     attempt.TotalQuestions,
+		CorrectCount:       attempt.CorrectCount,
+		WrongCount:         attempt.WrongCount,
+		UnansweredCount:    attempt.UnansweredCount,
+		TotalNegativeMarks: deductedMarks,
+		IsFirstAttempt:     attempt.IsFirstAttempt,
+		RankPosition:       rankPos,
+		CompletedAt:        attempt.CompletedAt,
+		Questions:          detailQuestions,
 	}
 
 	return c.JSON(http.StatusOK, resp)
@@ -353,11 +483,21 @@ func (h *QuizHandler) StudentListQuizAttempts(c echo.Context) error {
 
 	resp := make([]StudentQuizAttemptSummary, 0, len(attempts))
 	for _, a := range attempts {
+		scoreVal, _ := strconv.ParseFloat(a.Score, 64)
+		negVal, _ := strconv.ParseFloat(a.TotalNegativeMarks, 64)
+
 		resp = append(resp, StudentQuizAttemptSummary{
-			ID:          a.ID.String(),
-			Score:       a.Score,
-			IsPassed:    a.IsPassed,
-			CompletedAt: a.CompletedAt,
+			ID:                 a.ID.String(),
+			Score:              scoreVal,
+			IsPassed:           a.IsPassed,
+			TimeSpentSeconds:   a.TimeSpentSeconds,
+			TotalQuestions:     a.TotalQuestions,
+			CorrectCount:       a.CorrectCount,
+			WrongCount:         a.WrongCount,
+			UnansweredCount:    a.UnansweredCount,
+			TotalNegativeMarks: negVal,
+			IsFirstAttempt:     a.IsFirstAttempt,
+			CompletedAt:        a.CompletedAt,
 		})
 	}
 
@@ -475,7 +615,7 @@ func (h *QuizHandler) StudentGetAttemptDetails(c echo.Context) error {
 		}
 
 		detailQuestions = append(detailQuestions, AttemptDetailQuestion{
-			ID:            q.ID.String(),
+			ID:            gqQuestionID(q),
 			Content:       q.Content,
 			QuestionType:  string(q.QuestionType),
 			Explanation:   explanation,
@@ -485,14 +625,129 @@ func (h *QuizHandler) StudentGetAttemptDetails(c echo.Context) error {
 		})
 	}
 
+	scoreVal, _ := strconv.ParseFloat(attempt.Score, 64)
+	negVal, _ := strconv.ParseFloat(attempt.TotalNegativeMarks, 64)
+
+	var rankPos *int64
+	if userRank, errR := h.store.GetUserRankInQuiz(ctx, generated.GetUserRankInQuizParams{
+		QuizID: attempt.QuizID,
+		UserID: userID,
+	}); errR == nil {
+		rankPos = &userRank.RankPosition
+	}
+
 	resp := SubmitQuizResponse{
-		AttemptID:    attempt.ID.String(),
-		Score:        attempt.Score,
-		IsPassed:     attempt.IsPassed,
-		PassingScore: quiz.PassingScore,
-		CompletedAt:  attempt.CompletedAt,
-		Questions:    detailQuestions,
+		AttemptID:          attempt.ID.String(),
+		Score:              scoreVal,
+		IsPassed:           attempt.IsPassed,
+		PassingScore:       quiz.PassingScore,
+		TimeSpentSeconds:   attempt.TimeSpentSeconds,
+		TotalQuestions:     attempt.TotalQuestions,
+		CorrectCount:       attempt.CorrectCount,
+		WrongCount:         attempt.WrongCount,
+		UnansweredCount:    attempt.UnansweredCount,
+		TotalNegativeMarks: negVal,
+		IsFirstAttempt:     attempt.IsFirstAttempt,
+		RankPosition:       rankPos,
+		CompletedAt:        attempt.CompletedAt,
+		Questions:          detailQuestions,
 	}
 
 	return c.JSON(http.StatusOK, resp)
+}
+
+func gqQuestionID(q generated.Question) string {
+	return q.ID.String()
+}
+
+// StudentGetQuizLeaderboard returns the competitive ranklist (only first attempts counted)
+func (h *QuizHandler) StudentGetQuizLeaderboard(c echo.Context) error {
+	quizID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid quiz ID")
+	}
+
+	ctx := c.Request().Context()
+	quiz, err := h.store.GetQuizByID(ctx, quizID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusNotFound, "Quiz not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	var activeUserID uuid.UUID
+	authUser := internalMiddleware.GetAuthUser(c)
+	if authUser.ID != "" {
+		if uid, errU := uuid.Parse(authUser.ID); errU == nil {
+			activeUserID = uid
+		}
+	}
+
+	rows, err := h.store.GetQuizLeaderboard(ctx, quizID)
+	if err != nil {
+		h.logger.Error("Failed to fetch leaderboard", "error", err, "quiz_id", quizID)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
+	}
+
+	totalParticipants, _ := h.store.CountQuizLeaderboardParticipants(ctx, quizID)
+
+	entries := make([]QuizLeaderboardEntry, 0, len(rows))
+	for _, r := range rows {
+		scoreVal, _ := strconv.ParseFloat(r.Score, 64)
+		negVal, _ := strconv.ParseFloat(r.TotalNegativeMarks, 64)
+		avatar := ""
+		if r.AvatarUrl.Valid {
+			avatar = r.AvatarUrl.String
+		}
+
+		entries = append(entries, QuizLeaderboardEntry{
+			RankPosition:       r.RankPosition,
+			AttemptID:          r.AttemptID.String(),
+			UserID:             r.UserID.String(),
+			UserName:           r.UserName,
+			AvatarURL:          avatar,
+			Score:              scoreVal,
+			CorrectCount:       r.CorrectCount,
+			WrongCount:         r.WrongCount,
+			UnansweredCount:    r.UnansweredCount,
+			TotalNegativeMarks: negVal,
+			TimeSpentSeconds:   r.TimeSpentSeconds,
+			CompletedAt:        r.CompletedAt,
+			IsCurrentUser:      activeUserID != uuid.Nil && r.UserID == activeUserID,
+		})
+	}
+
+	var myRankEntry *QuizLeaderboardEntry
+	if activeUserID != uuid.Nil {
+		if userRankRow, errRank := h.store.GetUserRankInQuiz(ctx, generated.GetUserRankInQuizParams{
+			QuizID: quizID,
+			UserID: activeUserID,
+		}); errRank == nil {
+			scoreVal, _ := strconv.ParseFloat(userRankRow.Score, 64)
+			negVal, _ := strconv.ParseFloat(userRankRow.TotalNegativeMarks, 64)
+			myRankEntry = &QuizLeaderboardEntry{
+				RankPosition:       userRankRow.RankPosition,
+				AttemptID:          userRankRow.AttemptID.String(),
+				UserID:             userRankRow.UserID.String(),
+				UserName:           authUser.Email,
+				Score:              scoreVal,
+				CorrectCount:       userRankRow.CorrectCount,
+				WrongCount:         userRankRow.WrongCount,
+				UnansweredCount:    userRankRow.UnansweredCount,
+				TotalNegativeMarks: negVal,
+				TimeSpentSeconds:   userRankRow.TimeSpentSeconds,
+				CompletedAt:        userRankRow.CompletedAt,
+				IsCurrentUser:      true,
+			}
+		}
+	}
+
+	return c.JSON(http.StatusOK, QuizLeaderboardResponse{
+		QuizID:            quiz.ID.String(),
+		QuizTitle:         quiz.Title,
+		TotalParticipants: totalParticipants,
+		MyRank:            myRankEntry,
+		Entries:           entries,
+	})
 }
