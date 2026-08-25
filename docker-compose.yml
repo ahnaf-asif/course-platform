@@ -61,6 +61,7 @@ services:
     environment:
       - NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1
       - MEDIA_API_URL=http://media-server:8081/api/v1
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-https://discord.com/api/webhooks/placeholder_id/placeholder_token}
       - PORT=3000
     env_file:
       - be/.env

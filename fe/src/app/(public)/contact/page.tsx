@@ -24,6 +24,7 @@ import {
   IconSend,
 } from '@tabler/icons-react';
 import { useState } from 'react';
+import axios from 'axios';
 
 export default function ContactPage() {
   const [loading, setLoading] = useState(false);
@@ -32,6 +33,7 @@ export default function ContactPage() {
     initialValues: {
       name: '',
       email: '',
+      phone: '',
       subject: '',
       message: '',
     },
@@ -43,18 +45,29 @@ export default function ContactPage() {
     },
   });
 
-  const handleSubmit = (values: typeof form.values) => {
+  const handleSubmit = async (values: typeof form.values) => {
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await axios.post('/api/contact', values);
       notifications.show({
         title: 'বার্তা পাঠানো হয়েছে!',
         message: `ধন্যবাদ ${values.name}, আপনার বার্তা আমাদের কাছে পৌঁছেছে। আমরা দ্রুত আপনার সাথে যোগাযোগ করব!`,
         color: 'green',
       });
       form.reset();
-    }, 1200);
+    } catch (error) {
+      let message = 'বার্তা পাঠাতে সমস্যা হয়েছে। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।';
+      if (axios.isAxiosError(error)) {
+        message = error.response?.data?.message || message;
+      }
+      notifications.show({
+        title: 'বার্তা পাঠানো ব্যর্থ',
+        message,
+        color: 'red',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const contactInfo = [
@@ -128,6 +141,12 @@ export default function ContactPage() {
                   placeholder="your.email@example.com"
                   size="md"
                   {...form.getInputProps('email')}
+                />
+                <TextInput
+                  label="ফোন নম্বর (ঐচ্ছিক)"
+                  placeholder="+৮৮০ ১৭০০-০০০০০০"
+                  size="md"
+                  {...form.getInputProps('phone')}
                 />
                 <TextInput
                   required

@@ -30,6 +30,10 @@ vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
 }));
 
+const mockSearchParams = (params: string) => {
+  return new URLSearchParams(params) as unknown as import('next/navigation').ReadonlyURLSearchParams;
+};
+
 describe('ResetPasswordPage', () => {
   const mockPush = vi.fn();
 
@@ -52,7 +56,7 @@ describe('ResetPasswordPage', () => {
   });
 
   it('renders missing/invalid token alert when no token is present', () => {
-    vi.mocked(navigation.useSearchParams).mockReturnValue(new URLSearchParams(''));
+    vi.mocked(navigation.useSearchParams).mockReturnValue(mockSearchParams(''));
 
     render(<ResetPasswordPage />);
 
@@ -62,7 +66,7 @@ describe('ResetPasswordPage', () => {
 
   it('renders password reset form when valid token is present', () => {
     vi.mocked(navigation.useSearchParams).mockReturnValue(
-      new URLSearchParams('token=sample_valid_token_123')
+      mockSearchParams('token=sample_valid_token_123')
     );
 
     render(<ResetPasswordPage />);
@@ -75,7 +79,7 @@ describe('ResetPasswordPage', () => {
 
   it('validates password length and matching confirmation', async () => {
     vi.mocked(navigation.useSearchParams).mockReturnValue(
-      new URLSearchParams('token=sample_valid_token_123')
+      mockSearchParams('token=sample_valid_token_123')
     );
 
     render(<ResetPasswordPage />);
@@ -111,7 +115,7 @@ describe('ResetPasswordPage', () => {
 
   it('submits valid password and displays success state', async () => {
     vi.mocked(navigation.useSearchParams).mockReturnValue(
-      new URLSearchParams('token=sample_valid_token_123')
+      mockSearchParams('token=sample_valid_token_123')
     );
 
     render(<ResetPasswordPage />);
@@ -148,7 +152,7 @@ describe('ResetPasswordPage', () => {
 
   it('handles API error when token is invalid or expired on server', async () => {
     vi.mocked(navigation.useSearchParams).mockReturnValue(
-      new URLSearchParams('token=expired_token')
+      mockSearchParams('token=expired_token')
     );
     vi.mocked(axios.post).mockImplementation(async (url: string) => {
       if (url.includes('/auth/refresh')) {
@@ -160,7 +164,7 @@ describe('ResetPasswordPage', () => {
         status: 400,
         statusText: 'Bad Request',
         headers: {},
-        config: {} as any,
+        config: {} as unknown as import('axios').InternalAxiosRequestConfig,
       };
       throw error;
     });

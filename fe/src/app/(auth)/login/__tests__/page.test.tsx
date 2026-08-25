@@ -16,8 +16,9 @@ describe('LoginPage', () => {
     vi.mocked(useAuth).mockReturnValue({
       login: mockLogin,
       logout: vi.fn(),
-      register: vi.fn(),
-      loading: false,
+      isAuthenticated: false,
+      role: null,
+      accessToken: null,
     });
   });
 

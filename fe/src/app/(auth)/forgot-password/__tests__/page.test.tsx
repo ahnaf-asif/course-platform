@@ -98,7 +98,7 @@ describe('ForgotPasswordPage', () => {
         status: 429,
         statusText: 'Too Many Requests',
         headers: {},
-        config: {} as any,
+        config: {} as unknown as import('axios').InternalAxiosRequestConfig,
       };
       throw error;
     });

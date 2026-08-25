@@ -61,7 +61,7 @@ export default function CoursesSection() {
   const displayCourses = courses.length > 0 ? courses.slice(0, 3) : mockCourses;
 
   return (
-    <Box py={{ base: '50px', sm: '70px', md: '100px' }} style={{ backgroundColor: '#fdfdfe' }}>
+    <Box py={{ base: '50px', sm: '50px', md: '50px' }} style={{ backgroundColor: '#fdfdfe' }}>
       <Container size="xl">
         <Stack align="center" gap="xs" mb={{ base: '32px', md: '60px' }}>
           <Badge variant="light" color="blue" size="md">
@@ -73,7 +73,9 @@ export default function CoursesSection() {
               fontSize: 'clamp(26px, 5vw, 38px)',
               fontWeight: 900,
               letterSpacing: '-0.5px',
+              textAlign: 'center'
             }}
+
           >
             বেছে নিন আপনার{' '}
             <span style={{ background: 'linear-gradient(45deg, #1c7ed6, #7300e6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
