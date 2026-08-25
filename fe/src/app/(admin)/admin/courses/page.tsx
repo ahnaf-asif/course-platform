@@ -51,6 +51,9 @@ export default function CoursesManagement() {
         description: values.description || '',
         slug: values.slug || undefined,
         thumbnail_url: values.thumbnail_url || undefined,
+        is_published: values.is_published,
+        price: values.price || undefined,
+        currency: values.currency || undefined,
       };
 
       if (editingCourse) {
@@ -62,9 +65,9 @@ export default function CoursesManagement() {
       }
       close();
       refetch();
-      queryClient.invalidateQueries({ queryKey: ['courses'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-courses'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/admin/courses'] });
+      queryClient.invalidateQueries({ queryKey: ['/courses'] });
+      queryClient.invalidateQueries({ queryKey: ['/admin/dashboard'] });
     } catch (error) {
       let message = 'Failed to save course';
       if (axios.isAxiosError(error)) {

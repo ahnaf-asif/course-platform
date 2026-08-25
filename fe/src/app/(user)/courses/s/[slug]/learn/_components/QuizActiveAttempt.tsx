@@ -27,6 +27,8 @@ interface QuizActiveAttemptProps {
   setActiveAttempt: (attempt: SubmitQuizResponse) => void;
   refetchAttempts: () => void;
   refetchTree: () => void;
+  nodeId?: string;
+  updateProgress?: (nodeId: string, status: 'STARTED' | 'COMPLETED') => Promise<void>;
 }
 
 export function QuizActiveAttempt({
@@ -41,6 +43,8 @@ export function QuizActiveAttempt({
   setActiveAttempt,
   refetchAttempts,
   refetchTree,
+  nodeId,
+  updateProgress,
 }: QuizActiveAttemptProps) {
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(() => isDevToolsOpenSync());
   useDevToolsDetector(setIsDevToolsOpen);
@@ -108,6 +112,9 @@ export function QuizActiveAttempt({
         onSuccess: (res: SubmitQuizResponse) => {
           setActiveAttempt(res);
           setIsAttempting(false);
+          if (nodeId && updateProgress) {
+            updateProgress(nodeId, 'COMPLETED');
+          }
           refetchAttempts();
           refetchTree();
         },

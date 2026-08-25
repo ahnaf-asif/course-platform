@@ -33,6 +33,7 @@ import { LessonTextView } from './_components/LessonTextView';
 import { SyllabusSidebar } from './_components/SyllabusSidebar';
 import { FooterNavBar } from './_components/FooterNavBar';
 import { QuizArea } from './_components/QuizArea';
+import { ModelTestArea } from './_components/ModelTestArea';
 import { useCoursePlayer } from './_components/useCoursePlayer';
 
 function CoursePlayerContent() {
@@ -66,6 +67,7 @@ function CoursePlayerContent() {
     isLoadingAttempts,
     refetchAttempts,
     questionsData,
+    isLoadingQuestions,
     submitAttemptMutation,
     selectedAttemptId,
     setSelectedAttemptId,
@@ -246,7 +248,38 @@ function CoursePlayerContent() {
               {/* Main Content Player Container */}
               <Box style={{ width: '100%', borderRadius: '16px', overflow: 'hidden' }}>
                 {selectedLessonId ? (
-                  isLoadingLesson ? (
+                  currentTreeNode?.node_type === 'MODEL_TEST' ? (
+                    <Card p={{ base: 'md', sm: 'xl' }} radius="lg" withBorder style={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0' }}>
+                      <ModelTestArea
+                        nodeTitle={currentTreeNode.title}
+                        modelTest={currentTreeNode.model_test}
+                        quizzesData={quizzesData}
+                        isLoadingQuizzes={isLoadingQuizzes}
+                        activeQuizId={activeQuizId}
+                        setActiveQuizId={setActiveQuizId}
+                        nodeId={selectedLessonId}
+                        updateProgress={updateProgress}
+                        activeAttempt={activeAttempt}
+                        setActiveAttempt={setActiveAttempt}
+                        userAnswers={userAnswers}
+                        setUserAnswers={setUserAnswers}
+                        isAttempting={isAttempting}
+                        setIsAttempting={setIsAttempting}
+                        currentQuestionIndex={currentQuestionIndex}
+                        setCurrentQuestionIndex={setCurrentQuestionIndex}
+                        attemptsData={attemptsData}
+                        isLoadingAttempts={isLoadingAttempts}
+                        refetchAttempts={refetchAttempts}
+                        questionsData={questionsData}
+                        isLoadingQuestions={isLoadingQuestions}
+                        submitAttemptMutation={submitAttemptMutation}
+                        selectedAttemptId={selectedAttemptId}
+                        setSelectedAttemptId={setSelectedAttemptId}
+                        isLoadingAttemptDetails={isLoadingAttemptDetails}
+                        refetchTree={refetchTree}
+                      />
+                    </Card>
+                  ) : isLoadingLesson ? (
                     <Center style={{ minHeight: '360px', backgroundColor: '#ffffff', borderRadius: '16px' }}>
                       <Loader size="lg" color="blue" />
                     </Center>
@@ -296,6 +329,8 @@ function CoursePlayerContent() {
                           setSelectedAttemptId={setSelectedAttemptId}
                           isLoadingAttemptDetails={isLoadingAttemptDetails}
                           refetchTree={refetchTree}
+                          nodeId={selectedLessonId}
+                          updateProgress={updateProgress}
                         />
                       </Card>
                     ) : (

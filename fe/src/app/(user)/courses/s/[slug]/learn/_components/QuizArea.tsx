@@ -40,6 +40,8 @@ interface QuizAreaProps {
   setSelectedAttemptId: (id: string | null) => void;
   isLoadingAttemptDetails: boolean;
   refetchTree: () => void;
+  nodeId?: string;
+  updateProgress?: (nodeId: string, status: 'STARTED' | 'COMPLETED') => Promise<void>;
 }
 
 export function QuizArea({
@@ -64,6 +66,8 @@ export function QuizArea({
   setSelectedAttemptId,
   isLoadingAttemptDetails,
   refetchTree,
+  nodeId,
+  updateProgress,
 }: QuizAreaProps) {
   if (isLoadingQuizzes) {
     return (
@@ -121,6 +125,8 @@ export function QuizArea({
         setActiveAttempt={setActiveAttempt}
         refetchAttempts={refetchAttempts}
         refetchTree={refetchTree}
+        nodeId={nodeId}
+        updateProgress={updateProgress}
       />
     );
   }

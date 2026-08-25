@@ -41,10 +41,15 @@ export function useCoursePlayer() {
     },
   });
 
-  // Fetch full lesson details when selected
+  const currentTreeNode = useMemo(() => {
+    return tree?.find((node) => node.id === selectedLessonId);
+  }, [tree, selectedLessonId]);
+
+  // Fetch full lesson details when selected (only for LESSON nodes, not MODEL_TEST)
+  const isLessonNode = !currentTreeNode || currentTreeNode.node_type === 'LESSON';
   const { data: lessonDetails, isLoading: isLoadingLesson } = useGetUserLesson(selectedLessonId || '', {
     query: {
-      enabled: !!selectedLessonId,
+      enabled: !!selectedLessonId && isLessonNode,
     },
   });
 
@@ -84,29 +89,31 @@ export function useCoursePlayer() {
     }
   }, [attemptDetailsData]);
 
-  // Fetch attempts history for active quiz
+  const effectiveQuizId = useMemo(() => {
+    if (activeQuizId) return activeQuizId;
+    if (quizzesData && quizzesData.length > 0) return quizzesData[0].id;
+    return '';
+  }, [activeQuizId, quizzesData]);
+
+  // Fetch attempts history for active quiz or linked quiz
   const { data: attemptsData, refetch: refetchAttempts, isLoading: isLoadingAttempts } = useStudentListQuizAttempts(
-    activeQuizId || '',
+    effectiveQuizId,
     {
       query: {
-        enabled: !!activeQuizId,
+        enabled: !!effectiveQuizId,
       },
     }
   );
 
   // Fetch active quiz questions
-  const { data: questionsData, isLoading: isLoadingQuestions } = useStudentGetQuizQuestions(activeQuizId || '', {
+  const { data: questionsData, isLoading: isLoadingQuestions } = useStudentGetQuizQuestions(effectiveQuizId, {
     query: {
-      enabled: !!activeQuizId && isAttempting,
+      enabled: !!effectiveQuizId && (isAttempting || currentTreeNode?.node_type === 'MODEL_TEST'),
     },
   });
 
   const submitAttemptMutation = useStudentSubmitQuizAttempt();
   const upsertProgressMutation = useStudentUpsertProgress();
-
-  const currentTreeNode = useMemo(() => {
-    return tree?.find((node) => node.id === selectedLessonId);
-  }, [tree, selectedLessonId]);
 
   const updateProgress = useCallback(async (nodeId: string, status: 'STARTED' | 'COMPLETED') => {
     try {
@@ -121,7 +128,12 @@ export function useCoursePlayer() {
   }, [upsertProgressMutation, refetchTree]);
 
   useEffect(() => {
-    if (selectedLessonId && currentTreeNode && !currentTreeNode.progress_status) {
+    if (
+      selectedLessonId &&
+      currentTreeNode &&
+      currentTreeNode.node_type === 'LESSON' &&
+      !currentTreeNode.progress_status
+    ) {
       updateProgress(selectedLessonId, 'STARTED');
     }
   }, [selectedLessonId, currentTreeNode, updateProgress]);
@@ -194,7 +206,7 @@ export function useCoursePlayer() {
     const traverse = (nodes: ExtendedNode[]) => {
       const sorted = [...nodes].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
       for (const node of sorted) {
-        if (node.node_type === 'LESSON') {
+        if (node.node_type === 'LESSON' || node.node_type === 'MODEL_TEST') {
           list.push({
             id: node.id,
             title: node.title,
@@ -288,19 +300,6 @@ export function useCoursePlayer() {
       return () => clearTimeout(timer);
     }
   }, [activeSlideType, quizzesData, activeQuizId]);
-
-  // Auto-transition to quiz slide when activeQuizId is set
-  useEffect(() => {
-    if (activeQuizId) {
-      const quizIndex = activeSubSlides.indexOf('quiz');
-      if (quizIndex !== -1 && currentSubSlideIndex !== quizIndex) {
-        const timer = setTimeout(() => {
-          setCurrentSubSlideIndex(quizIndex);
-        }, 0);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [activeQuizId, activeSubSlides, currentSubSlideIndex]);
 
   // Compute slide counts for progress bar
   const totalSlidesCount = useMemo(() => {

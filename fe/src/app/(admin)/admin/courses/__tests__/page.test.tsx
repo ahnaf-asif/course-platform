@@ -123,4 +123,46 @@ describe('CoursesManagement Page Component', () => {
     expect(confirmSpy).toHaveBeenCalled();
     expect(mockDeleteMutate).toHaveBeenCalledWith({ id: 'course-1' });
   });
+
+  it('updates course settings including publish status and price', async () => {
+    const mockUpdateMutate = vi.fn().mockResolvedValue({});
+    mockUsePatchAdminCoursesId.mockReturnValue({
+      mutateAsync: mockUpdateMutate,
+      isPending: false,
+    });
+
+    render(<CoursesManagement />);
+
+    const menuButton = screen.getByRole('button', { name: 'Course Options' });
+    await act(async () => {
+      fireEvent.click(menuButton);
+    });
+
+    let editItem: HTMLElement | null = null;
+    await waitFor(() => {
+      editItem = screen.getByText('Edit Settings');
+      expect(editItem).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      if (editItem) fireEvent.click(editItem);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit Course Settings')).toBeInTheDocument();
+    });
+
+    const formElement = document.querySelector('form');
+    fireEvent.submit(formElement!);
+
+    await waitFor(() => {
+      expect(mockUpdateMutate).toHaveBeenCalledWith({
+        id: 'course-1',
+        data: expect.objectContaining({
+          title: 'Advanced Go Patterns',
+          is_published: true,
+        }),
+      });
+    });
+  });
 });

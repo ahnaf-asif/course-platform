@@ -16,6 +16,10 @@ const mockUsePostAdminLessons = vi.fn();
 const mockUsePatchAdminLessonsId = vi.fn();
 const mockUseDeleteAdminLessonsId = vi.fn();
 
+const mockUseCreateModelTest = vi.fn();
+const mockUseUpdateModelTest = vi.fn();
+const mockUseDeleteModelTest = vi.fn();
+
 vi.mock('@/api/generated/course/course', () => ({
   useGetCourseTreeBySlug: (slug: string) => mockUseGetCourseTreeBySlug(slug),
 }));
@@ -30,6 +34,9 @@ vi.mock('@/api/generated/admin-curriculum/admin-curriculum', () => ({
   usePostAdminLessons: () => mockUsePostAdminLessons(),
   usePatchAdminLessonsId: () => mockUsePatchAdminLessonsId(),
   useDeleteAdminLessonsId: () => mockUseDeleteAdminLessonsId(),
+  useCreateModelTest: () => mockUseCreateModelTest(),
+  useUpdateModelTest: () => mockUseUpdateModelTest(),
+  useDeleteModelTest: () => mockUseDeleteModelTest(),
 }));
 
 const mockPush = vi.fn();
@@ -90,6 +97,19 @@ describe('CourseCurriculumPage Component', () => {
       isPending: false,
     });
     mockUseDeleteAdminLessonsId.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+
+    mockUseCreateModelTest.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+    mockUseUpdateModelTest.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+    mockUseDeleteModelTest.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
     });

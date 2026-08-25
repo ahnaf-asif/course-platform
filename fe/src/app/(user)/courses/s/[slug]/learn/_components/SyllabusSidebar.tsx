@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Box,
   Progress,
@@ -17,6 +17,7 @@ import {
   IconPlayerPlay,
   IconFileText,
   IconHelpCircle,
+  IconClock,
 } from '@tabler/icons-react';
 import { ExtendedNode } from './utils';
 
@@ -61,22 +62,23 @@ export function SyllabusSidebar({
   });
 
   // Automatically keep active lesson's subject & chapter expanded
-  const [prevLessonId, setPrevLessonId] = useState(selectedLessonId);
-  if (selectedLessonId !== prevLessonId) {
-    setPrevLessonId(selectedLessonId);
-    if (selectedLessonId) {
-      for (const subject of organizedTree) {
-        for (const chapter of subject.children) {
-          const hasActive = chapter.children.some((l) => l.id === selectedLessonId);
-          if (hasActive) {
-            setExpandedSubjects((prev) => ({ ...prev, [subject.id]: true }));
-            setExpandedChapters((prev) => ({ ...prev, [chapter.id]: true }));
-            break;
-          }
+  useEffect(() => {
+    if (!selectedLessonId) return;
+    for (const subject of organizedTree) {
+      const isDirectChild = subject.id === selectedLessonId || subject.children.some((c) => c.id === selectedLessonId);
+      if (isDirectChild) {
+        setExpandedSubjects((prev) => ({ ...prev, [subject.id]: true }));
+      }
+      for (const chapter of subject.children) {
+        const isChapterOrLesson = chapter.id === selectedLessonId || chapter.children.some((l) => l.id === selectedLessonId);
+        if (isChapterOrLesson) {
+          setExpandedSubjects((prev) => ({ ...prev, [subject.id]: true }));
+          setExpandedChapters((prev) => ({ ...prev, [chapter.id]: true }));
+          break;
         }
       }
     }
-  }
+  }, [selectedLessonId, organizedTree]);
 
   const toggleSubject = (subjectId: string) => {
     setExpandedSubjects((prev) => ({
@@ -102,28 +104,36 @@ export function SyllabusSidebar({
     if (setMobileSidebarOpen) setMobileSidebarOpen(false);
   };
 
-  const progressPercent =
-    totalSlidesCount > 0
-      ? Math.min(100, Math.round((currentSlideProgressIndex / totalSlidesCount) * 100))
-      : 0;
+  // Helper to compute total and completed content counts for any subtree
+  const getNodeStats = useCallback((nodes: ExtendedNode[]) => {
+    let completed = 0;
+    let total = 0;
+
+    const traverse = (list: ExtendedNode[]) => {
+      for (const node of list) {
+        if (node.node_type === 'LESSON' || node.node_type === 'MODEL_TEST') {
+          total++;
+          const isNodeCompleted =
+            node.progress_status === 'COMPLETED' ||
+            (node.quizzes && node.quizzes.some((q) => q.is_passed));
+          if (isNodeCompleted) {
+            completed++;
+          }
+        }
+        if (node.children && node.children.length > 0) {
+          traverse(node.children);
+        }
+      }
+    };
+
+    traverse(nodes);
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { completed, total, percent };
+  }, []);
 
   const completedStats = useMemo(() => {
-    let completedLessons = 0;
-    let totalLessons = 0;
-
-    organizedTree.forEach((sub) => {
-      sub.children.forEach((chap) => {
-        chap.children.forEach((les) => {
-          totalLessons++;
-          if (les.progress_status === 'COMPLETED') {
-            completedLessons++;
-          }
-        });
-      });
-    });
-
-    return { completedLessons, totalLessons };
-  }, [organizedTree]);
+    return getNodeStats(organizedTree);
+  }, [organizedTree, getNodeStats]);
 
   return (
     <Box
@@ -151,20 +161,20 @@ export function SyllabusSidebar({
             কোর্স সিলেবাস
           </Title>
           <Text size="xs" fw={600} c="blue.6">
-            {progressPercent}% সম্পূর্ণ
+            {completedStats.percent}% সম্পূর্ণ
           </Text>
         </Group>
 
         <Progress
-          value={progressPercent}
+          value={completedStats.percent}
           size={4}
           radius="xl"
           color="blue"
-          animated={progressPercent > 0 && progressPercent < 100}
+          animated={completedStats.percent > 0 && completedStats.percent < 100}
         />
 
         <Text size="11px" c="dimmed" mt={6}>
-          {completedStats.completedLessons} / {completedStats.totalLessons || totalSlidesCount} পাঠ সম্পন্ন
+          {completedStats.completed} / {completedStats.total} পাঠ সম্পন্ন
         </Text>
       </Box>
 
@@ -180,20 +190,8 @@ export function SyllabusSidebar({
         <Stack gap={2}>
           {organizedTree.map((subject) => {
             const isSubOpen = !!expandedSubjects[subject.id];
-
-            const totalSubjectLessons = subject.children.reduce(
-              (acc, chap) => acc + chap.children.length,
-              0
-            );
-            const completedSubjectLessons = subject.children.reduce(
-              (acc, chap) =>
-                acc + chap.children.filter((l) => l.progress_status === 'COMPLETED').length,
-              0
-            );
-            const subjectPercent =
-              totalSubjectLessons > 0
-                ? Math.round((completedSubjectLessons / totalSubjectLessons) * 100)
-                : 0;
+            const subjectStats = getNodeStats([subject]);
+            const subjectPercent = subjectStats.percent;
 
             return (
               <Box key={subject.id} style={{ borderBottom: '1px solid #f8fafc' }}>
@@ -272,7 +270,64 @@ export function SyllabusSidebar({
                 {/* Subject Content Collapse */}
                 <Collapse expanded={isSubOpen}>
                   <Box pb="xs">
-                    {subject.children.map((chapter) => {
+                    {subject.children.map((child) => {
+                      if (child.node_type === 'MODEL_TEST') {
+                        const isTestActive = selectedLessonId === child.id;
+                        const isTestPassed =
+                          child.progress_status === 'COMPLETED' ||
+                          (child.quizzes && child.quizzes.some((q) => q.is_passed));
+
+                        return (
+                          <UnstyledButton
+                            key={child.id}
+                            onClick={() => onSelectLesson(child.id)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              width: '100%',
+                              padding: '8px 12px 8px 18px',
+                              borderRadius: '6px',
+                              fontSize: '12.5px',
+                              backgroundColor: isTestActive ? '#eff6ff' : 'transparent',
+                              color: isTestActive ? '#1d4ed8' : '#334155',
+                              fontWeight: isTestActive ? 600 : 400,
+                              transition: 'background-color 0.12s ease',
+                            }}
+                            data-testid={`model-test-item-${child.id}`}
+                          >
+                            <Box style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                              {isTestPassed ? (
+                                <IconCheck size={14} color="#10b981" stroke={2.5} />
+                              ) : (
+                                <IconClock size={13} color={isTestActive ? '#2563eb' : '#94a3b8'} />
+                              )}
+                            </Box>
+
+                            <Text
+                              size="12.5px"
+                              style={{
+                                flex: 1,
+                                lineHeight: 1.35,
+                                wordBreak: 'break-word',
+                              }}
+                            >
+                              {child.title}
+                            </Text>
+
+                            <Text
+                              size="11px"
+                              fw={600}
+                              c={isTestPassed ? 'green.6' : isTestActive ? 'blue.6' : 'dimmed'}
+                              style={{ flexShrink: 0 }}
+                            >
+                              {isTestPassed ? 'সম্পন্ন' : 'মডেল টেস্ট'}
+                            </Text>
+                          </UnstyledButton>
+                        );
+                      }
+
+                      const chapter = child;
                       const isChapOpen = !!expandedChapters[chapter.id];
 
                       return (
@@ -319,9 +374,68 @@ export function SyllabusSidebar({
                           {/* Chapter Lessons & Quizzes (Clean Flat Rows) */}
                           <Collapse expanded={isChapOpen}>
                             <Stack gap={1} px="xs" pt={2}>
-                              {chapter.children.flatMap((lesson) => {
+                              {chapter.children.flatMap((child) => {
+                                if (child.node_type === 'MODEL_TEST') {
+                                  const isTestActive = selectedLessonId === child.id;
+                                  const isTestCompleted =
+                                    child.progress_status === 'COMPLETED' ||
+                                    (child.quizzes && child.quizzes.some((q) => q.is_passed));
+
+                                  return (
+                                    <UnstyledButton
+                                      key={child.id}
+                                      onClick={() => onSelectLesson(child.id)}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        width: '100%',
+                                        padding: '8px 12px 8px 24px',
+                                        borderRadius: '6px',
+                                        fontSize: '12.5px',
+                                        backgroundColor: isTestActive ? '#eff6ff' : 'transparent',
+                                        color: isTestActive ? '#1d4ed8' : '#334155',
+                                        fontWeight: isTestActive ? 600 : 400,
+                                        transition: 'background-color 0.12s ease',
+                                      }}
+                                      data-testid={`model-test-item-${child.id}`}
+                                    >
+                                      <Box style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                                        {isTestCompleted ? (
+                                          <IconCheck size={14} color="#10b981" stroke={2.5} />
+                                        ) : (
+                                          <IconClock size={13} color={isTestActive ? '#2563eb' : '#94a3b8'} />
+                                        )}
+                                      </Box>
+
+                                      <Text
+                                        size="12.5px"
+                                        style={{
+                                          flex: 1,
+                                          lineHeight: 1.35,
+                                          wordBreak: 'break-word',
+                                        }}
+                                      >
+                                        {child.title}
+                                      </Text>
+
+                                      <Text
+                                        size="11px"
+                                        fw={600}
+                                        c={isTestCompleted ? 'green.6' : isTestActive ? 'blue.6' : 'dimmed'}
+                                        style={{ flexShrink: 0 }}
+                                      >
+                                        {isTestCompleted ? 'সম্পন্ন' : 'মডেল টেস্ট'}
+                                      </Text>
+                                    </UnstyledButton>
+                                  );
+                                }
+
+                                const lesson = child;
                                 const isLessonActive = selectedLessonId === lesson.id && !activeQuizId;
-                                const isLessonCompleted = lesson.progress_status === 'COMPLETED';
+                                const isLessonCompleted =
+                                  lesson.progress_status === 'COMPLETED' ||
+                                  (lesson.quizzes && lesson.quizzes.some((q) => q.is_passed));
 
                                 const lessonRow = (
                                   <UnstyledButton

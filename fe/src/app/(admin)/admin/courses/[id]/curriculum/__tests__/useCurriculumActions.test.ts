@@ -19,6 +19,10 @@ const mockCreateLesson = vi.fn();
 const mockUpdateLesson = vi.fn();
 const mockDeleteLesson = vi.fn();
 
+const mockCreateModelTest = vi.fn();
+const mockUpdateModelTest = vi.fn();
+const mockDeleteModelTest = vi.fn();
+
 vi.mock('@/api/generated/admin-curriculum/admin-curriculum', () => ({
   usePostAdminSubjects: () => ({ mutateAsync: mockCreateSubject, isPending: false }),
   usePatchAdminSubjectsId: () => ({ mutateAsync: mockUpdateSubject, isPending: false }),
@@ -29,6 +33,9 @@ vi.mock('@/api/generated/admin-curriculum/admin-curriculum', () => ({
   usePostAdminLessons: () => ({ mutateAsync: mockCreateLesson, isPending: false }),
   usePatchAdminLessonsId: () => ({ mutateAsync: mockUpdateLesson, isPending: false }),
   useDeleteAdminLessonsId: () => ({ mutateAsync: mockDeleteLesson, isPending: false }),
+  useCreateModelTest: () => ({ mutateAsync: mockCreateModelTest, isPending: false }),
+  useUpdateModelTest: () => ({ mutateAsync: mockUpdateModelTest, isPending: false }),
+  useDeleteModelTest: () => ({ mutateAsync: mockDeleteModelTest, isPending: false }),
 }));
 
 vi.mock('@mantine/notifications', () => ({
@@ -556,5 +563,97 @@ describe('useCurriculumActions hook', () => {
       })
     );
     expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it('handles submit of a new model test successfully', async () => {
+    mockCreateModelTest.mockResolvedValue({});
+    const props = {
+      courseId: 'course-1',
+      tree: [],
+      refetch: mockRefetch,
+      modalType: {
+        type: 'MODEL_TEST' as const,
+        action: 'CREATE' as const,
+        parentId: 'sub-1',
+        nodeId: null,
+      },
+      closeModal: mockCloseModal,
+    };
+
+    const { result } = renderHook(() => useCurriculumActions(props));
+
+    await act(async () => {
+      await result.current.handleSubmit({
+        title: '45th BCS Model Test 1',
+        duration_minutes: 60,
+        total_marks: 100,
+        pass_marks: 40,
+        negative_marking_rate: 0.5,
+      });
+    });
+
+    expect(mockCreateModelTest).toHaveBeenCalledWith({
+      data: {
+        title: '45th BCS Model Test 1',
+        description: '',
+        duration_minutes: 60,
+        total_marks: 100,
+        pass_marks: 40,
+        negative_marking_rate: 0.5,
+        parent_id: 'sub-1',
+        sequence_order: 0,
+      },
+    });
+    expect(mockCloseModal).toHaveBeenCalled();
+    expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it('handles edit and delete of a model test successfully', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockUpdateModelTest.mockResolvedValue({});
+    mockDeleteModelTest.mockResolvedValue({});
+
+    const props = {
+      courseId: 'course-1',
+      tree: [],
+      refetch: mockRefetch,
+      modalType: {
+        type: 'MODEL_TEST' as const,
+        action: 'EDIT' as const,
+        parentId: 'sub-1',
+        nodeId: 'mt-1',
+      },
+      closeModal: mockCloseModal,
+    };
+
+    const { result } = renderHook(() => useCurriculumActions(props));
+
+    await act(async () => {
+      await result.current.handleSubmit({
+        title: 'Updated Model Test Title',
+        duration_minutes: 90,
+        total_marks: 200,
+        pass_marks: 80,
+        negative_marking_rate: 0.5,
+      });
+    });
+
+    expect(mockUpdateModelTest).toHaveBeenCalledWith({
+      id: 'mt-1',
+      data: {
+        title: 'Updated Model Test Title',
+        description: undefined,
+        duration_minutes: 90,
+        total_marks: 200,
+        pass_marks: 80,
+        negative_marking_rate: 0.5,
+      },
+    });
+
+    await act(async () => {
+      await result.current.handleDelete('mt-1', 'MODEL_TEST');
+    });
+
+    expect(mockDeleteModelTest).toHaveBeenCalledWith({ id: 'mt-1' });
   });
 });

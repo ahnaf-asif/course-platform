@@ -23,6 +23,7 @@ import {
   IconFileText,
   IconGripVertical,
   IconQuestionMark,
+  IconClock,
 } from '@tabler/icons-react';
 import { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
 import { ExtendedNode, NodeType } from './TreeNode';
@@ -54,10 +55,12 @@ export function TreeNodeRow({
     SUBJECT: { icon: IconBooks, color: 'blue', label: 'Subject' },
     CHAPTER: { icon: IconFolder, color: 'orange', label: 'Chapter' },
     LESSON: { icon: IconFileText, color: 'teal', label: 'Lesson' },
+    MODEL_TEST: { icon: IconClock, color: 'indigo', label: 'Model Test' },
   }[node.node_type as NodeType] || { icon: IconFileText, color: 'gray', label: 'Unknown' };
 
   const Icon = typeConfig.icon;
   const mainColor = typeConfig.color;
+  const isLeafNode = node.node_type === 'LESSON' || node.node_type === 'MODEL_TEST';
 
   return (
     <Paper
@@ -65,15 +68,11 @@ export function TreeNodeRow({
       p={0}
       radius="md"
       shadow="xs"
-      style={(theme) => ({
-        backgroundColor: node.node_type === 'SUBJECT' ? theme.colors.gray[0] : 'white',
+      style={{
+        backgroundColor: node.node_type === 'SUBJECT' ? '#f8fafc' : '#ffffff',
         overflow: 'hidden',
         transition: 'all 0.2s ease',
-        '&:hover': {
-          borderColor: theme.colors[mainColor][4],
-          transform: 'translateY(-1px)',
-        },
-      })}
+      }}
     >
       <Group justify="space-between" wrap="nowrap" gap={0}>
         <Group gap="sm" wrap="nowrap" style={{ flex: 1 }} py="xs" px="sm">
@@ -86,13 +85,13 @@ export function TreeNodeRow({
             </Box>
           </Tooltip>
 
-          {node.node_type !== 'LESSON' && (
+          {!isLeafNode && (
             <ActionIcon
               variant="subtle"
               size="sm"
               onClick={toggle}
-              color={hasChildren ? mainColor : 'gray'}
-              disabled={!hasChildren}
+              color={opened ? mainColor : 'gray'}
+              aria-label={opened ? 'Collapse' : 'Expand'}
             >
               {opened ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
             </ActionIcon>
@@ -108,7 +107,12 @@ export function TreeNodeRow({
                 <Badge size="xs" variant="light" color={mainColor} radius="sm">
                   {typeConfig.label}
                 </Badge>
-                {node.has_quizzes && (
+                {node.model_test && (
+                  <Badge size="xs" variant="outline" color="indigo" radius="sm">
+                    ⏱️ {node.model_test.duration_minutes}m • {node.model_test.total_marks} Marks (Neg: -{node.model_test.negative_marking_rate})
+                  </Badge>
+                )}
+                {node.has_quizzes && node.node_type !== 'MODEL_TEST' && (
                   <Badge
                     size="xs"
                     variant="filled"
@@ -134,12 +138,20 @@ export function TreeNodeRow({
             <Menu.Dropdown>
               <Menu.Label>Actions</Menu.Label>
               {node.node_type === 'SUBJECT' && (
-                <Menu.Item
-                  leftSection={<IconPlus size={16} color="var(--mantine-color-orange-6)" />}
-                  onClick={() => onAddChild('CHAPTER', node.id)}
-                >
-                  Add Chapter
-                </Menu.Item>
+                <>
+                  <Menu.Item
+                    leftSection={<IconPlus size={16} color="var(--mantine-color-orange-6)" />}
+                    onClick={() => onAddChild('CHAPTER', node.id)}
+                  >
+                    Add Chapter
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<IconClock size={16} color="var(--mantine-color-indigo-6)" />}
+                    onClick={() => onAddChild('MODEL_TEST', node.id)}
+                  >
+                    Add Model Test
+                  </Menu.Item>
+                </>
               )}
               {node.node_type === 'CHAPTER' && (
                 <Menu.Item
@@ -158,7 +170,7 @@ export function TreeNodeRow({
                 onClick={() => onManageQuizzes(node.id, node.title)}
                 color="grape"
               >
-                Manage Quizzes
+                Manage Questions / Quiz
               </Menu.Item>
 
               <Menu.Divider />

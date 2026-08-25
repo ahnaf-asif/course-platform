@@ -13,9 +13,21 @@ import {
   usePostAdminLessons,
   usePatchAdminLessonsId,
   useDeleteAdminLessonsId,
+  useCreateModelTest,
+  useUpdateModelTest,
+  useDeleteModelTest,
 } from '@/api/generated/admin-curriculum/admin-curriculum';
 import { CourseTreeResponse } from '@/api/model/components-schemas-curriculum/courseTreeResponse';
 import { NodeType } from './TreeNode';
+
+export interface CurriculumFormValues {
+  title: string;
+  description?: string;
+  duration_minutes?: number;
+  total_marks?: number;
+  pass_marks?: number;
+  negative_marking_rate?: number;
+}
 
 interface UseCurriculumActionsProps {
   courseId: string;
@@ -50,7 +62,11 @@ export function useCurriculumActions({
   const { mutateAsync: updateLesson } = usePatchAdminLessonsId();
   const { mutateAsync: deleteLesson } = useDeleteAdminLessonsId();
 
-  const handleSubmit = async (values: { title: string }) => {
+  const { mutateAsync: createModelTest, isPending: creatingModelTest } = useCreateModelTest();
+  const { mutateAsync: updateModelTest } = useUpdateModelTest();
+  const { mutateAsync: deleteModelTest } = useDeleteModelTest();
+
+  const handleSubmit = async (values: CurriculumFormValues) => {
     try {
       const { type, action, parentId, nodeId } = modalType;
 
@@ -73,12 +89,37 @@ export function useCurriculumActions({
               sequence_order: nextOrder,
             },
           });
+        } else if (type === 'MODEL_TEST') {
+          await createModelTest({
+            data: {
+              title: values.title,
+              description: values.description || '',
+              duration_minutes: values.duration_minutes || 60,
+              total_marks: values.total_marks || 100,
+              pass_marks: values.pass_marks || 40,
+              negative_marking_rate: values.negative_marking_rate ?? 0.50,
+              parent_id: parentId!,
+              sequence_order: nextOrder,
+            },
+          });
         }
       } else {
         if (type === 'SUBJECT') {
           await updateSubject({ id: nodeId!, data: { title: values.title } });
         } else if (type === 'CHAPTER') {
           await updateChapter({ id: nodeId!, data: { title: values.title } });
+        } else if (type === 'MODEL_TEST') {
+          await updateModelTest({
+            id: nodeId!,
+            data: {
+              title: values.title,
+              description: values.description,
+              duration_minutes: values.duration_minutes,
+              total_marks: values.total_marks,
+              pass_marks: values.pass_marks,
+              negative_marking_rate: values.negative_marking_rate,
+            },
+          });
         }
       }
 
@@ -107,6 +148,7 @@ export function useCurriculumActions({
       if (type === 'SUBJECT') await deleteSubject({ id });
       else if (type === 'CHAPTER') await deleteChapter({ id });
       else if (type === 'LESSON') await deleteLesson({ id });
+      else if (type === 'MODEL_TEST') await deleteModelTest({ id });
 
       notifications.show({
         title: 'Deleted',
@@ -147,6 +189,8 @@ export function useCurriculumActions({
               return updateChapter({ id: node.id, data: { sequence_order: index } });
             if (node.node_type === 'LESSON')
               return updateLesson({ id: node.id, data: { sequence_order: index } });
+            if (node.node_type === 'MODEL_TEST')
+              return updateModelTest({ id: node.id, data: { sequence_order: index } });
           }
           return null;
         })
@@ -166,6 +210,7 @@ export function useCurriculumActions({
     creatingSubject,
     creatingChapter,
     creatingLesson,
+    creatingModelTest,
     handleSubmit,
     handleDelete,
     handleDragEnd,
