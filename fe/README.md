@@ -14,6 +14,8 @@ A modern, high-performance web interface for the Course Platform. Built with Nex
 - [📡 API Client Generation (Orval)](#-api-client-generation-orval)
 - [🔐 Authentication & Security](#-authentication--security)
 - [🎨 Styling & Components](#-styling--components)
+- [📂 Media & File Management](#-media--file-management)
+- [📩 Contact Form & Discord Webhook Proxy](#-contact-form--discord-webhook-proxy)
 - [🐳 Docker & Orchestration](#-docker--orchestration)
 - [🚀 CI/CD Pipeline](#-cicd-pipeline)
 - [🛠 Development Guide](#-development-guide)
@@ -255,6 +257,23 @@ if (Hls.isSupported()) {
 - **401 Unauthorized**: Ensure you are using the `/media-api` proxy path. Requests made directly to port 8081 will fail cookie validation.
 - **Transcoding Delay**: Transcoding is an intensive background task. Use the `/test-video` page to monitor status polling.
 - **File Limits**: The maximum upload size is currently configured to **500MB**.
+
+---
+
+## 📩 Contact Form & Discord Webhook Proxy
+
+The `/contact` page submits user messages to an administrative Discord channel via a secure Next.js server-side route handler (`POST /api/contact`).
+
+### 🔒 Security & Architecture
+- **Private Webhook**: `DISCORD_WEBHOOK_URL` is kept strictly on the server side (without the `NEXT_PUBLIC_` prefix) to prevent exposing the webhook token to client-side bundles.
+- **Auto Simulation Fallback**: If `DISCORD_WEBHOOK_URL` is unset or contains `placeholder`/`mock`, the endpoint logs the payload to the server console and responds with `{ success: true, simulated: true }` so local dev and test suites do not fail on missing credentials.
+- **ANSI Styling & Spacing**: Discord messages are formatted with bold yellow ANSI labels (`\u001b[1;33m`), EduVerse Blue embed accent (`#3B82F6`), optional phone number support, and vertical spacing (`\n\n\u200B`).
+
+### Configuration
+```bash
+# fe/.env or fe/.env.local
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN
+```
 
 ---
 

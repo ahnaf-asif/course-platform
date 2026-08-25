@@ -106,8 +106,11 @@ RESEND_FROM_NAME=Course Platform
 
 #### 2. Frontend (`/fe/.env.production`)
 ```env
-NEXT_PUBLIC_API_URL=https://yourdomain.com/api/v1
-NEXT_PUBLIC_APP_URL=https://yourdomain.com
+NEXT_PUBLIC_API_BASE_URL=https://yourdomain.com/api/v1
+MEDIA_API_URL=http://media-server:8081/api/v1
+MEDIA_SERVER_API_KEY=your_media_server_secret_key
+JWT_SECRET=GENERATE_64_CHAR_HEX_SECRET_FOR_JWT
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your_webhook_id/your_webhook_token
 NODE_ENV=production
 ```
 
