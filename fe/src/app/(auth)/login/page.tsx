@@ -96,14 +96,7 @@ export default function LoginPage() {
           />
 
           <PasswordInput
-            label={
-              <Group justify="space-between" align="center" style={{ width: '100%' }}>
-                <Text component="span" size="sm" fw={600} c="gray.3">পাসওয়ার্ড</Text>
-                <Anchor component={Link} href="/forgot-password" size="xs" style={{ color: '#93c5fd' }}>
-                  পাসওয়ার্ড ভুলে গেছেন?
-                </Anchor>
-              </Group>
-            }
+            label={<Text component="span" size="sm" fw={600} c="gray.3">পাসওয়ার্ড</Text>}
             placeholder="আপনার পাসওয়ার্ড লিখুন"
             required
             styles={{
@@ -121,6 +114,12 @@ export default function LoginPage() {
             }}
             {...form.getInputProps('password')}
           />
+
+          <Group justify="flex-end" mt={-6}>
+            <Anchor component={Link} href="/forgot-password" size="xs" style={{ color: '#93c5fd' }}>
+              পাসওয়ার্ড ভুলে গেছেন?
+            </Anchor>
+          </Group>
 
           <Button
             type="submit"
