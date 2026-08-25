@@ -15,28 +15,32 @@ export default function FeaturesSection() {
       title: 'গোছানো সিলেবাস',
       description: 'প্রিলিমিনারির বিশাল সিলেবাসকে সহজ ও বোধগম্য করে সাজানো হয়েছে।',
       color: 'blue',
-      bgGrad: 'linear-gradient(135deg, rgba(28, 126, 214, 0.15), rgba(28, 126, 214, 0.02))',
+      borderColor: 'rgba(59, 130, 246, 0.25)',
+      iconBg: 'rgba(59, 130, 246, 0.15)',
     },
     {
       icon: IconQrcode,
       title: 'লাইভ মডেল টেস্ট',
       description: 'নেগেティブ মার্কিং সহ হুবহু বিসিএস স্টাইলে তৈরি মডেল টেস্ট দিয়ে নিজেকে যাচাই করুন।',
       color: 'violet',
-      bgGrad: 'linear-gradient(135deg, rgba(115, 0, 230, 0.15), rgba(115, 0, 230, 0.02))',
+      borderColor: 'rgba(139, 92, 246, 0.25)',
+      iconBg: 'rgba(139, 92, 246, 0.15)',
     },
     {
       icon: IconCertificate,
       title: 'পারফরম্যান্স অ্যানালাইসিস',
       description: 'অন্যান্য পরীক্ষার্থীদের তুলনায় আপনার অবস্থান এবং দুর্বল দিকগুলো শনাক্ত করার স্মার্ট মেট্রিক্স।',
       color: 'teal',
-      bgGrad: 'linear-gradient(135deg, rgba(12, 166, 120, 0.15), rgba(12, 166, 120, 0.02))',
+      borderColor: 'rgba(20, 184, 166, 0.25)',
+      iconBg: 'rgba(20, 184, 166, 0.15)',
     },
     {
       icon: IconShieldLock,
       title: 'নিরাপদ পেমেন্ট',
       description: 'বিকাশ, নগদ এবং কার্ডের মাধ্যমে সহজেই কোর্সে এনরোল করার সুবিধা।',
       color: 'pink',
-      bgGrad: 'linear-gradient(135deg, rgba(230, 73, 128, 0.15), rgba(230, 73, 128, 0.02))',
+      borderColor: 'rgba(236, 72, 153, 0.25)',
+      iconBg: 'rgba(236, 72, 153, 0.15)',
     },
   ];
 
@@ -75,27 +79,33 @@ export default function FeaturesSection() {
               {features.map((feature, index) => (
                 <Card
                   key={index}
-                  shadow="xs"
                   padding="xl"
                   radius="lg"
-                  withBorder
                   style={{
-                    border: '1px solid #f1f3f5',
-                    background: feature.bgGrad,
+                    background: 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)',
+                    border: `1px solid ${feature.borderColor}`,
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
-                    transition: 'transform 0.3s ease',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.12)',
                   }}
                   className="feature-card"
                 >
-                  <ThemeIcon size={48} radius="md" color={feature.color} variant="light" mb="md">
-                    <feature.icon size={24} />
+                  <ThemeIcon
+                    size={50}
+                    radius="md"
+                    color={feature.color}
+                    variant="light"
+                    mb="md"
+                    style={{ backgroundColor: feature.iconBg }}
+                  >
+                    <feature.icon size={26} />
                   </ThemeIcon>
-                  <Text fw={800} style={{ fontSize: '19px', lineHeight: 1.3 }} mb="sm" c="gray.9">
+                  <Text fw={800} style={{ fontSize: '19px', lineHeight: 1.3, color: '#ffffff' }} mb="sm">
                     {feature.title}
                   </Text>
-                  <Text size="sm" c="dimmed" style={{ lineHeight: 1.6, fontSize: '14.5px' }}>
+                  <Text size="sm" style={{ lineHeight: 1.65, fontSize: '14.5px', color: '#94a3b8' }}>
                     {feature.description}
                   </Text>
                 </Card>
@@ -108,8 +118,9 @@ export default function FeaturesSection() {
       {/* Custom feature card styling */}
       <style jsx global>{`
         .feature-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.02);
+          transform: translateY(-5px);
+          box-shadow: 0 20px 30px -5px rgba(15, 23, 42, 0.3);
+          border-color: rgba(255, 255, 255, 0.25) !important;
         }
       `}</style>
     </Box>
