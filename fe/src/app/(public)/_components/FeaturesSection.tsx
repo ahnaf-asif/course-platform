@@ -14,33 +14,49 @@ export default function FeaturesSection() {
       icon: IconBooks,
       title: 'গোছানো সিলেবাস',
       description: 'প্রিলিমিনারির বিশাল সিলেবাসকে সহজ ও বোধগম্য করে সাজানো হয়েছে।',
-      color: 'blue',
-      borderColor: 'rgba(59, 130, 246, 0.25)',
-      iconBg: 'rgba(59, 130, 246, 0.15)',
+      badgeText: 'সম্পূর্ণ সিলেবাস',
+      bgGrad: 'linear-gradient(135deg, #172554 0%, #1e3a8a 60%, #0f172a 100%)',
+      glowColor: 'rgba(59, 130, 246, 0.45)',
+      borderColor: 'rgba(96, 165, 250, 0.35)',
+      shadowColor: 'rgba(30, 58, 138, 0.35)',
+      iconBg: 'rgba(59, 130, 246, 0.25)',
+      iconColor: '#93c5fd',
     },
     {
       icon: IconQrcode,
       title: 'লাইভ মডেল টেস্ট',
       description: 'নেগেティブ মার্কিং সহ হুবহু বিসিএস স্টাইলে তৈরি মডেল টেস্ট দিয়ে নিজেকে যাচাই করুন।',
-      color: 'violet',
-      borderColor: 'rgba(139, 92, 246, 0.25)',
-      iconBg: 'rgba(139, 92, 246, 0.15)',
+      badgeText: 'রিয়েল-টাইম এক্সাম',
+      bgGrad: 'linear-gradient(135deg, #2e1065 0%, #4c1d95 60%, #1e1b4b 100%)',
+      glowColor: 'rgba(168, 85, 247, 0.45)',
+      borderColor: 'rgba(192, 132, 252, 0.35)',
+      shadowColor: 'rgba(76, 29, 149, 0.35)',
+      iconBg: 'rgba(168, 85, 247, 0.25)',
+      iconColor: '#d8b4fe',
     },
     {
       icon: IconCertificate,
       title: 'পারফরম্যান্স অ্যানালাইসিস',
       description: 'অন্যান্য পরীক্ষার্থীদের তুলনায় আপনার অবস্থান এবং দুর্বল দিকগুলো শনাক্ত করার স্মার্ট মেট্রিক্স।',
-      color: 'teal',
-      borderColor: 'rgba(20, 184, 166, 0.25)',
-      iconBg: 'rgba(20, 184, 166, 0.15)',
+      badgeText: 'স্মার্ট অ্যানালিটিক্স',
+      bgGrad: 'linear-gradient(135deg, #042f2e 0%, #065f46 60%, #022c22 100%)',
+      glowColor: 'rgba(20, 184, 166, 0.45)',
+      borderColor: 'rgba(45, 212, 191, 0.35)',
+      shadowColor: 'rgba(6, 95, 70, 0.35)',
+      iconBg: 'rgba(20, 184, 166, 0.25)',
+      iconColor: '#5eead4',
     },
     {
       icon: IconShieldLock,
       title: 'নিরাপদ পেমেন্ট',
       description: 'বিকাশ, নগদ এবং কার্ডের মাধ্যমে সহজেই কোর্সে এনরোল করার সুবিধা।',
-      color: 'pink',
-      borderColor: 'rgba(236, 72, 153, 0.25)',
-      iconBg: 'rgba(236, 72, 153, 0.15)',
+      badgeText: 'ইনস্ট্যান্ট অ্যাক্টিভেশন',
+      bgGrad: 'linear-gradient(135deg, #4c0519 0%, #831843 60%, #370617 100%)',
+      glowColor: 'rgba(244, 63, 94, 0.45)',
+      borderColor: 'rgba(251, 113, 133, 0.35)',
+      shadowColor: 'rgba(131, 24, 67, 0.35)',
+      iconBg: 'rgba(244, 63, 94, 0.25)',
+      iconColor: '#fda4af',
     },
   ];
 
@@ -82,32 +98,69 @@ export default function FeaturesSection() {
                   padding="xl"
                   radius="lg"
                   style={{
-                    background: 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)',
+                    background: feature.bgGrad,
                     border: `1px solid ${feature.borderColor}`,
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.12)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    boxShadow: `0 10px 25px -5px ${feature.shadowColor}`,
+                    transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
                   }}
                   className="feature-card"
                 >
-                  <ThemeIcon
-                    size={50}
-                    radius="md"
-                    color={feature.color}
-                    variant="light"
-                    mb="md"
-                    style={{ backgroundColor: feature.iconBg }}
-                  >
-                    <feature.icon size={26} />
-                  </ThemeIcon>
-                  <Text fw={800} style={{ fontSize: '19px', lineHeight: 1.3, color: '#ffffff' }} mb="sm">
-                    {feature.title}
-                  </Text>
-                  <Text size="sm" style={{ lineHeight: 1.65, fontSize: '14.5px', color: '#94a3b8' }}>
-                    {feature.description}
-                  </Text>
+                  {/* Glowing ambient light orb */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '-30px',
+                      right: '-30px',
+                      width: '130px',
+                      height: '130px',
+                      borderRadius: '50%',
+                      background: feature.glowColor,
+                      filter: 'blur(35px)',
+                      pointerEvents: 'none',
+                      zIndex: 0,
+                    }}
+                  />
+
+                  <Box style={{ position: 'relative', zIndex: 1 }}>
+                    <Group justify="space-between" align="center" mb="md">
+                      <ThemeIcon
+                        size={48}
+                        radius="md"
+                        style={{
+                          backgroundColor: feature.iconBg,
+                          color: feature.iconColor,
+                          border: `1px solid ${feature.borderColor}`,
+                        }}
+                      >
+                        <feature.icon size={26} stroke={2} />
+                      </ThemeIcon>
+                      <Badge
+                        size="sm"
+                        variant="outline"
+                        style={{
+                          color: feature.iconColor,
+                          borderColor: feature.borderColor,
+                          backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {feature.badgeText}
+                      </Badge>
+                    </Group>
+
+                    <Text fw={800} style={{ fontSize: '19px', lineHeight: 1.3, color: '#ffffff' }} mb="xs">
+                      {feature.title}
+                    </Text>
+                    <Text size="sm" style={{ lineHeight: 1.65, fontSize: '14.5px', color: 'rgba(255, 255, 255, 0.82)' }}>
+                      {feature.description}
+                    </Text>
+                  </Box>
                 </Card>
               ))}
             </SimpleGrid>
@@ -118,9 +171,9 @@ export default function FeaturesSection() {
       {/* Custom feature card styling */}
       <style jsx global>{`
         .feature-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 20px 30px -5px rgba(15, 23, 42, 0.3);
-          border-color: rgba(255, 255, 255, 0.25) !important;
+          transform: translateY(-6px) scale(1.01);
+          box-shadow: 0 20px 35px -5px rgba(15, 23, 42, 0.35);
+          border-color: rgba(255, 255, 255, 0.45) !important;
         }
       `}</style>
     </Box>
