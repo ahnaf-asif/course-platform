@@ -14,25 +14,37 @@ export default function FeaturesSection() {
       icon: IconBooks,
       title: 'গোছানো সিলেবাস',
       description: 'প্রিলিমিনারির বিশাল সিলেবাসকে সহজ ও বোধগম্য করে সাজানো হয়েছে।',
-      color: 'blue',
+      bgColor: '#1e3a8a', // Solid Deep Navy Blue
+      borderColor: '#2563eb',
+      iconBg: 'rgba(255, 255, 255, 0.15)',
+      iconColor: '#93c5fd',
     },
     {
       icon: IconQrcode,
       title: 'লাইভ মডেল টেস্ট',
       description: 'নেগেティブ মার্কিং সহ হুবহু বিসিএস স্টাইলে তৈরি মডেল টেস্ট দিয়ে নিজেকে যাচাই করুন।',
-      color: 'violet',
+      bgColor: '#4c1d95', // Solid Deep Violet
+      borderColor: '#7c3aed',
+      iconBg: 'rgba(255, 255, 255, 0.15)',
+      iconColor: '#d8b4fe',
     },
     {
       icon: IconCertificate,
       title: 'পারফরম্যান্স অ্যানালাইসিস',
       description: 'অন্যান্য পরীক্ষার্থীদের তুলনায় আপনার অবস্থান এবং দুর্বল দিকগুলো শনাক্ত করার স্মার্ট মেট্রিক্স।',
-      color: 'teal',
+      bgColor: '#064e3b', // Solid Deep Emerald Teal
+      borderColor: '#059669',
+      iconBg: 'rgba(255, 255, 255, 0.15)',
+      iconColor: '#6ee7b7',
     },
     {
       icon: IconShieldLock,
       title: 'নিরাপদ পেমেন্ট',
       description: 'বিকাশ, নগদ এবং কার্ডের মাধ্যমে সহজেই কোর্সে এনরোল করার সুবিধা।',
-      color: 'pink',
+      bgColor: '#831843', // Solid Deep Rose / Wine
+      borderColor: '#db2777',
+      iconBg: 'rgba(255, 255, 255, 0.15)',
+      iconColor: '#fbcfe8',
     },
   ];
 
@@ -65,7 +77,7 @@ export default function FeaturesSection() {
             </Stack>
           </Grid.Col>
 
-          {/* Right Column (2x2 Feature Cards with plain solid dark background) */}
+          {/* Right Column (2x2 Feature Cards with distinct solid dark colors) */}
           <Grid.Col span={{ base: 12, md: 7 }}>
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
               {features.map((feature, index) => (
@@ -74,8 +86,8 @@ export default function FeaturesSection() {
                   padding="xl"
                   radius="lg"
                   style={{
-                    backgroundColor: '#1e293b',
-                    border: '1px solid #334155',
+                    backgroundColor: feature.bgColor,
+                    border: `1px solid ${feature.borderColor}`,
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
@@ -86,8 +98,10 @@ export default function FeaturesSection() {
                   <ThemeIcon
                     size={48}
                     radius="md"
-                    color={feature.color}
-                    variant="light"
+                    style={{
+                      backgroundColor: feature.iconBg,
+                      color: feature.iconColor,
+                    }}
                     mb="md"
                   >
                     <feature.icon size={26} />
@@ -96,7 +110,7 @@ export default function FeaturesSection() {
                   <Text fw={800} style={{ fontSize: '19px', lineHeight: 1.3, color: '#ffffff' }} mb="xs">
                     {feature.title}
                   </Text>
-                  <Text size="sm" style={{ lineHeight: 1.65, fontSize: '14.5px', color: '#94a3b8' }}>
+                  <Text size="sm" style={{ lineHeight: 1.65, fontSize: '14.5px', color: 'rgba(255, 255, 255, 0.85)' }}>
                     {feature.description}
                   </Text>
                 </Card>
@@ -110,8 +124,8 @@ export default function FeaturesSection() {
       <style jsx global>{`
         .feature-card:hover {
           transform: translateY(-4px);
-          border-color: #475569 !important;
-          box-shadow: 0 12px 24px rgba(15, 23, 42, 0.15);
+          filter: brightness(1.08);
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
         }
       `}</style>
     </Box>
